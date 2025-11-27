@@ -96,85 +96,146 @@ const TrendBadge = ({ diff }) => {
 
 // --- COMPONENTS ---
 
-const LeagueTrends = ({ stats, nGames = 5 }) => {
+const LeagueTrends = ({ stats }) => {
+  const [sliderValue, setSliderValue] = useState(1); // 0: 3, 1: 5, 2: 10, 3: All
+  const options = [3, 5, 10, 'all'];
+  const nGames = options[sliderValue];
+
   const teams = Object.keys(stats).sort();
 
   return (
-    <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
-      <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-zinc-900/40">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-400" />
-            League Trends
-          </h2>
-          <p className="text-zinc-400 text-sm mt-1">Analysis based on last {nGames} games</p>
+    <div className="space-y-6">
+      {/* Controls & Legend */}
+      <div className="glass-panel p-5 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex flex-col gap-2 w-full md:w-1/3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-bold text-zinc-400 uppercase tracking-wide">Trend Sample</span>
+            <span className="text-emerald-400 font-bold font-mono text-lg">
+              {nGames === 'all' ? 'Season' : `Last ${nGames}`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="1"
+            value={sliderValue}
+            onChange={(e) => setSliderValue(parseInt(e.target.value))}
+            className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition-all"
+          />
+          <div className="flex justify-between text-[10px] text-zinc-600 font-bold uppercase px-1">
+            <span>3</span>
+            <span>5</span>
+            <span>10</span>
+            <span>All</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 bg-zinc-900/50 p-4 rounded-xl border border-white/5 w-full md:w-auto">
+          <div className="flex items-center gap-2 mb-1">
+            <Info className="w-4 h-4 text-zinc-400" />
+            <span className="font-bold text-zinc-300 uppercase text-xs">Trend Legend</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5 text-zinc-400">
+              <span className="font-mono bg-white/5 px-1 rounded">Diff</span>
+              <span>= Avg(L{nGames}) - Avg(Season)</span>
+            </div>
+            <div className="w-px h-4 bg-white/10 hidden md:block"></div>
+            <div className="flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-red-400" />
+              <span className="font-bold text-red-400">&gt; +1.5</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-orange-400" />
+              <span className="font-bold text-orange-400">&gt; +0.5</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Snowflake className="w-4 h-4 text-blue-400" />
+              <span className="font-bold text-blue-400">&lt; -0.5</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-zinc-300">
-          <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
-            <tr>
-              <th className="px-5 py-3 font-bold tracking-wider text-sm">Team</th>
-              <th className="px-3 py-3 text-center border-l border-white/5 bg-emerald-500/5 text-emerald-500 font-bold" colSpan={4}>Home Stats</th>
-              <th className="px-3 py-3 text-center border-l border-white/5 bg-blue-500/5 text-blue-500 font-bold" colSpan={4}>Away Stats</th>
-            </tr>
-            <tr>
-              <th className="px-5 py-3"></th>
+      <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
+        <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-zinc-900/40">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+              League Trends
+            </h2>
+            <p className="text-zinc-400 text-sm mt-1">Comparing Season Averages vs Recent Form ({nGames === 'all' ? 'Entire Season' : `Last ${nGames} Games`})</p>
+          </div>
+        </div>
 
-              <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-emerald-500/5">Avg For</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5">Avg Ag.</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-400">Tot (L{nGames})</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5">Trend</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-zinc-300">
+            <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
+              <tr>
+                <th className="px-5 py-3 font-bold tracking-wider text-sm">Team</th>
+                <th className="px-3 py-3 text-center border-l border-white/5 bg-emerald-500/5 text-emerald-500 font-bold" colSpan={5}>Home Stats</th>
+                <th className="px-3 py-3 text-center border-l border-white/5 bg-blue-500/5 text-blue-500 font-bold" colSpan={5}>Away Stats</th>
+              </tr>
+              <tr>
+                <th className="px-5 py-3"></th>
 
-              <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-blue-500/5">Avg For</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5">Avg Ag.</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-400">Tot (L{nGames})</th>
-              <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5">Trend</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5 text-sm">
-            {teams.map(team => {
-              const hTrend = getTrendData(stats[team].home_totals, nGames);
-              const aTrend = getTrendData(stats[team].away_totals, nGames);
+                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-emerald-500/5" title="Season Average For">Avg For (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5" title="Season Average Against">Avg Ag (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-zinc-400" title="Season Average Total">Avg Tot (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-400" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5">Trend</th>
 
-              const hForAvg = getAvg(stats[team].home_for);
-              const hAgAvg = getAvg(stats[team].home_ag);
-              const aForAvg = getAvg(stats[team].away_for);
-              const aAgAvg = getAvg(stats[team].away_ag);
+                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-blue-500/5" title="Season Average For">Avg For (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5" title="Season Average Against">Avg Ag (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-zinc-400" title="Season Average Total">Avg Tot (Sea)</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-400" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
+                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5">Trend</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm">
+              {teams.map(team => {
+                const hTrend = getTrendData(stats[team].home_totals, nGames);
+                const aTrend = getTrendData(stats[team].away_totals, nGames);
 
-              return (
-                <tr key={team} className="hover:bg-white/[0.03] transition-colors group">
-                  <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5">
-                    {team}
-                  </td>
+                const hForAvg = getAvg(stats[team].home_for);
+                const hAgAvg = getAvg(stats[team].home_ag);
+                const aForAvg = getAvg(stats[team].away_for);
+                const aAgAvg = getAvg(stats[team].away_ag);
 
-                  {/* Home Stats */}
-                  <td className="px-3 py-3 text-center text-emerald-300 font-mono font-medium text-base">{hForAvg.toFixed(1)}</td>
-                  <td className="px-3 py-3 text-center text-red-300 font-mono font-medium text-base">{hAgAvg.toFixed(1)}</td>
-                  <td className="px-3 py-3 text-center font-black text-white font-mono text-lg bg-white/5 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">{hTrend.recent.toFixed(1)}</td>
-                  <td className="px-3 py-3 flex justify-center items-center h-full"><TrendBadge diff={hTrend.diff} /></td>
+                return (
+                  <tr key={team} className="hover:bg-white/[0.03] transition-colors group">
+                    <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5">
+                      {team}
+                    </td>
 
-                  {/* Away Stats */}
-                  <td className="px-3 py-3 text-center text-emerald-300 font-mono font-medium text-base border-l border-white/5">{aForAvg.toFixed(1)}</td>
-                  <td className="px-3 py-3 text-center text-red-300 font-mono font-medium text-base">{aAgAvg.toFixed(1)}</td>
-                  <td className="px-3 py-3 text-center font-black text-white font-mono text-lg bg-white/5 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">{aTrend.recent.toFixed(1)}</td>
-                  <td className="px-3 py-3 text-center">
-                    <div className="flex justify-center"><TrendBadge diff={aTrend.diff} /></div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    {/* Home Stats */}
+                    <td className="px-3 py-3 text-center text-emerald-300 font-mono font-medium text-base">{hForAvg.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center text-red-300 font-mono font-medium text-base">{hAgAvg.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center text-zinc-400 font-mono font-medium text-base">{hTrend.season.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center font-black text-white font-mono text-lg bg-white/5 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">{hTrend.recent.toFixed(1)}</td>
+                    <td className="px-3 py-3 flex justify-center items-center h-full"><TrendBadge diff={hTrend.diff} /></td>
+
+                    {/* Away Stats */}
+                    <td className="px-3 py-3 text-center text-emerald-300 font-mono font-medium text-base border-l border-white/5">{aForAvg.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center text-red-300 font-mono font-medium text-base">{aAgAvg.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center text-zinc-400 font-mono font-medium text-base">{aTrend.season.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center font-black text-white font-mono text-lg bg-white/5 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">{aTrend.recent.toFixed(1)}</td>
+                    <td className="px-3 py-3 text-center">
+                      <div className="flex justify-center"><TrendBadge diff={aTrend.diff} /></div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 };
 
-const Predictor = ({ stats, teams }) => {
-  const [home, setHome] = useState(teams[0]);
-  const [away, setAway] = useState(teams[1]);
+const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
   const [nGames, setNGames] = useState(5);
 
   const getRelevantMatches = (team, locationFilter, n) => {
@@ -199,7 +260,7 @@ const Predictor = ({ stats, teams }) => {
     const expAway = (aFor + hAg) / 2;
     const total = expHome + expAway;
 
-    return { expHome, expAway, total };
+    return { expHome, expAway, total, hFor, hAg, aFor, aAg };
   };
 
   const prediction = calculatePrediction();
@@ -350,75 +411,163 @@ const Predictor = ({ stats, teams }) => {
         </div>
       </div>
 
+      {/* Stats Analysis Breakdown */}
+      {prediction && (
+        <div className="glass-panel p-5 rounded-xl border border-white/10">
+          <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-emerald-400" />
+            Stats Analysis (Last {nGames === 'all' ? 'Season' : nGames} Games)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Home Team Stats */}
+            <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+              <div className="relative z-10">
+                <div className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  {home} <span className="text-zinc-500 text-xs font-normal">(Home Matches)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
+                    <div className="text-2xl font-mono font-bold text-white">{prediction.hFor.toFixed(2)}</div>
+                  </div>
+                  <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
+                    <div className="text-2xl font-mono font-bold text-red-400">{prediction.hAg.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Away Team Stats */}
+            <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+              <div className="relative z-10">
+                <div className="text-blue-400 font-bold mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  {away} <span className="text-zinc-500 text-xs font-normal">(Away Matches)</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
+                    <div className="text-2xl font-mono font-bold text-white">{prediction.aFor.toFixed(2)}</div>
+                  </div>
+                  <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
+                    <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
+                    <div className="text-2xl font-mono font-bold text-red-400">{prediction.aAg.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Detailed History */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <MatchHistoryCard team={home} matches={homeMatches} type="Home" />
         <MatchHistoryCard team={away} matches={awayMatches} type="Away" />
       </div>
+
+      {/* Formula Legend */}
+      <div className="glass-panel rounded-xl p-5 border border-white/10 bg-zinc-900/40">
+        <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wide mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-zinc-500" />
+          Prediction Formula
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-zinc-400 font-mono">
+          <div className="bg-zinc-950/50 p-3 rounded-lg border border-white/5">
+            <div className="text-emerald-400 font-bold mb-1">Home Expected</div>
+            <div>(Home Avg For + Away Avg Against) / 2</div>
+            <div className="mt-1 text-zinc-500">
+              ({prediction?.hFor.toFixed(2)} + {prediction?.aAg.toFixed(2)}) / 2 = <span className="text-white">{prediction?.expHome.toFixed(2)}</span>
+            </div>
+          </div>
+          <div className="bg-zinc-950/50 p-3 rounded-lg border border-white/5">
+            <div className="text-blue-400 font-bold mb-1">Away Expected</div>
+            <div>(Away Avg For + Home Avg Against) / 2</div>
+            <div className="mt-1 text-zinc-500">
+              ({prediction?.aFor.toFixed(2)} + {prediction?.hAg.toFixed(2)}) / 2 = <span className="text-white">{prediction?.expAway.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 // --- MAIN APP ---
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('trends');
+    const [activeTab, setActiveTab] = useState('trends');
 
-  const stats = useMemo(() => processData(MATCH_DATA), []);
-  const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
+    const stats = useMemo(() => processData(MATCH_DATA), []);
+    const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
-  return (
-    <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-emerald-400 to-cyan-500 p-2 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-              <Activity className="w-5 h-5 text-zinc-950" />
-            </div>
-            <h1 className="text-xl font-black tracking-tight text-white">
-              Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
-            </h1>
-          </div>
+    // Lifted state for persistence
+    const [home, setHome] = useState(teams[0]);
+    const [away, setAway] = useState(teams[1]);
 
-          <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
-            <button
-              onClick={() => setActiveTab('trends')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-                }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span className="hidden md:inline">Trends</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('predictor')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-                }`}
-            >
-              <Calculator className="w-4 h-4" />
-              <span className="hidden md:inline">Predictor</span>
-            </button>
-          </div>
+    return (
+        <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30">
+            {/* Navbar */}
+            <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-gradient-to-br from-emerald-400 to-cyan-500 p-2 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                            <Activity className="w-5 h-5 text-zinc-950" />
+                        </div>
+                        <h1 className="text-xl font-black tracking-tight text-white">
+                            Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
+                        </h1>
+                    </div>
+
+                    <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
+                        <button
+                            onClick={() => setActiveTab('trends')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
+                                    ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                                }`}
+                        >
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="hidden md:inline">Trends</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('predictor')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
+                                    ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                                }`}
+                        >
+                            <Calculator className="w-4 h-4" />
+                            <span className="hidden md:inline">Predictor</span>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <main className="max-w-7xl mx-auto px-4 md:px-8">
+                {activeTab === 'trends' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <LeagueTrends stats={stats} />
+                    </div>
+                )}
+
+                {activeTab === 'predictor' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Predictor
+                            stats={stats}
+                            teams={teams}
+                            home={home}
+                            setHome={setHome}
+                            away={away}
+                            setAway={setAway}
+                        />
+                    </div>
+                )}
+            </main>
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 md:px-8">
-        {activeTab === 'trends' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <LeagueTrends stats={stats} nGames={5} />
-          </div>
-        )}
-
-        {activeTab === 'predictor' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Predictor stats={stats} teams={teams} />
-          </div>
-        )}
-      </main>
-    </div>
-  );
+    );
 }
