@@ -1,0 +1,1179 @@
+[
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "13",
+            "away": "0"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "6"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "8"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "5"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "3"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "5"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "9",
+            "away": "2"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "4"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "5"
+        },
+        "giornata": 13
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "7"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "6"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "9",
+            "away": "3"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "4"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "6"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "5"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Breda"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "6"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "13"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "2"
+        },
+        "giornata": 12
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "2"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "3"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "9"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "2"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "5"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "1"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "2"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "4"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "4"
+        },
+        "giornata": 11
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "10"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "2"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "5"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "1"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "5"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "7"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "7"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "Breda"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "5"
+        },
+        "giornata": 10
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "8"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "2"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "4"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "11"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "4"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "2"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "1"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "0"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "3"
+        },
+        "giornata": 9
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "11",
+            "away": "4"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "4"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "12",
+            "away": "3"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "3"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "3"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "8"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "4"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "4"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "6"
+        },
+        "giornata": 8
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "3"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "3"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "4"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "4"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "2"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "5"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Breda"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "7"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "5"
+        },
+        "giornata": 7
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "9",
+            "away": "1"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "11"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "6"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "9",
+            "away": "5"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "7"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "4"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "11"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "2"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "3"
+        },
+        "giornata": 6
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "6"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "13",
+            "away": "0"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "1"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "9"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "2"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "3"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "Breda"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "3"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "7"
+        },
+        "giornata": 5
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "4"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Zwolle"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "1"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "7"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "9"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "2"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "1",
+            "away": "4"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "3"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "7"
+        },
+        "giornata": 4
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "7"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "3"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "10",
+            "away": "1"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "Breda"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "1"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "5"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "4"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Telstar",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "6"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "4"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "12",
+            "away": "1"
+        },
+        "giornata": 3
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "5"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "FC Volendam",
+            "away": "Alkmaar"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Sparta Rotterdam",
+            "away": "Utrecht"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "6"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Twente",
+            "away": "PSV"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "6"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "G.A. Eagles",
+            "away": "Ajax"
+        },
+        "calci_d_angolo": {
+            "home": "6",
+            "away": "9"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Groningen",
+            "away": "Heerenveen"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "8"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Heracles",
+            "away": "Nijmegen"
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "7"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Excelsior",
+            "away": "Feyenoord"
+        },
+        "calci_d_angolo": {
+            "home": "5",
+            "away": "6"
+        },
+        "giornata": 2
+    }
+]
