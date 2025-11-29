@@ -14,6 +14,7 @@ import {
   Calendar
 } from 'lucide-react';
 import MATCH_DATA from './data/eredivisie_con_giornate.json';
+import { TEAM_LOGOS } from './data/teamLogos';
 
 // --- UTILS & LOGIC ---
 
@@ -205,7 +206,8 @@ const LeagueTrends = ({ stats }) => {
 
                 return (
                   <tr key={team} className="hover:bg-white/[0.03] transition-colors group">
-                    <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5">
+                    <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5 flex items-center gap-3">
+                      <img src={TEAM_LOGOS[team]} alt={team} className="w-6 h-6 object-contain" />
                       {team}
                     </td>
 
@@ -269,7 +271,7 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
     <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
       <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
         <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-          {type === 'Home' ? <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div> : <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>}
+          <img src={TEAM_LOGOS[team]} alt={team} className="w-6 h-6 object-contain" />
           {team}
         </h4>
         <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{type} Form</span>
@@ -320,6 +322,9 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Home Team</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    {home && <img src={TEAM_LOGOS[home]} alt={home} className="w-8 h-8 object-contain" />}
+                  </div>
                   <div className="relative">
                     <select
                       className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium"
@@ -334,6 +339,9 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
 
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Away Team</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    {away && <img src={TEAM_LOGOS[away]} alt={away} className="w-8 h-8 object-contain" />}
+                  </div>
                   <div className="relative">
                     <select
                       className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-medium"
@@ -355,8 +363,8 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
                       key={n}
                       onClick={() => setNGames(n)}
                       className={`py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${nGames === n
-                          ? 'bg-white text-black shadow-[0_0_10px_rgba(255,255,255,0.2)]'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                        ? 'bg-white text-black shadow-[0_0_10px_rgba(255,255,255,0.2)]'
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                         }`}
                     >
                       {n === 'all' ? 'Season' : `Last ${n}`}
@@ -379,7 +387,8 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
                 <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total Corners</h2>
 
                 <div className="flex items-center justify-center gap-8 mb-8 w-full">
-                  <div className="text-right flex-1">
+                  <div className="text-right flex-1 flex flex-col items-end">
+                    <img src={TEAM_LOGOS[home]} alt={home} className="w-16 h-16 object-contain mb-2" />
                     <div className="text-2xl font-bold text-white truncate">{home}</div>
                     <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {prediction.expHome.toFixed(2)}</div>
                   </div>
@@ -388,7 +397,8 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
                     {prediction.total.toFixed(1)}
                   </div>
 
-                  <div className="text-left flex-1">
+                  <div className="text-left flex-1 flex flex-col items-start">
+                    <img src={TEAM_LOGOS[away]} alt={away} className="w-16 h-16 object-contain mb-2" />
                     <div className="text-2xl font-bold text-white truncate">{away}</div>
                     <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {prediction.expAway.toFixed(2)}</div>
                   </div>
@@ -424,7 +434,7 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
               <div className="relative z-10">
                 <div className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  <img src={TEAM_LOGOS[home]} alt={home} className="w-6 h-6 object-contain" />
                   {home} <span className="text-zinc-500 text-xs font-normal">(Home Matches)</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -445,7 +455,7 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
               <div className="relative z-10">
                 <div className="text-blue-400 font-bold mb-3 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <img src={TEAM_LOGOS[away]} alt={away} className="w-6 h-6 object-contain" />
                   {away} <span className="text-zinc-500 text-xs font-normal">(Away Matches)</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -500,74 +510,99 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
 // --- MAIN APP ---
 
 export default function App() {
-    const [activeTab, setActiveTab] = useState('trends');
+  const [activeTab, setActiveTab] = useState('trends');
 
-    const stats = useMemo(() => processData(MATCH_DATA), []);
-    const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
+  const stats = useMemo(() => processData(MATCH_DATA), []);
+  const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
-    // Lifted state for persistence
-    const [home, setHome] = useState(teams[0]);
-    const [away, setAway] = useState(teams[1]);
+  // Lifted state for persistence
+  const [home, setHome] = useState(teams[0]);
+  const [away, setAway] = useState(teams[1]);
 
-    return (
-        <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30">
-            {/* Navbar */}
-            <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-emerald-400 to-cyan-500 p-2 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                            <Activity className="w-5 h-5 text-zinc-950" />
-                        </div>
-                        <h1 className="text-xl font-black tracking-tight text-white">
-                            Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
-                        </h1>
-                    </div>
+  return (
+    <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30">
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-emerald-400 to-cyan-500 p-2 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              <Activity className="w-5 h-5 text-zinc-950" />
+            </div>
+            <h1 className="text-xl font-black tracking-tight text-white">
+              Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
+            </h1>
+          </div>
 
-                    <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
-                        <button
-                            onClick={() => setActiveTab('trends')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
-                                    ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-                                }`}
-                        >
-                            <TrendingUp className="w-4 h-4" />
-                            <span className="hidden md:inline">Trends</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('predictor')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
-                                    ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
-                                }`}
-                        >
-                            <Calculator className="w-4 h-4" />
-                            <span className="hidden md:inline">Predictor</span>
-                        </button>
-                    </div>
-                </div>
-            </nav>
-
-            <main className="max-w-7xl mx-auto px-4 md:px-8">
-                {activeTab === 'trends' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <LeagueTrends stats={stats} />
-                    </div>
-                )}
-
-                {activeTab === 'predictor' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <Predictor
-                            stats={stats}
-                            teams={teams}
-                            home={home}
-                            setHome={setHome}
-                            away={away}
-                            setAway={setAway}
-                        />
-                    </div>
-                )}
-            </main>
+          <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
+            <button
+              onClick={() => setActiveTab('trends')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
+                ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden md:inline">Trends</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('predictor')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
+                ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                }`}
+            >
+              <Calculator className="w-4 h-4" />
+              <span className="hidden md:inline">Predictor</span>
+            </button>
+            <button
+              onClick={() => {
+                const audio = new Audio('/sounds/malepisello.mp3');
+                audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+              title="Play Sound"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5"
+              >
+                <path d="M10 13V6a2 2 0 0 1 4 0v7" />
+                <circle cx="8" cy="15" r="3" />
+                <circle cx="16" cy="15" r="3" />
+              </svg>
+            </button>
+          </div>
         </div>
-    );
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 md:px-8">
+        {activeTab === 'trends' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <LeagueTrends stats={stats} />
+          </div>
+        )}
+
+        {activeTab === 'predictor' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Predictor
+              stats={stats}
+              teams={teams}
+              home={home}
+              setHome={setHome}
+              away={away}
+              setAway={setAway}
+            />
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
