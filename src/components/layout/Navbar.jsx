@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, TrendingUp, Calculator } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Calendar as CalendarIcon } from 'lucide-react';
 
 const Navbar = ({ activeTab, setActiveTab }) => {
     return (
@@ -34,6 +34,16 @@ const Navbar = ({ activeTab, setActiveTab }) => {
                     >
                         <Calculator className="w-4 h-4" />
                         <span className="hidden md:inline">Predictor</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('calendar')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'calendar'
+                            ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                            : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                            }`}
+                    >
+                        <CalendarIcon className="w-4 h-4" />
+                        <span className="hidden md:inline">Calendar</span>
                     </button>
                 </div>
             </div>

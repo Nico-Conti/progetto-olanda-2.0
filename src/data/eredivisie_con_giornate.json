@@ -1175,5 +1175,115 @@
             "away": "6"
         },
         "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Breda",
+            "away": "Sittard"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "5"
+        },
+        "giornata": 2
+    },
+    {
+        "squadre": {
+            "home": "Alkmaar",
+            "away": "Groningen"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "6"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Ajax",
+            "away": "Telstar"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "10"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Utrecht",
+            "away": "Heracles"
+        },
+        "calci_d_angolo": {
+            "home": "4",
+            "away": "4"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Sittard",
+            "away": "G.A. Eagles"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "5"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Nijmegen",
+            "away": "Excelsior"
+        },
+        "calci_d_angolo": {
+            "home": "7",
+            "away": "2"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Feyenoord",
+            "away": "Breda "
+        },
+        "calci_d_angolo": {
+            "home": "3",
+            "away": "4"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Heerenveen",
+            "away": "FC Volendam"
+        },
+        "calci_d_angolo": {
+            "home": "9",
+            "away": "2"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "PSV",
+            "away": "Sparta Rotterdam"
+        },
+        "calci_d_angolo": {
+            "home": "8",
+            "away": "5"
+        },
+        "giornata": 1
+    },
+    {
+        "squadre": {
+            "home": "Zwolle",
+            "away": "Twente"
+        },
+        "calci_d_angolo": {
+            "home": "2",
+            "away": "4"
+        },
+        "giornata": 1
     }
 ]

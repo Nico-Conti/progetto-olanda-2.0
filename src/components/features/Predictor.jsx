@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Calculator, ChevronRight, Flame, Info, Activity } from 'lucide-react';
-import { getAvg } from '../../utils/stats';
+import { Calculator, ChevronRight, Flame, Info, Activity, TrendingUp } from 'lucide-react';
+import { predictMatchOutcome } from '../../utils/stats';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
     const [nGames, setNGames] = useState(5);
@@ -16,21 +17,7 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
     const homeMatches = getRelevantMatches(home, 'Home', nGames);
     const awayMatches = getRelevantMatches(away, 'Away', nGames);
 
-    const calculatePrediction = () => {
-        if (!stats[home] || !stats[away]) return null;
-        const hFor = getAvg(homeMatches.map(m => m.cornersFor));
-        const hAg = getAvg(homeMatches.map(m => m.cornersAg));
-        const aFor = getAvg(awayMatches.map(m => m.cornersFor));
-        const aAg = getAvg(awayMatches.map(m => m.cornersAg));
-
-        const expHome = (hFor + aAg) / 2;
-        const expAway = (aFor + hAg) / 2;
-        const total = expHome + expAway;
-
-        return { expHome, expAway, total, hFor, hAg, aFor, aAg };
-    };
-
-    const prediction = calculatePrediction();
+    const prediction = predictMatchOutcome(home, away, stats, nGames);
 
     const MatchHistoryCard = ({ team, matches, type }) => (
         <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
@@ -143,33 +130,52 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
                             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none group-hover:bg-blue-500/20 transition-all duration-700"></div>
 
                             <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total Corners</h2>
+                                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Poisson Expected Total</h2>
 
                                 <div className="flex items-center justify-center gap-8 mb-8 w-full">
                                     <div className="text-right flex-1">
                                         <div className="text-2xl font-bold text-white truncate">{home}</div>
-                                        <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {prediction.expHome.toFixed(2)}</div>
+                                        <div className="text-emerald-400 font-mono text-base font-bold mt-1">Exp: {prediction.lambdaHome.toFixed(2)}</div>
                                     </div>
 
-                                    <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${prediction.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
-                                        {prediction.total.toFixed(1)}
+                                    <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${prediction.lambdaTotal > 10.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
+                                        {prediction.lambdaTotal.toFixed(1)}
                                     </div>
 
                                     <div className="text-left flex-1">
                                         <div className="text-2xl font-bold text-white truncate">{away}</div>
-                                        <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {prediction.expAway.toFixed(2)}</div>
+                                        <div className="text-blue-400 font-mono text-base font-bold mt-1">Exp: {prediction.lambdaAway.toFixed(2)}</div>
                                     </div>
                                 </div>
 
-                                {prediction.total > 11.5 ? (
-                                    <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full border border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(248,113,113,0.2)]">
-                                        <Flame className="w-4 h-4 fill-current" />
-                                        <span className="font-bold text-sm uppercase tracking-wide">High Over Trend</span>
-                                    </div>
-                                ) : (
+                                <div className="flex gap-4">
+                                    {prediction.probOver95 > 0.6 && (
+                                        <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full border border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(248,113,113,0.2)]">
+                                            <Flame className="w-4 h-4 fill-current" />
+                                            <span className="font-bold text-sm uppercase tracking-wide">Over 9.5 ({Math.round(prediction.probOver95 * 100)}%)</span>
+                                        </div>
+                                    )}
                                     <div className="inline-flex items-center gap-2 bg-zinc-800/50 text-zinc-400 px-4 py-2 rounded-full border border-white/5">
                                         <Info className="w-4 h-4" />
-                                        <span className="font-medium text-sm">Standard Projection</span>
+                                        <span className="font-medium text-sm">Poisson Model</span>
+                                    </div>
+                                </div>
+
+                                {prediction.monteCarlo && (
+                                    <div className="mt-6 pt-6 border-t border-white/5 w-full max-w-md">
+                                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Monte Carlo Simulation (5k runs)</h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
+                                                <div className="text-[10px] text-zinc-500 uppercase font-bold">Avg Total</div>
+                                                <div className="text-lg font-mono font-bold text-white">{prediction.monteCarlo.avgTotal.toFixed(2)}</div>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
+                                                <div className="text-[10px] text-zinc-500 uppercase font-bold">Prob Over 9.5</div>
+                                                <div className={`text-lg font-mono font-bold ${prediction.monteCarlo.probOver95 > 0.6 ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                                    {(prediction.monteCarlo.probOver95 * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -178,12 +184,47 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
                 </div>
             </div>
 
+            {/* Probability Graph */}
+            {prediction && (
+                <div className="glass-panel p-5 rounded-xl border border-white/10">
+                    <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        Probability Distribution (Total Corners)
+                    </h3>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={prediction.distribution.slice(0, 18)}>
+                                <XAxis
+                                    dataKey="count"
+                                    stroke="#52525b"
+                                    tick={{ fill: '#71717a', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis hide />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    formatter={(value) => `${(value * 100).toFixed(1)}%`}
+                                />
+                                <Bar dataKey="probability" radius={[4, 4, 0, 0]}>
+                                    {prediction.distribution.slice(0, 18).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.count >= Math.floor(prediction.lambdaTotal) ? '#10b981' : '#3f3f46'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
             {/* Stats Analysis Breakdown */}
             {prediction && (
                 <div className="glass-panel p-5 rounded-xl border border-white/10">
                     <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-emerald-400" />
-                        Stats Analysis (Last {nGames === 'all' ? 'Season' : nGames} Games)
+                        Weighted Stats Analysis (Form + Season)
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Home Team Stats */}
@@ -235,30 +276,6 @@ const Predictor = ({ stats, teams, home, setHome, away, setAway }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MatchHistoryCard team={home} matches={homeMatches} type="Home" />
                 <MatchHistoryCard team={away} matches={awayMatches} type="Away" />
-            </div>
-
-            {/* Formula Legend */}
-            <div className="glass-panel rounded-xl p-5 border border-white/10 bg-zinc-900/40">
-                <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wide mb-3 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-zinc-500" />
-                    Prediction Formula
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-zinc-400 font-mono">
-                    <div className="bg-zinc-950/50 p-3 rounded-lg border border-white/5">
-                        <div className="text-emerald-400 font-bold mb-1">Home Expected</div>
-                        <div>(Home Avg For + Away Avg Against) / 2</div>
-                        <div className="mt-1 text-zinc-500">
-                            ({prediction?.hFor.toFixed(2)} + {prediction?.aAg.toFixed(2)}) / 2 = <span className="text-white">{prediction?.expHome.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    <div className="bg-zinc-950/50 p-3 rounded-lg border border-white/5">
-                        <div className="text-blue-400 font-bold mb-1">Away Expected</div>
-                        <div>(Away Avg For + Home Avg Against) / 2</div>
-                        <div className="mt-1 text-zinc-500">
-                            ({prediction?.aFor.toFixed(2)} + {prediction?.hAg.toFixed(2)}) / 2 = <span className="text-white">{prediction?.expAway.toFixed(2)}</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );

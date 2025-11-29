@@ -129,3 +129,108 @@ export const getTrendData = (list, nGames) => {
     diff: recentAvg - seasonAvg
   };
 };
+
+// --- POISSON & ADVANCED STATS ---
+
+const factorial = (n) => {
+  if (n === 0 || n === 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+};
+
+export const poissonProbability = (k, lambda) => {
+  return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
+};
+
+// Simple Box-Muller transform for normal distribution (approximation for Poisson large lambda)
+// But for Poisson we can use Knuth's algorithm or just inverse transform sampling for small lambda
+// For JS, simple inverse transform is fine for small lambda, or just use a library.
+// Since we don't have a library, we'll use a simple approximation or just stick to Poisson formula for exact probs.
+// Actually, Monte Carlo is requested. Let's do a simple simulation.
+
+const simulatePoisson = (lambda) => {
+  const L = Math.exp(-lambda);
+  let k = 0;
+  let p = 1;
+  do {
+    k++;
+    p *= Math.random();
+  } while (p > L);
+  return k - 1;
+};
+
+export const monteCarloSimulation = (lambdaHome, lambdaAway, iterations = 5000) => {
+  let over95 = 0;
+  let over105 = 0;
+  let totalCorners = 0;
+
+  for (let i = 0; i < iterations; i++) {
+    const h = simulatePoisson(lambdaHome);
+    const a = simulatePoisson(lambdaAway);
+    const t = h + a;
+
+    totalCorners += t;
+    if (t > 9.5) over95++;
+    if (t > 10.5) over105++;
+  }
+
+  return {
+    probOver95: over95 / iterations,
+    probOver105: over105 / iterations,
+    avgTotal: totalCorners / iterations
+  };
+};
+
+export const predictMatchOutcome = (homeTeam, awayTeam, stats, nGames = 'all') => {
+  if (!stats[homeTeam] || !stats[awayTeam]) return null;
+
+  const hStats = stats[homeTeam];
+  const aStats = stats[awayTeam];
+
+  // Helper to get average based on nGames
+  const getStatsAvg = (list) => {
+    if (!list || list.length === 0) return 0;
+    if (nGames === 'all') return getAvg(list);
+    return getAvg(list.slice(-nGames));
+  };
+
+  const hFor = getStatsAvg(hStats.home_corners_for);
+  const hAg = getStatsAvg(hStats.home_corners_ag);
+  const aFor = getStatsAvg(aStats.away_corners_for);
+  const aAg = getStatsAvg(aStats.away_corners_ag);
+
+  const lambdaHome = (hFor + aAg) / 2;
+  const lambdaAway = (aFor + hAg) / 2;
+  const lambdaTotal = lambdaHome + lambdaAway;
+
+  // Generate Probability Distribution (0 to 15+ corners)
+  const distribution = [];
+  let cumulativeProb = 0;
+
+  for (let k = 0; k <= 20; k++) {
+    const prob = poissonProbability(k, lambdaTotal);
+    cumulativeProb += prob;
+    distribution.push({ count: k, probability: prob, cumulative: cumulativeProb });
+  }
+
+  // Calculate specific "Over" probabilities (Poisson)
+  const probOver85 = 1 - distribution.find(d => d.count === 8).cumulative;
+  const probOver95 = 1 - distribution.find(d => d.count === 9).cumulative;
+  const probOver105 = 1 - distribution.find(d => d.count === 10).cumulative;
+
+  // Monte Carlo Simulation
+  const mc = monteCarloSimulation(lambdaHome, lambdaAway);
+
+  return {
+    lambdaHome,
+    lambdaAway,
+    lambdaTotal,
+    distribution,
+    probOver85,
+    probOver95,
+    probOver105,
+    hFor, hAg, aFor, aAg, // Return raw avgs for display
+    monteCarlo: mc // Add Monte Carlo results
+  };
+};

@@ -4,11 +4,15 @@ import Navbar from './components/layout/Navbar';
 import LeagueTrends from './components/features/LeagueTrends';
 import Predictor from './components/features/Predictor';
 import TeamDetails from './components/features/TeamDetails';
+import LeagueStats from './components/features/LeagueStats';
+import HotMatches from './components/features/HotMatches';
+import Calendar from './components/features/Calendar';
 import { supabase } from './lib/supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [matchData, setMatchData] = useState([]);
+  const [fixturesData, setFixturesData] = useState([]);
   const [squadsData, setSquadsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -31,6 +35,15 @@ export default function App() {
           .select('*');
 
         if (squadError) throw squadError;
+
+        // Fetch Fixtures
+        const { data: fixtures, error: fixtureError } = await supabase
+          .from('fixtures')
+          .select('*')
+          .order('match_date', { ascending: true });
+
+        if (fixtureError) throw fixtureError;
+        setFixturesData(fixtures);
 
         // Process Squads into a map for easy lookup
         const squadsMap = {};
@@ -134,7 +147,9 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'trends' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                <HotMatches />
+                <LeagueStats stats={stats} teams={teams} />
                 <LeagueTrends stats={stats} onTeamClick={handleTeamClick} />
               </div>
             )}
@@ -149,6 +164,12 @@ export default function App() {
                   away={away}
                   setAway={setAway}
                 />
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Calendar fixtures={fixturesData} />
               </div>
             )}
           </>
