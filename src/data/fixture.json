@@ -1,0 +1,1602 @@
+[
+    {
+        "1": [
+            {
+                "home": "Fortuna Sittard",
+                "away": "Go Ahead Eagles",
+                "Date": "08/08/25"
+            },
+            {
+                "home": "NEC",
+                "away": "Excelsior",
+                "Date": "09/08/25"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "NAC",
+                "Date": "09/08/25"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Volendam",
+                "Date": "09/08/25"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Sparta Rotterdam",
+                "Date": "09/08/25"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Twente",
+                "Date": "10/08/25"
+            },
+            {
+                "home": "AZ",
+                "away": "Groningen",
+                "Date": "10/08/25"
+            },
+            {
+                "home": "Ajax",
+                "away": "Telstar",
+                "Date": "10/08/25"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Heracles",
+                "Date": "10/08/25"
+            }
+        ],
+        "2": [
+            {
+                "home": "Telstar",
+                "away": "Zwolle",
+                "Date": "15/08/25"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Feyenoord",
+                "Date": "16/08/25"
+            },
+            {
+                "home": "Heracles",
+                "away": "NEC",
+                "Date": "16/08/25"
+            },
+            {
+                "home": "Groningen",
+                "away": "Heerenveen",
+                "Date": "16/08/25"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Ajax",
+                "Date": "17/08/25"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Utrecht",
+                "Date": "17/08/25"
+            },
+            {
+                "home": "Twente",
+                "away": "PSV Eindhoven",
+                "Date": "17/08/25"
+            },
+            {
+                "home": "Volendam",
+                "away": "AZ",
+                "Date": "17/08/25"
+            },
+            {
+                "home": "NAC",
+                "away": "Fortuna Sittard",
+                "Date": "17/08/25"
+            }
+        ],
+        "3": [
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Sparta Rotterdam",
+                "Date": "23/08/25"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Groningen",
+                "Date": "23/08/25"
+            },
+            {
+                "home": "Telstar",
+                "away": "Volendam",
+                "Date": "23/08/25"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Twente",
+                "Date": "24/08/25"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Excelsior",
+                "Date": "24/08/25"
+            },
+            {
+                "home": "NEC",
+                "away": "NAC",
+                "Date": "24/08/25"
+            },
+            {
+                "home": "Ajax",
+                "away": "Heracles",
+                "Date": "24/08/25"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Fortuna Sittard",
+                "Date": "17/09"
+            },
+            {
+                "home": "AZ",
+                "away": "Zwolle",
+                "Date": "24/09"
+            }
+        ],
+        "4": [
+            {
+                "home": "Groningen",
+                "away": "Heracles",
+                "Date": "29/08/25"
+            },
+            {
+                "home": "Volendam",
+                "away": "Ajax",
+                "Date": "30/08"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Go Ahead Eagles",
+                "Date": "30/08"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Telstar",
+                "Date": "30/08"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Twente",
+                "Date": "30/08"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "NEC",
+                "Date": "31/08"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Utrecht",
+                "Date": "31/08"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Feyenoord",
+                "Date": "31/08"
+            },
+            {
+                "home": "NAC",
+                "away": "AZ",
+                "Date": "31/08"
+            }
+        ],
+        "5": [
+            {
+                "home": "Ajax",
+                "away": "Zwolle",
+                "Date": "13/09"
+            },
+            {
+                "home": "NEC",
+                "away": "PSV Eindhoven",
+                "Date": "13/09"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Volendam",
+                "Date": "13/09"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Heerenveen",
+                "Date": "13/09"
+            },
+            {
+                "home": "Twente",
+                "away": "NAC",
+                "Date": "13/09"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Sparta Rotterdam",
+                "Date": "14/09"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Groningen",
+                "Date": "14/09"
+            },
+            {
+                "home": "Heracles",
+                "away": "AZ",
+                "Date": "14/09"
+            },
+            {
+                "home": "Telstar",
+                "away": "Fortuna Sittard",
+                "Date": "14/09"
+            }
+        ],
+        "6": [
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Twente",
+                "Date": "19/09"
+            },
+            {
+                "home": "Volendam",
+                "away": "Excelsior",
+                "Date": "20/09"
+            },
+            {
+                "home": "Groningen",
+                "away": "Telstar",
+                "Date": "20/09"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Utrecht",
+                "Date": "20/09"
+            },
+            {
+                "home": "NAC",
+                "away": "Heracles",
+                "Date": "20/09"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Go Ahead Eagles",
+                "Date": "21/09"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Ajax",
+                "Date": "21/09"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "NEC",
+                "Date": "21/09"
+            },
+            {
+                "home": "AZ",
+                "away": "Feyenoord",
+                "Date": "21/09"
+            }
+        ],
+        "7": [
+            {
+                "home": "Twente",
+                "away": "Fortuna Sittard",
+                "Date": "26/09"
+            },
+            {
+                "home": "Ajax",
+                "away": "NAC",
+                "Date": "27/09"
+            },
+            {
+                "home": "Volendam",
+                "away": "Zwolle",
+                "Date": "27/09"
+            },
+            {
+                "home": "Excelsior",
+                "away": "PSV Eindhoven",
+                "Date": "27/09"
+            },
+            {
+                "home": "Heracles",
+                "away": "Sparta Rotterdam",
+                "Date": "27/09"
+            },
+            {
+                "home": "NEC",
+                "away": "AZ",
+                "Date": "28/09"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Heerenveen",
+                "Date": "28/09"
+            },
+            {
+                "home": "Groningen",
+                "away": "Feyenoord",
+                "Date": "28/09"
+            },
+            {
+                "home": "Telstar",
+                "away": "Go Ahead Eagles",
+                "Date": "28/09"
+            }
+        ],
+        "8": [
+            {
+                "home": "NAC",
+                "away": "Groningen",
+                "Date": "03/10"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Ajax",
+                "Date": "04/10"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Volendam",
+                "Date": "04/10"
+            },
+            {
+                "home": "Zwolle",
+                "away": "PSV Eindhoven",
+                "Date": "04/10"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Excelsior",
+                "Date": "04/10"
+            },
+            {
+                "home": "Twente",
+                "away": "Heracles",
+                "Date": "05/10"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Utrecht",
+                "Date": "05/10"
+            },
+            {
+                "home": "AZ",
+                "away": "Telstar",
+                "Date": "05/10"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "NEC",
+                "Date": "05/10"
+            }
+        ],
+        "9": [
+            {
+                "home": "NEC",
+                "away": "Twente",
+                "Date": "18/10"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Go Ahead Eagles",
+                "Date": "18/10"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Volendam",
+                "Date": "18/10"
+            },
+            {
+                "home": "NAC",
+                "away": "Zwolle",
+                "Date": "18/10"
+            },
+            {
+                "home": "Ajax",
+                "away": "AZ",
+                "Date": "18/10"
+            },
+            {
+                "home": "Telstar",
+                "away": "Heerenveen",
+                "Date": "19/10"
+            },
+            {
+                "home": "Groningen",
+                "away": "Sparta Rotterdam",
+                "Date": "19/10"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Fortuna Sittard",
+                "Date": "19/10"
+            },
+            {
+                "home": "Heracles",
+                "away": "Feyenoord",
+                "Date": "19/10"
+            }
+        ],
+        "10": [
+            {
+                "home": "Heerenveen",
+                "away": "NAC",
+                "Date": "24/10"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Groningen",
+                "Date": "25/10"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Telstar",
+                "Date": "25/10"
+            },
+            {
+                "home": "Volendam",
+                "away": "Heracles",
+                "Date": "25/10"
+            },
+            {
+                "home": "Zwolle",
+                "away": "NEC",
+                "Date": "25/10"
+            },
+            {
+                "home": "Twente",
+                "away": "Ajax",
+                "Date": "26/10"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "PSV Eindhoven",
+                "Date": "26/10"
+            },
+            {
+                "home": "AZ",
+                "away": "Utrecht",
+                "Date": "26/10"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Excelsior",
+                "Date": "26/10"
+            }
+        ],
+        "11": [
+            {
+                "home": "PSV Eindhoven",
+                "away": "Fortuna Sittard",
+                "Date": "31/10"
+            },
+            {
+                "home": "Ajax",
+                "away": "Heerenveen",
+                "Date": "01/11"
+            },
+            {
+                "home": "NAC",
+                "away": "Go Ahead Eagles",
+                "Date": "01/11"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Volendam",
+                "Date": "01/11"
+            },
+            {
+                "home": "Telstar",
+                "away": "Excelsior",
+                "Date": "01/11"
+            },
+            {
+                "home": "Heracles",
+                "away": "Zwolle",
+                "Date": "02/11"
+            },
+            {
+                "home": "Groningen",
+                "away": "Twente",
+                "Date": "02/11"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "AZ",
+                "Date": "02/11"
+            },
+            {
+                "home": "Utrecht",
+                "away": "NEC",
+                "Date": "02/11"
+            }
+        ],
+        "12": [
+            {
+                "home": "Twente",
+                "away": "Telstar",
+                "Date": "07/11"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Heracles",
+                "Date": "08/11"
+            },
+            {
+                "home": "Volendam",
+                "away": "NAC",
+                "Date": "08/11"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Heerenveen",
+                "Date": "08/11"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Sparta Rotterdam",
+                "Date": "08/11"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Ajax",
+                "Date": "09/11"
+            },
+            {
+                "home": "NEC",
+                "away": "Groningen",
+                "Date": "09/11"
+            },
+            {
+                "home": "AZ",
+                "away": "PSV Eindhoven",
+                "Date": "09/11"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Feyenoord",
+                "Date": "09/11"
+            }
+        ],
+        "13": [
+            {
+                "home": "NAC",
+                "away": "PSV Eindhoven",
+                "Date": "22/11"
+            },
+            {
+                "home": "Volendam",
+                "away": "Twente",
+                "Date": "22/11"
+            },
+            {
+                "home": "Ajax",
+                "away": "Excelsior",
+                "Date": "22/11"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Fortuna Sittard",
+                "Date": "22/11"
+            },
+            {
+                "home": "Heracles",
+                "away": "Go Ahead Eagles",
+                "Date": "22/11"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "AZ",
+                "Date": "23/11"
+            },
+            {
+                "home": "Telstar",
+                "away": "Utrecht",
+                "Date": "23/11"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "NEC",
+                "Date": "23/11"
+            },
+            {
+                "home": "Groningen",
+                "away": "Zwolle",
+                "Date": "23/11"
+            }
+        ],
+        "14": [
+            {
+                "home": "Zwolle",
+                "away": "Heerenveen",
+                "Date": "28/11/25"
+            },
+            {
+                "home": "Excelsior",
+                "away": "NAC",
+                "Date": "29/11/25"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Heracles",
+                "Date": "29/11/25"
+            },
+            {
+                "home": "NEC",
+                "away": "Sparta Rotterdam",
+                "Date": "29/11/25"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Volendam",
+                "Date": "30/11/25"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Utrecht",
+                "Date": "30/11/25"
+            },
+            {
+                "home": "Telstar",
+                "away": "Feyenoord",
+                "Date": "30/11/25"
+            },
+            {
+                "home": "Twente",
+                "away": "AZ",
+                "Date": "30/11/25"
+            },
+            {
+                "home": "Ajax",
+                "away": "Groningen",
+                "Date": "30/11/25"
+            }
+        ],
+        "15": [
+            {
+                "home": "Excelsior",
+                "away": "Groningen",
+                "Date": "05/12"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "PSV Eindhoven",
+                "Date": "06/12"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Ajax",
+                "Date": "06/12"
+            },
+            {
+                "home": "Heracles",
+                "away": "Telstar",
+                "Date": "06/12"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Zwolle",
+                "Date": "06/12"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Twente",
+                "Date": "07/12"
+            },
+            {
+                "home": "Volendam",
+                "away": "NEC",
+                "Date": "07/12"
+            },
+            {
+                "home": "AZ",
+                "away": "Go Ahead Eagles",
+                "Date": "07/12"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "NAC",
+                "Date": "07/12"
+            }
+        ],
+        "16": [
+            {
+                "home": "Telstar",
+                "away": "NEC",
+                "Date": "13/12"
+            },
+            {
+                "home": "Groningen",
+                "away": "Volendam",
+                "Date": "13/12"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Heracles",
+                "Date": "13/12"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Fortuna Sittard",
+                "Date": "13/12"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Heerenveen",
+                "Date": "14/12"
+            },
+            {
+                "home": "Ajax",
+                "away": "Feyenoord",
+                "Date": "14/12"
+            },
+            {
+                "home": "Twente",
+                "away": "Go Ahead Eagles",
+                "Date": "14/12"
+            },
+            {
+                "home": "NAC",
+                "away": "Utrecht",
+                "Date": "14/12"
+            },
+            {
+                "home": "AZ",
+                "away": "Excelsior",
+                "Date": "14/12"
+            }
+        ],
+        "17": [
+            {
+                "home": "Heracles",
+                "away": "Heerenveen",
+                "Date": "20/12"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Zwolle",
+                "Date": "20/12"
+            },
+            {
+                "home": "NEC",
+                "away": "Ajax",
+                "Date": "20/12"
+            },
+            {
+                "home": "NAC",
+                "away": "Telstar",
+                "Date": "20/12"
+            },
+            {
+                "home": "Utrecht",
+                "away": "PSV Eindhoven",
+                "Date": "21/12"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Twente",
+                "Date": "21/12"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Groningen",
+                "Date": "21/12"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "AZ",
+                "Date": "21/12"
+            },
+            {
+                "home": "Volendam",
+                "away": "Sparta Rotterdam",
+                "Date": "21/12"
+            }
+        ],
+        "18": [
+            {
+                "home": "NEC",
+                "away": "Utrecht",
+                "Date": "09/01"
+            },
+            {
+                "home": "AZ",
+                "away": "Volendam",
+                "Date": "10/01"
+            },
+            {
+                "home": "Twente",
+                "away": "Zwolle",
+                "Date": "10/01"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Excelsior",
+                "Date": "10/01"
+            },
+            {
+                "home": "Groningen",
+                "away": "NAC",
+                "Date": "10/01"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Feyenoord",
+                "Date": "11/01"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Fortuna Sittard",
+                "Date": "11/01"
+            },
+            {
+                "home": "Telstar",
+                "away": "Ajax",
+                "Date": "11/01"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Heracles",
+                "Date": "11/01"
+            }
+        ],
+        "19": [
+            {
+                "home": "Excelsior",
+                "away": "Telstar",
+                "Date": "16/01"
+            },
+            {
+                "home": "Ajax",
+                "away": "Go Ahead Eagles",
+                "Date": "17/01"
+            },
+            {
+                "home": "Zwolle",
+                "away": "AZ",
+                "Date": "17/01"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "PSV Eindhoven",
+                "Date": "17/01"
+            },
+            {
+                "home": "NAC",
+                "away": "NEC",
+                "Date": "17/01"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Groningen",
+                "Date": "18/01"
+            },
+            {
+                "home": "Volendam",
+                "away": "Utrecht",
+                "Date": "18/01"
+            },
+            {
+                "home": "Heracles",
+                "away": "Twente",
+                "Date": "18/01"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Sparta Rotterdam",
+                "Date": "18/01"
+            }
+        ],
+        "20": [
+            {
+                "home": "Ajax",
+                "away": "Volendam",
+                "Date": "24/01"
+            },
+            {
+                "home": "NEC",
+                "away": "Zwolle",
+                "Date": "24/01"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "NAC",
+                "Date": "24/01"
+            },
+            {
+                "home": "Twente",
+                "away": "Excelsior",
+                "Date": "24/01"
+            },
+            {
+                "home": "Telstar",
+                "away": "AZ",
+                "Date": "25/01"
+            },
+            {
+                "home": "Groningen",
+                "away": "Fortuna Sittard",
+                "Date": "25/01"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Heracles",
+                "Date": "25/01"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Sparta Rotterdam",
+                "Date": "25/01"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Heerenveen",
+                "Date": "25/01"
+            }
+        ],
+        "21": [
+            {
+                "home": "NAC",
+                "away": "Twente",
+                "Date": "30/01"
+            },
+            {
+                "home": "AZ",
+                "away": "NEC",
+                "Date": "31/01"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Telstar",
+                "Date": "31/01"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Groningen",
+                "Date": "31/01"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Ajax",
+                "Date": "01/02"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Feyenoord",
+                "Date": "01/02"
+            },
+            {
+                "home": "Heracles",
+                "away": "Fortuna Sittard",
+                "Date": "01/02"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Utrecht",
+                "Date": "01/02"
+            },
+            {
+                "home": "Volendam",
+                "away": "Go Ahead Eagles",
+                "Date": "01/02"
+            }
+        ],
+        "22": [
+            {
+                "home": "Twente",
+                "away": "Heerenveen",
+                "Date": "07/02"
+            },
+            {
+                "home": "NEC",
+                "away": "Heracles",
+                "Date": "07/02"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Feyenoord",
+                "Date": "07/02"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Telstar",
+                "Date": "07/02"
+            },
+            {
+                "home": "Groningen",
+                "away": "PSV Eindhoven",
+                "Date": "07/02"
+            },
+            {
+                "home": "AZ",
+                "away": "Ajax",
+                "Date": "07/02"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Sparta Rotterdam",
+                "Date": "07/02"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Volendam",
+                "Date": "07/02"
+            },
+            {
+                "home": "NAC",
+                "away": "Excelsior",
+                "Date": "07/02"
+            }
+        ],
+        "23": [
+            {
+                "home": "Heerenveen",
+                "away": "Zwolle",
+                "Date": "14/02"
+            },
+            {
+                "home": "Heracles",
+                "away": "NAC",
+                "Date": "14/02"
+            },
+            {
+                "home": "Volendam",
+                "away": "PSV Eindhoven",
+                "Date": "14/02"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Go Ahead Eagles",
+                "Date": "14/02"
+            },
+            {
+                "home": "Ajax",
+                "away": "Fortuna Sittard",
+                "Date": "14/02"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "NEC",
+                "Date": "14/02"
+            },
+            {
+                "home": "Groningen",
+                "away": "Utrecht",
+                "Date": "14/02"
+            },
+            {
+                "home": "Telstar",
+                "away": "Twente",
+                "Date": "14/02"
+            },
+            {
+                "home": "Excelsior",
+                "away": "AZ",
+                "Date": "14/02"
+            }
+        ],
+        "24": [
+            {
+                "home": "AZ",
+                "away": "Sparta Rotterdam",
+                "Date": "21/02"
+            },
+            {
+                "home": "Twente",
+                "away": "Groningen",
+                "Date": "21/02"
+            },
+            {
+                "home": "NAC",
+                "away": "Volendam",
+                "Date": "21/02"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Zwolle",
+                "Date": "21/02"
+            },
+            {
+                "home": "Ajax",
+                "away": "NEC",
+                "Date": "21/02"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Telstar",
+                "Date": "21/02"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Heracles",
+                "Date": "21/02"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Heerenveen",
+                "Date": "21/02"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Excelsior",
+                "Date": "21/02"
+            }
+        ],
+        "25": [
+            {
+                "home": "Excelsior",
+                "away": "Go Ahead Eagles",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Telstar",
+                "away": "NAC",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Utrecht",
+                "away": "AZ",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Ajax",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Twente",
+                "away": "Feyenoord",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Sparta Rotterdam",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "PSV Eindhoven",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Fortuna Sittard",
+                "Date": "28/02/26"
+            },
+            {
+                "home": "Volendam",
+                "away": "Groningen",
+                "Date": "28/02/26"
+            }
+        ],
+        "26": [
+            {
+                "home": "Fortuna Sittard",
+                "away": "Telstar",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "NAC",
+                "away": "Feyenoord",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Heerenveen",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Zwolle",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Volendam",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Twente",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "AZ",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "Utrecht",
+                "Date": "07/03/26"
+            },
+            {
+                "home": "Groningen",
+                "away": "Ajax",
+                "Date": "07/03/26"
+            }
+        ],
+        "27": [
+            {
+                "home": "PSV Eindhoven",
+                "away": "NEC",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Twente",
+                "away": "Utrecht",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Ajax",
+                "away": "Sparta Rotterdam",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "NAC",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Groningen",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Volendam",
+                "away": "Fortuna Sittard",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Telstar",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "AZ",
+                "away": "Heracles",
+                "Date": "14/03/26"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Excelsior",
+                "Date": "14/03/26"
+            }
+        ],
+        "28": [
+            {
+                "home": "Zwolle",
+                "away": "NAC",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Telstar",
+                "away": "PSV Eindhoven",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "Excelsior",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Groningen",
+                "away": "AZ",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Volendam",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "Ajax",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Twente",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Heerenveen",
+                "Date": "21/03/26"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Go Ahead Eagles",
+                "Date": "21/03/26"
+            }
+        ],
+        "29": [
+            {
+                "home": "AZ",
+                "away": "Fortuna Sittard",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "Zwolle",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Volendam",
+                "away": "Feyenoord",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Heracles",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Excelsior",
+                "away": "NEC",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Utrecht",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Ajax",
+                "away": "Twente",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "Telstar",
+                "away": "Groningen",
+                "Date": "04/04/26"
+            },
+            {
+                "home": "NAC",
+                "away": "Sparta Rotterdam",
+                "Date": "04/04/26"
+            }
+        ],
+        "30": [
+            {
+                "home": "Zwolle",
+                "away": "Excelsior",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Feyenoord",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Groningen",
+                "away": "Go Ahead Eagles",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Telstar",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "AZ",
+                "away": "Heerenveen",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "NAC",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "PSV Eindhoven",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Twente",
+                "away": "Volendam",
+                "Date": "11/04/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "Ajax",
+                "Date": "11/04/26"
+            }
+        ],
+        "31": [
+            {
+                "home": "Feyenoord",
+                "away": "Groningen",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "Volendam",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Twente",
+                "away": "NEC",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Utrecht",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Zwolle",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Telstar",
+                "away": "Sparta Rotterdam",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Fortuna Sittard",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "Go Ahead Eagles",
+                "away": "AZ",
+                "Date": "23/04/26"
+            },
+            {
+                "home": "NAC",
+                "away": "Ajax",
+                "Date": "23/04/26"
+            }
+        ],
+        "32": [
+            {
+                "home": "Ajax",
+                "away": "PSV Eindhoven",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Groningen",
+                "away": "Excelsior",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Go Ahead Eagles",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Telstar",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Volendam",
+                "away": "Heerenveen",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "AZ",
+                "away": "Twente",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Feyenoord",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Heracles",
+                "Date": "02/05/26"
+            },
+            {
+                "home": "Utrecht",
+                "away": "NAC",
+                "Date": "02/05/26"
+            }
+        ],
+        "33": [
+            {
+                "home": "Go Ahead Eagles",
+                "away": "PSV Eindhoven",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Feyenoord",
+                "away": "AZ",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Excelsior",
+                "away": "Volendam",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Twente",
+                "away": "Sparta Rotterdam",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Fortuna Sittard",
+                "away": "Zwolle",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Ajax",
+                "away": "Utrecht",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Groningen",
+                "away": "NEC",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "NAC",
+                "away": "Heerenveen",
+                "Date": "10/05/26"
+            },
+            {
+                "home": "Telstar",
+                "away": "Heracles",
+                "Date": "10/05/26"
+            }
+        ],
+        "34": [
+            {
+                "home": "AZ",
+                "away": "NAC",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Sparta Rotterdam",
+                "away": "Excelsior",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Volendam",
+                "away": "Telstar",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "PSV Eindhoven",
+                "away": "Twente",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "NEC",
+                "away": "Go Ahead Eagles",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Zwolle",
+                "away": "Feyenoord",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Heracles",
+                "away": "Groningen",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Heerenveen",
+                "away": "Ajax",
+                "Date": "17/05/26"
+            },
+            {
+                "home": "Utrecht",
+                "away": "Fortuna Sittard",
+                "Date": "17/05/26"
+            }
+        ]
+    }
+]
