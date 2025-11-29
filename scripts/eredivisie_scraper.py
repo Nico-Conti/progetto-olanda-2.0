@@ -225,9 +225,9 @@ def scrape_match_details(driver, product_url):
             h_val = values[0].text.strip()
             a_val = values[1].text.strip()
             
-            if "Calci d'angolo" in cat_text:
+            if "Calci d'angolo" in cat_text or "Angoli" in cat_text or "Corner" in cat_text:
                 corners_data = {"home": h_val, "away": a_val}
-            elif "Tiri totali" in cat_text or "Tiri" == cat_text: # Check exact wording on Diretta
+            elif "Tiri totali" in cat_text or "Tiri" == cat_text or "Tiri in porta" not in cat_text and "Tiri" in cat_text: # Check exact wording on Diretta
                 shots_data = {"home": h_val, "away": a_val}
             elif "Tiri in porta" in cat_text:
                 shots_ot_data = {"home": h_val, "away": a_val}
