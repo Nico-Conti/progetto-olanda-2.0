@@ -36,6 +36,14 @@ class MatchData(BaseModel):
 def read_root():
     return {"status": "ok", "message": "Progetto Olanda Backend is running"}
 
+@app.get("/teams")
+def get_teams():
+    try:
+        response = supabase.table("squads").select("*").execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/matches")
 def get_matches():
     try:

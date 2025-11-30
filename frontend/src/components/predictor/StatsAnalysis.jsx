@@ -1,8 +1,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
-import { TEAM_LOGOS } from '../../data/teamLogos';
 
-const StatsAnalysis = ({ prediction, home, away, nGames }) => {
+const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos }) => {
     if (!prediction) return null;
 
     return (
@@ -16,7 +15,7 @@ const StatsAnalysis = ({ prediction, home, away, nGames }) => {
                 <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
-                            <img src={TEAM_LOGOS[home]} alt={home} className="w-6 h-6 object-contain" />
+                            <img src={teamLogos[home]} alt={home} className="w-6 h-6 object-contain" />
                             {home} <span className="text-zinc-500 text-xs font-normal">(Home Matches)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -36,7 +35,7 @@ const StatsAnalysis = ({ prediction, home, away, nGames }) => {
                 <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="text-blue-400 font-bold mb-3 flex items-center gap-2">
-                            <img src={TEAM_LOGOS[away]} alt={away} className="w-6 h-6 object-contain" />
+                            <img src={teamLogos[away]} alt={away} className="w-6 h-6 object-contain" />
                             {away} <span className="text-zinc-500 text-xs font-normal">(Away Matches)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">

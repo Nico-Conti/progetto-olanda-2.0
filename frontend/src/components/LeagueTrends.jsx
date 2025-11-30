@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Info, TrendingUp, Flame, Snowflake } from 'lucide-react';
-import { TEAM_LOGOS } from '../data/teamLogos';
 import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
 
-const LeagueTrends = ({ stats }) => {
+const LeagueTrends = ({ stats, teamLogos }) => {
     const [sliderValue, setSliderValue] = useState(1); // 0: 3, 1: 5, 2: 10, 3: All
     const options = [3, 5, 10, 'all'];
     const nGames = options[sliderValue];
@@ -114,7 +113,7 @@ const LeagueTrends = ({ stats }) => {
                                 return (
                                     <tr key={team} className="hover:bg-white/[0.03] transition-colors group">
                                         <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5 flex items-center gap-3">
-                                            <img src={TEAM_LOGOS[team]} alt={team} className="w-6 h-6 object-contain" />
+                                            <img src={teamLogos[team]} alt={team} className="w-6 h-6 object-contain" />
                                             {team}
                                         </td>
 

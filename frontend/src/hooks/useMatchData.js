@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
     const [fixturesData, setFixturesData] = useState([]);
+    const [teamLogos, setTeamLogos] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -54,6 +55,18 @@ export const useMatchData = () => {
                 console.log("Formatted fixtures:", flatFixtures);
                 setFixturesData(flatFixtures);
 
+                // Fetch Teams (Logos)
+                const teamsResponse = await fetch('http://localhost:8000/teams');
+                let teamLogosMap = {};
+                if (teamsResponse.ok) {
+                    const teams = await teamsResponse.json();
+                    teams.forEach(t => {
+                        teamLogosMap[t.name] = t.logo_url;
+                    });
+                } else {
+                    console.error("Failed to fetch teams:", teamsResponse.statusText);
+                }
+
                 // Transform matches data to match the expected structure for processData
                 const formattedData = matches.map(match => ({
                     squadre: {
@@ -71,6 +84,8 @@ export const useMatchData = () => {
                 }));
 
                 setMatchData(formattedData);
+                setTeamLogos(teamLogosMap);
+
             } catch (err) {
                 console.error('Error fetching data:', err);
                 setError(err);
@@ -82,5 +97,5 @@ export const useMatchData = () => {
         fetchData();
     }, []);
 
-    return { matchData, fixturesData, loading, error };
+    return { matchData, fixturesData, teamLogos, loading, error };
 };

@@ -10,7 +10,7 @@ import { useBackendHealth } from './hooks/useBackendHealth';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const { matchData, fixturesData, loading } = useMatchData();
+  const { matchData, fixturesData, teamLogos, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
 
   // Extract unique leagues from data
@@ -128,7 +128,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 md:px-8">
         {activeTab === 'trends' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <LeagueTrends stats={stats} />
+            <LeagueTrends stats={stats} teamLogos={teamLogos} />
           </div>
         )}
 
@@ -138,6 +138,7 @@ export default function App() {
               stats={stats}
               fixtures={filteredFixtures}
               teams={teams}
+              teamLogos={teamLogos}
             />
           </div>
         )}
