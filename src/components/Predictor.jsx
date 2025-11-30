@@ -205,8 +205,11 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                 </button>
                             ))}
                             <div className="w-px h-4 bg-white/10 mx-1"></div>
-                            <div className="flex items-center gap-1 px-2">
-                                <span className="text-[10px] text-zinc-500 font-bold uppercase">Custom:</span>
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${!['all', 3, 5].includes(nGames)
+                                ? 'bg-zinc-700 text-white shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-300'
+                                }`}>
+                                <span>Custom:</span>
                                 <input
                                     type="number"
                                     min="1"
