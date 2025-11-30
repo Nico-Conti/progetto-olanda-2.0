@@ -4,3 +4,6 @@ google-generativeai
 python-dotenv
 supabase
 requests
+selenium
+undetected-chromedriver
+beautifulsoup4
