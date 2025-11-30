@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Flame, Info, Calendar, Activity } from 'lucide-react';
+import { ChevronRight, Calculator, Calendar, Flame } from 'lucide-react';
 import { TEAM_LOGOS } from '../data/teamLogos';
 import { calculatePrediction } from '../utils/stats';
+import MatchRow from './predictor/MatchRow';
+import AnalysisSection from './predictor/AnalysisSection';
+import PredictionHero from './predictor/PredictionHero';
+import StatsAnalysis from './predictor/StatsAnalysis';
 
 const Predictor = ({ stats, fixtures, teams }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
+    const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
 
     // Custom Matchup State
     const [customHome, setCustomHome] = useState('');
@@ -110,93 +115,10 @@ const Predictor = ({ stats, fixtures, teams }) => {
                 </div>
 
                 {/* Prediction Hero */}
-                <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
-
-                    <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                        <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total Corners</h2>
-
-                        <div className="flex items-center justify-center gap-8 mb-8 w-full">
-                            <div className="text-right flex-1 flex flex-col items-end">
-                                <img src={TEAM_LOGOS[home]} alt={home} className="w-16 h-16 object-contain mb-2" />
-                                <div className="text-2xl font-bold text-white truncate">{home}</div>
-                                <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {detailPred.expHome.toFixed(2)}</div>
-                            </div>
-
-                            <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${detailPred.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
-                                {detailPred.total.toFixed(1)}
-                            </div>
-
-                            <div className="text-left flex-1 flex flex-col items-start">
-                                <img src={TEAM_LOGOS[away]} alt={away} className="w-16 h-16 object-contain mb-2" />
-                                <div className="text-2xl font-bold text-white truncate">{away}</div>
-                                <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {detailPred.expAway.toFixed(2)}</div>
-                            </div>
-                        </div>
-
-                        {detailPred.total > 11.5 ? (
-                            <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full border border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(248,113,113,0.2)]">
-                                <Flame className="w-4 h-4 fill-current" />
-                                <span className="font-bold text-sm uppercase tracking-wide">High Over Trend</span>
-                            </div>
-                        ) : (
-                            <div className="inline-flex items-center gap-2 bg-zinc-800/50 text-zinc-400 px-4 py-2 rounded-full border border-white/5">
-                                <Info className="w-4 h-4" />
-                                <span className="font-medium text-sm">Standard Projection</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <PredictionHero prediction={detailPred} home={home} away={away} />
 
                 {/* Stats Analysis Breakdown */}
-                <div className="glass-panel p-5 rounded-xl border border-white/10">
-                    <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-400" />
-                        Stats Analysis (Last {nGames === 'all' ? 'Season' : nGames} Games)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Home Team Stats */}
-                        <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
-                            <div className="relative z-10">
-                                <div className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
-                                    <img src={TEAM_LOGOS[home]} alt={home} className="w-6 h-6 object-contain" />
-                                    {home} <span className="text-zinc-500 text-xs font-normal">(Home Matches)</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
-                                        <div className="text-2xl font-mono font-bold text-white">{detailPred.hFor.toFixed(2)}</div>
-                                    </div>
-                                    <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
-                                        <div className="text-2xl font-mono font-bold text-red-400">{detailPred.hAg.toFixed(2)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Away Team Stats */}
-                        <div className="bg-zinc-900/40 p-4 rounded-lg border border-white/5 relative overflow-hidden">
-                            <div className="relative z-10">
-                                <div className="text-blue-400 font-bold mb-3 flex items-center gap-2">
-                                    <img src={TEAM_LOGOS[away]} alt={away} className="w-6 h-6 object-contain" />
-                                    {away} <span className="text-zinc-500 text-xs font-normal">(Away Matches)</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
-                                        <div className="text-2xl font-mono font-bold text-white">{detailPred.aFor.toFixed(2)}</div>
-                                    </div>
-                                    <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
-                                        <div className="text-2xl font-mono font-bold text-red-400">{detailPred.aAg.toFixed(2)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} />
 
                 {/* Detailed History */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -210,18 +132,7 @@ const Predictor = ({ stats, fixtures, teams }) => {
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.homeMatches.map(m => (
-                                <div key={m.giornata} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-zinc-500 uppercase font-bold">MD {m.giornata}</span>
-                                        <span className="text-sm text-zinc-200 font-semibold truncate max-w-[120px]">{m.opponent}</span>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-center min-w-[30px]">
-                                            <span className="text-[10px] text-zinc-500 uppercase font-bold">Tot</span>
-                                            <span className="text-base font-black text-white">{m.total}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
                             ))}
                         </div>
                     </div>
@@ -236,22 +147,12 @@ const Predictor = ({ stats, fixtures, teams }) => {
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.awayMatches.map(m => (
-                                <div key={m.giornata} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-zinc-500 uppercase font-bold">MD {m.giornata}</span>
-                                        <span className="text-sm text-zinc-200 font-semibold truncate max-w-[120px]">{m.opponent}</span>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-center min-w-[30px]">
-                                            <span className="text-[10px] text-zinc-500 uppercase font-bold">Tot</span>
-                                            <span className="text-base font-black text-white">{m.total}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
                             ))}
                         </div>
                     </div>
                 </div>
+                <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} />
             </div>
         );
     }
@@ -437,44 +338,7 @@ const Predictor = ({ stats, fixtures, teams }) => {
                 {showCustomPrediction && customPrediction && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                         {/* Prediction Hero (Reused) */}
-                        <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
-
-                            <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total Corners</h2>
-
-                                <div className="flex items-center justify-center gap-8 mb-8 w-full">
-                                    <div className="text-right flex-1 flex flex-col items-end">
-                                        <img src={TEAM_LOGOS[customHome]} alt={customHome} className="w-16 h-16 object-contain mb-2" />
-                                        <div className="text-2xl font-bold text-white truncate">{customHome}</div>
-                                        <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {customPrediction.expHome.toFixed(2)}</div>
-                                    </div>
-
-                                    <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${customPrediction.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
-                                        {customPrediction.total.toFixed(1)}
-                                    </div>
-
-                                    <div className="text-left flex-1 flex flex-col items-start">
-                                        <img src={TEAM_LOGOS[customAway]} alt={customAway} className="w-16 h-16 object-contain mb-2" />
-                                        <div className="text-2xl font-bold text-white truncate">{customAway}</div>
-                                        <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {customPrediction.expAway.toFixed(2)}</div>
-                                    </div>
-                                </div>
-
-                                {customPrediction.total > 11.5 ? (
-                                    <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full border border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(248,113,113,0.2)]">
-                                        <Flame className="w-4 h-4 fill-current" />
-                                        <span className="font-bold text-sm uppercase tracking-wide">High Over Trend</span>
-                                    </div>
-                                ) : (
-                                    <div className="inline-flex items-center gap-2 bg-zinc-800/50 text-zinc-400 px-4 py-2 rounded-full border border-white/5">
-                                        <Info className="w-4 h-4" />
-                                        <span className="font-medium text-sm">Standard Projection</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} />
 
                         {/* Detailed History (Reused) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -488,18 +352,7 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.homeMatches.map(m => (
-                                        <div key={m.giornata} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-zinc-500 uppercase font-bold">MD {m.giornata}</span>
-                                                <span className="text-sm text-zinc-200 font-semibold truncate max-w-[120px]">{m.opponent}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex flex-col items-center min-w-[30px]">
-                                                    <span className="text-[10px] text-zinc-500 uppercase font-bold">Tot</span>
-                                                    <span className="text-base font-black text-white">{m.total}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
                                     ))}
                                 </div>
                             </div>
@@ -514,25 +367,19 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.awayMatches.map(m => (
-                                        <div key={m.giornata} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] text-zinc-500 uppercase font-bold">MD {m.giornata}</span>
-                                                <span className="text-sm text-zinc-200 font-semibold truncate max-w-[120px]">{m.opponent}</span>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex flex-col items-center min-w-[30px]">
-                                                    <span className="text-[10px] text-zinc-500 uppercase font-bold">Tot</span>
-                                                    <span className="text-base font-black text-white">{m.total}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
                                     ))}
                                 </div>
                             </div>
                         </div>
+                        <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} />
                     </div>
                 )}
             </div>
+
+
+            {/* Detailed Analysis Modal/Section */}
+
         </div>
     );
 };
