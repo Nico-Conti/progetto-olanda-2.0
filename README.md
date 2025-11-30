@@ -1,33 +1,35 @@
-# Progetto Olanda 2.0 - Connection Test
+# Progetto Olanda 2.0
 
-This branch is set up to **test the connection** between the new Python Backend and the React Frontend.
+Welcome to the new and improved Progetto Olanda! This version is split into a Python backend (for scraping and AI analysis) and a React frontend (for a slick UI).
 
-## 🧪 Purpose
-We have split the project into two parts to improve scalability:
-- **Backend**: FastAPI server (Python) running in Docker.
-- **Frontend**: React application (Vite).
+## Where we are at
+This is currently a **test setup** to make sure everything connects properly.
+- **Backend**: Handles the heavy lifting (scraping data, talking to Supabase, and running Gemini analysis).
+- **Frontend**: Displays the stats, trends, and predictions in a nice dark-mode interface.
 
-Currently, this is a **test setup** to verify that the Frontend can talk to the Backend.
-If successful, you will see a **"Backend Online"** badge in the application header.
+## How to Run It
 
-## 🚀 How to Run
-
-### 1. Start the Backend
-From the project root (`progetto-olanda/`):
+### 1. Fire up the Backend
+Open a terminal in the main folder (`progetto-olanda/`) and run:
 ```bash
 sudo docker-compose up -d --build
 ```
-*This starts the API server on `http://localhost:8000`.*
+This starts the API server on `http://localhost:8000`.
 
 ### 2. Start the Frontend
-Open a new terminal, go to the frontend folder, and run:
+Open a new terminal, go to the frontend folder, and start the dev server:
 ```bash
 cd frontend
-npm install  # (Only needed the first time)
 npm run dev
 ```
-*This starts the UI on `http://localhost:5173`.*
+This will launch the app on `http://localhost:5173`.
 
-## ✅ Verification
-1. Open the App in your browser.
-2. Look for the **Backend Online** badge in the top header.
+## What to Look For
+Open the app in your browser. If you see a green **"Backend Online"** badge in the top header, you're good to go!
+
+## Features Ready to Test
+- **League Trends**: Check out the "Trends" tab to see how teams are performing (Season vs Last 3/5/10 games).
+- **Predictor**: Go to the "Predictor" tab to see AI-powered match predictions.
+- **Scraper**: You can manually run the scraper to fetch new data (see `backend/scraper.py`).
+
+Enjoy! 🚀
