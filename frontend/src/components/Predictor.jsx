@@ -186,7 +186,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                         </div>
                     </div>
                 </div>
-                <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} />
+                <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
             </div>
         );
     }
