@@ -1,9 +1,21 @@
 import React from 'react';
-import { Trophy, ArrowRight } from 'lucide-react';
+import { Trophy, ArrowRight, Zap, ZapOff } from 'lucide-react';
 
-const LandingPage = ({ availableLeagues, onSelectLeague }) => {
+const LandingPage = ({ availableLeagues, onSelectLeague, isAnimationEnabled, onToggleAnimation }) => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            {/* Animation Toggle */}
+            <button
+                onClick={onToggleAnimation}
+                className={`absolute top-6 right-6 z-50 p-3 rounded-full border transition-all duration-300 ${isAnimationEnabled
+                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'bg-zinc-900/50 border-white/10 text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                    }`}
+                title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
+            >
+                {isAnimationEnabled ? <Zap className="w-6 h-6" /> : <ZapOff className="w-6 h-6" />}
+            </button>
+
             {/* Background Effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 z-0"></div>
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>

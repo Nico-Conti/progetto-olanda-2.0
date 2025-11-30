@@ -69,9 +69,25 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center text-zinc-200">Loading...</div>;
   }
 
-  if (!selectedLeague) {
-    return <LandingPage availableLeagues={availableLeagues} onSelectLeague={setSelectedLeague} />;
-  }
+  // If no league selected, show Landing Page
+  // But we still want to render the TransitionAnimation if it's active!
+  // So we cannot just return early here if we want the animation to be visible ON TOP of the landing page
+  // OR we render LandingPage as a component inside the main return.
+
+  // Current structure:
+  // if (!selectedLeague) return <LandingPage ... />
+
+  // If we are animating FROM LandingPage TO Main, selectedLeague is null initially.
+  // Animation starts. Midpoint: selectedLeague becomes 'Eredivisie'.
+  // Component re-renders. !selectedLeague is false. Main renders.
+
+  // If we are animating FROM Main TO LandingPage, selectedLeague is 'Eredivisie'.
+  // Animation starts. Midpoint: selectedLeague becomes null.
+  // Component re-renders. !selectedLeague is true. LandingPage renders.
+
+  // The TransitionAnimation needs to be rendered in BOTH cases.
+  // So we should wrap the conditional rendering inside the main return, or include TransitionAnimation in LandingPage too?
+  // Better: Lift TransitionAnimation to the top level and conditionally render content below it.
 
   return (
     <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30 font-sans">
