@@ -1,40 +1,33 @@
-# Progetto Olanda 2.0
+# Progetto Olanda 2.0 - Connection Test
 
-A modern, interactive dashboard for analyzing Eredivisie corner statistics.
+This branch is set up to **test the connection** between the new Python Backend and the React Frontend.
 
-## 🚀 Getting Started
+## 🧪 Purpose
+We have split the project into two parts to improve scalability:
+- **Backend**: FastAPI server (Python) running in Docker.
+- **Frontend**: React application (Vite).
 
-Follow these simple steps to run the project on your local machine.
+Currently, this is a **test setup** to verify that the Frontend can talk to the Backend.
+If successful, you will see a **"Backend Online"** badge in the application header.
 
-### Prerequisites
+## 🚀 How to Run
 
-- **Node.js** (version 18 or higher recommended)
-- **npm** (usually comes with Node.js)
-
-### Installation
-
-1.  Open your terminal in the project directory.
-
-2.  Install the necessary dependencies:
-    ```bash
-    npm install
-    ```
-
-### Running the App
-
-1.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-
-2.  Open your browser and visit the URL shown in the terminal (usually `http://localhost:5173`).
-
-### Building for Production
-
-To create a production-ready build:
-
+### 1. Start the Backend
+From the project root (`progetto-olanda/`):
 ```bash
-npm run build
+sudo docker-compose up -d --build
 ```
+*This starts the API server on `http://localhost:8000`.*
 
-The built files will be in the `dist` directory.
+### 2. Start the Frontend
+Open a new terminal, go to the frontend folder, and run:
+```bash
+cd frontend
+npm install  # (Only needed the first time)
+npm run dev
+```
+*This starts the UI on `http://localhost:5173`.*
+
+## ✅ Verification
+1. Open the App in your browser.
+2. Look for the **Backend Online** badge in the top header.
