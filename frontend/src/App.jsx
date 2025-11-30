@@ -10,7 +10,7 @@ import { useBackendHealth } from './hooks/useBackendHealth';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const { matchData, fixturesData, teamLogos, loading } = useMatchData();
+  const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
 
   // Extract unique leagues from data
@@ -43,7 +43,7 @@ export default function App() {
   }
 
   if (!selectedLeague) {
-    return <LandingPage availableLeagues={availableLeagues} onSelectLeague={setSelectedLeague} />;
+    return <LandingPage availableLeagues={availableLeagues} leaguesData={leagues} onSelectLeague={setSelectedLeague} />;
   }
 
   return (

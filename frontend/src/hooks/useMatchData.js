@@ -5,6 +5,7 @@ export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
     const [fixturesData, setFixturesData] = useState([]);
     const [teamLogos, setTeamLogos] = useState({});
+    const [leagues, setLeagues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -86,6 +87,15 @@ export const useMatchData = () => {
                 setMatchData(formattedData);
                 setTeamLogos(teamLogosMap);
 
+                // Fetch Leagues
+                const leaguesResponse = await fetch('http://localhost:8000/leagues');
+                if (leaguesResponse.ok) {
+                    const leaguesData = await leaguesResponse.json();
+                    setLeagues(leaguesData);
+                } else {
+                    console.error("Failed to fetch leagues:", leaguesResponse.statusText);
+                }
+
             } catch (err) {
                 console.error('Error fetching data:', err);
                 setError(err);
@@ -97,5 +107,5 @@ export const useMatchData = () => {
         fetchData();
     }, []);
 
-    return { matchData, fixturesData, teamLogos, loading, error };
+    return { matchData, fixturesData, teamLogos, leagues, loading, error };
 };
