@@ -2,17 +2,26 @@ import React, { useState, useMemo } from 'react';
 import { Activity, TrendingUp, Calculator } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
+import TransitionAnimation from './components/TransitionAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
 import { useBackendHealth } from './hooks/useBackendHealth';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [pendingTab, setPendingTab] = useState(null);
   const { matchData, fixturesData, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
 
   const stats = useMemo(() => processData(matchData), [matchData]);
   const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
+
+  const handleTabChange = (tab) => {
+    if (tab === activeTab || isAnimating) return;
+    setPendingTab(tab);
+    setIsAnimating(true);
+  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-200">Loading...</div>;
@@ -20,6 +29,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30">
+      <TransitionAnimation
+        isActive={isAnimating}
+        onMidPoint={() => {
+          if (pendingTab) setActiveTab(pendingTab);
+        }}
+        onComplete={() => {
+          setIsAnimating(false);
+          setPendingTab(null);
+        }}
+      />
+
       {/* Navbar */}
       <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
@@ -38,7 +58,7 @@ export default function App() {
 
           <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
             <button
-              onClick={() => setActiveTab('trends')}
+              onClick={() => handleTabChange('trends')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
                 ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
@@ -48,7 +68,7 @@ export default function App() {
               <span className="hidden md:inline">Trends</span>
             </button>
             <button
-              onClick={() => setActiveTab('predictor')}
+              onClick={() => handleTabChange('predictor')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
                 ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
                 : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
