@@ -97,7 +97,7 @@ const Predictor = ({ stats, fixtures, teams }) => {
                     </h3>
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-zinc-400 uppercase">Sample Size:</span>
-                        <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5">
+                        <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
                             {[3, 5, 'all'].map((n) => (
                                 <button
                                     key={n}
@@ -110,6 +110,30 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                     {n === 'all' ? 'Season' : `Last ${n}`}
                                 </button>
                             ))}
+                            <div className="w-px h-4 bg-white/10 mx-1"></div>
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${!['all', 3, 5].includes(nGames)
+                                ? 'bg-zinc-700 text-white shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-300'
+                                }`}>
+                                <span>Custom:</span>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="30"
+                                    value={nGames === 'all' ? '' : nGames}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            setNGames('');
+                                        } else {
+                                            const parsed = parseInt(val);
+                                            if (!isNaN(parsed) && parsed > 0) setNGames(parsed);
+                                        }
+                                    }}
+                                    placeholder="#"
+                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-inherit font-bold placeholder:text-zinc-600 appearance-none"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
