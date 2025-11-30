@@ -13,10 +13,10 @@ const LandingPage = ({ availableLeagues, onSelectLeague }) => {
 
                 {/* Header */}
                 <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-sm mb-4">
-                        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                    <div className="inline-flex items-center justify-center ">
+                        <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white">
+                    <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white">
                         Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                     </h1>
                     <p className="text-zinc-400 text-lg md:text-xl max-w-lg mx-auto leading-relaxed">

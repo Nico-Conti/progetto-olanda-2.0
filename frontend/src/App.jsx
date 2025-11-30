@@ -69,6 +69,10 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center text-zinc-200">Loading...</div>;
   }
 
+  if (!selectedLeague) {
+    return <LandingPage availableLeagues={availableLeagues} onSelectLeague={setSelectedLeague} />;
+  }
+
   return (
     <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30 font-sans">
       <TransitionAnimation
@@ -177,8 +181,8 @@ export default function App() {
                 <button
                   onClick={() => setIsAnimationEnabled(!isAnimationEnabled)}
                   className={`p-2 rounded-lg border transition-all ${isAnimationEnabled
-                      ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                      : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:text-zinc-300'
+                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                    : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:text-zinc-300'
                     }`}
                   title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
                 >
