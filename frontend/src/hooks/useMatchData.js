@@ -65,9 +65,9 @@ export const useMatchData = () => {
                         away: (match.away_corners ?? 0).toString()
                     },
                     giornata: match.giornata || 0,
+                    league: match.league, // Include league for filtering
                     tldr: match["tl dr corner"] || match.tldr || "",
                     detailed_summary: match["detailed comment corner"] || match.detailed_summary || ""
-                    // Add other fields if needed by processData (currently it uses corners and giornata)
                 }));
 
                 setMatchData(formattedData);
