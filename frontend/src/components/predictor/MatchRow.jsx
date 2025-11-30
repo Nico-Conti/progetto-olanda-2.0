@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { TEAM_LOGOS } from '../../data/teamLogos';
 
-const MatchRow = ({ match, onShowAnalysis }) => {
+const MatchRow = ({ match, onShowAnalysis, teamLogos }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -14,7 +13,7 @@ const MatchRow = ({ match, onShowAnalysis }) => {
                 <div className="flex flex-col">
                     <span className="text-[10px] text-zinc-500 uppercase font-bold">MD {match.giornata}</span>
                     <div className="flex items-center gap-2">
-                        <img src={TEAM_LOGOS[match.opponent]} alt={match.opponent} className="w-4 h-4 object-contain" />
+                        <img src={teamLogos[match.opponent]} alt={match.opponent} className="w-4 h-4 object-contain" />
                         <span className="text-sm text-zinc-200 font-semibold truncate max-w-[120px]">{match.opponent}</span>
                     </div>
                 </div>

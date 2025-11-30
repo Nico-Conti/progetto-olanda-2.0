@@ -1,8 +1,7 @@
 import React from 'react';
 import { Flame, Info } from 'lucide-react';
-import { TEAM_LOGOS } from '../../data/teamLogos';
 
-const PredictionHero = ({ prediction, home, away }) => {
+const PredictionHero = ({ prediction, home, away, teamLogos }) => {
     if (!prediction) return null;
 
     return (
@@ -15,7 +14,7 @@ const PredictionHero = ({ prediction, home, away }) => {
 
                 <div className="flex items-center justify-center gap-8 mb-8 w-full">
                     <div className="text-right flex-1 flex flex-col items-end">
-                        <img src={TEAM_LOGOS[home]} alt={home} className="w-16 h-16 object-contain mb-2" />
+                        <img src={teamLogos[home]} alt={home} className="w-16 h-16 object-contain mb-2" />
                         <div className="text-2xl font-bold text-white truncate">{home}</div>
                         <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {prediction.expHome.toFixed(2)}</div>
                     </div>
@@ -25,7 +24,7 @@ const PredictionHero = ({ prediction, home, away }) => {
                     </div>
 
                     <div className="text-left flex-1 flex flex-col items-start">
-                        <img src={TEAM_LOGOS[away]} alt={away} className="w-16 h-16 object-contain mb-2" />
+                        <img src={teamLogos[away]} alt={away} className="w-16 h-16 object-contain mb-2" />
                         <div className="text-2xl font-bold text-white truncate">{away}</div>
                         <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {prediction.expAway.toFixed(2)}</div>
                     </div>

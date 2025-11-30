@@ -1,8 +1,7 @@
 import React from 'react';
 import { Activity, ChevronDown, Info } from 'lucide-react';
-import { TEAM_LOGOS } from '../../data/teamLogos';
 
-const AnalysisSection = ({ match, onClose }) => {
+const AnalysisSection = ({ match, onClose, teamLogos }) => {
     if (!match) return null;
 
     const homeTeam = match.location === 'Home' ? match.team : match.opponent;
@@ -19,9 +18,9 @@ const AnalysisSection = ({ match, onClose }) => {
                             <span className="text-xs text-zinc-400 uppercase font-bold">MD {match.giornata} •</span>
                             <div className="flex items-center gap-1.5">
                                 <span className={`text-xs font-bold ${homeTeam === match.team ? 'text-white' : 'text-zinc-400'}`}>{homeTeam}</span>
-                                <img src={TEAM_LOGOS[homeTeam]} alt={homeTeam} className="w-4 h-4 object-contain" />
+                                <img src={teamLogos[homeTeam]} alt={homeTeam} className="w-4 h-4 object-contain" />
                                 <span className="text-xs text-zinc-500 font-bold">vs</span>
-                                <img src={TEAM_LOGOS[awayTeam]} alt={awayTeam} className="w-4 h-4 object-contain" />
+                                <img src={teamLogos[awayTeam]} alt={awayTeam} className="w-4 h-4 object-contain" />
                                 <span className={`text-xs font-bold ${awayTeam === match.team ? 'text-white' : 'text-zinc-400'}`}>{awayTeam}</span>
                             </div>
                         </div>

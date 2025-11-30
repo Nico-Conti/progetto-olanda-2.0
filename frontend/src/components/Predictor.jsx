@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus } from 'lucide-react';
-import { TEAM_LOGOS } from '../data/teamLogos';
 import { calculatePrediction } from '../utils/stats';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
 
-const Predictor = ({ stats, fixtures, teams }) => {
+const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
@@ -150,24 +149,24 @@ const Predictor = ({ stats, fixtures, teams }) => {
                 </div>
 
                 {/* Prediction Hero */}
-                <PredictionHero prediction={detailPred} home={home} away={away} />
+                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} />
 
                 {/* Stats Analysis Breakdown */}
-                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} />
+                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} />
 
                 {/* Detailed History */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
                         <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
                             <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                <img src={TEAM_LOGOS[home]} alt={home} className="w-6 h-6 object-contain" />
+                                <img src={teamLogos[home]} alt={home} className="w-6 h-6 object-contain" />
                                 {home}
                             </h4>
                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.homeMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
                             ))}
                         </div>
                     </div>
@@ -175,14 +174,14 @@ const Predictor = ({ stats, fixtures, teams }) => {
                     <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
                         <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
                             <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                <img src={TEAM_LOGOS[away]} alt={away} className="w-6 h-6 object-contain" />
+                                <img src={teamLogos[away]} alt={away} className="w-6 h-6 object-contain" />
                                 {away}
                             </h4>
                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.awayMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
                             ))}
                         </div>
                     </div>
@@ -305,11 +304,11 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2 w-[120px] justify-end">
                                                 <span className={`font-bold ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
-                                                <img src={TEAM_LOGOS[match.home]} alt={match.home} className="w-6 h-6 object-contain" />
+                                                <img src={teamLogos[match.home]} alt={match.home} className="w-6 h-6 object-contain" />
                                             </div>
                                             <span className="text-zinc-600 font-bold text-xs">VS</span>
                                             <div className="flex items-center gap-2 w-[120px]">
-                                                <img src={TEAM_LOGOS[match.away]} alt={match.away} className="w-6 h-6 object-contain" />
+                                                <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 object-contain" />
                                                 <span className={`font-bold ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
                                             </div>
                                         </div>
@@ -387,21 +386,21 @@ const Predictor = ({ stats, fixtures, teams }) => {
                 {showCustomPrediction && customPrediction && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                         {/* Prediction Hero (Reused) */}
-                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} />
+                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} />
 
                         {/* Detailed History (Reused) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
                                 <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
                                     <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <img src={TEAM_LOGOS[customHome]} alt={customHome} className="w-6 h-6 object-contain" />
+                                        <img src={teamLogos[customHome]} alt={customHome} className="w-6 h-6 object-contain" />
                                         {customHome}
                                     </h4>
                                     <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.homeMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
                                     ))}
                                 </div>
                             </div>
@@ -409,19 +408,19 @@ const Predictor = ({ stats, fixtures, teams }) => {
                             <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
                                 <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
                                     <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <img src={TEAM_LOGOS[customAway]} alt={customAway} className="w-6 h-6 object-contain" />
+                                        <img src={teamLogos[customAway]} alt={customAway} className="w-6 h-6 object-contain" />
                                         {customAway}
                                     </h4>
                                     <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.awayMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} />
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
                                     ))}
                                 </div>
                             </div>
                         </div>
-                        <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} />
+                        <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
                     </div>
                 )}
             </div>
