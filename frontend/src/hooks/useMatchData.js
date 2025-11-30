@@ -11,29 +11,22 @@ export const useMatchData = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                console.log("Fetching data from Supabase...");
+                console.log("Fetching data from Backend (localhost:8000)...");
 
                 // Fetch Matches
-                const { data: matches, error: matchError } = await supabase
-                    .from('matches')
-                    .select('*');
-
-                if (matchError) {
-                    console.error("Error fetching matches:", matchError);
-                    throw matchError;
+                const matchesResponse = await fetch('http://localhost:8000/matches');
+                if (!matchesResponse.ok) {
+                    throw new Error(`Error fetching matches: ${matchesResponse.statusText}`);
                 }
+                const matches = await matchesResponse.json();
                 console.log("Matches fetched:", matches?.length);
 
                 // Fetch Fixtures
-                const { data: fixtures, error: fixtureError } = await supabase
-                    .from('fixtures')
-                    .select('*')
-                    .order('match_date', { ascending: true });
-
-                if (fixtureError) {
-                    console.error("Error fetching fixtures:", fixtureError);
-                    throw fixtureError;
+                const fixturesResponse = await fetch('http://localhost:8000/fixtures');
+                if (!fixturesResponse.ok) {
+                    throw new Error(`Error fetching fixtures: ${fixturesResponse.statusText}`);
                 }
+                const fixtures = await fixturesResponse.json();
                 console.log("Fixtures fetched:", fixtures?.length);
 
                 // Transform fixtures to a flat list for easier consumption
