@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame } from 'lucide-react';
+import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus } from 'lucide-react';
 import { TEAM_LOGOS } from '../data/teamLogos';
 import { calculatePrediction } from '../utils/stats';
 import MatchRow from './predictor/MatchRow';
@@ -111,11 +111,16 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                 </button>
                             ))}
                             <div className="w-px h-4 bg-white/10 mx-1"></div>
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${!['all', 3, 5].includes(nGames)
-                                ? 'bg-zinc-700 text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                            <div className={`flex items-center p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
+                                ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
                                 }`}>
-                                <span>Custom:</span>
+                                <button
+                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
+                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                >
+                                    <Minus className="w-3 h-3" />
+                                </button>
                                 <input
                                     type="number"
                                     min="1"
@@ -131,8 +136,14 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                         }
                                     }}
                                     placeholder="#"
-                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-inherit font-bold placeholder:text-zinc-600 appearance-none"
+                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
                                 />
+                                <button
+                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
+                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -229,11 +240,16 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                 </button>
                             ))}
                             <div className="w-px h-4 bg-white/10 mx-1"></div>
-                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${!['all', 3, 5].includes(nGames)
-                                ? 'bg-zinc-700 text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                            <div className={`flex items-center p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
+                                ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
                                 }`}>
-                                <span>Custom:</span>
+                                <button
+                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
+                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                >
+                                    <Minus className="w-3 h-3" />
+                                </button>
                                 <input
                                     type="number"
                                     min="1"
@@ -249,8 +265,14 @@ const Predictor = ({ stats, fixtures, teams }) => {
                                         }
                                     }}
                                     placeholder="#"
-                                    className="w-10 bg-zinc-950 border border-zinc-800 rounded text-center text-xs text-white py-1 focus:outline-none focus:border-emerald-500/50"
+                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
                                 />
+                                <button
+                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
+                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                </button>
                             </div>
                         </div>
                     </div>
