@@ -60,6 +60,14 @@ def get_fixtures():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/leagues")
+def get_leagues():
+    try:
+        response = supabase.table("League").select("*").execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/analyze")
 def analyze_match(data: MatchData):
     """
