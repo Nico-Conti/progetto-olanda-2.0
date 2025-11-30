@@ -1,8 +1,6 @@
 import os
 import sys
 
-from sympy import li
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import json
@@ -18,7 +16,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import undetected_chromedriver as uc
 import random
-from supabase_queries import check_if_value_exists_in_colum, setup_supabase_client
 
 
 import undetected_chromedriver as uc
