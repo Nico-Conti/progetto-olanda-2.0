@@ -9,8 +9,13 @@ from dotenv import load_dotenv
 # Note: We need to ensure the services directory is in the python path or imported correctly.
 # Since main.py is in backend/, and services is in backend/services/, this relative import works.
 from .services.gemini_service import analyze_match_comments
+from supabase import create_client, Client
 
 load_dotenv()
+
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
 
 app = FastAPI(title="Progetto Olanda 2.0 Backend")
 
@@ -30,6 +35,22 @@ class MatchData(BaseModel):
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Progetto Olanda Backend is running"}
+
+@app.get("/matches")
+def get_matches():
+    try:
+        response = supabase.table("matches").select("*").execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/fixtures")
+def get_fixtures():
+    try:
+        response = supabase.table("fixtures").select("*").order("match_date", desc=False).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze")
 def analyze_match(data: MatchData):
