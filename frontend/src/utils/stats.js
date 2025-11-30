@@ -1,7 +1,10 @@
 export const processData = (matches) => {
     const teamStats = {};
 
-    matches.forEach(match => {
+    // Sort matches by giornata descending (newest first) to ensure "Last N" works correctly
+    const sortedMatches = [...matches].sort((a, b) => b.giornata - a.giornata);
+
+    sortedMatches.forEach(match => {
         const homeTeam = match.squadre.home;
         const awayTeam = match.squadre.away;
         const cHome = parseInt(match.calci_d_angolo.home, 10);
