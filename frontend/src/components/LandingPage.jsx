@@ -1,9 +1,20 @@
 import React from 'react';
-import { Trophy, ArrowRight } from 'lucide-react';
+import { Trophy, ArrowRight, Zap, ZapOff } from 'lucide-react';
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague }) => {
+const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation }) => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            {/* Animation Toggle */}
+            <button
+                onClick={onToggleAnimation}
+                className={`absolute top-6 right-6 z-50 p-3 rounded-full border transition-all duration-300 ${isAnimationEnabled
+                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20'
+                    : 'bg-zinc-900/50 border-white/10 text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                    }`}
+                title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
+            >
+                {isAnimationEnabled ? <Zap className="w-6 h-6" /> : <ZapOff className="w-6 h-6" />}
+            </button>
             {/* Background Effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 z-0"></div>
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
@@ -13,8 +24,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague }) => {
 
                 {/* Header */}
                 <div className="space-y-4">
-                    <div className="inline-flex items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-sm mb-4">
-                        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                    <div className="inline-flex items-center justify-center ">
+                        <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white">
                         Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
@@ -59,7 +70,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague }) => {
 
                     {availableLeagues.length === 0 && (
                         <div className="col-span-full p-8 text-zinc-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
-                            No leagues found. Please run the scraper.
+                            No leagues found. Activate Backend server.
                         </div>
                     )}
                 </div>
