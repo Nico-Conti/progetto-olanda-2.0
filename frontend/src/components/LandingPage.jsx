@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, ArrowRight, Zap, ZapOff } from 'lucide-react';
+import { Flame, Trophy, ArrowRight, Zap, ZapOff } from 'lucide-react';
 
 const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners }) => {
     return (
@@ -76,14 +76,14 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                 </div>
 
                 {/* Top Corners Button */}
-                <div className="w-full max-w-lg mx-auto mt-4">
+                <div className="w-full max-w-lg mx-auto mt-4 flex justify-center">
                     <button
                         onClick={onOpenTopCorners}
-                        className="w-full group relative flex items-center justify-between p-6 bg-gradient-to-r from-zinc-900/80 to-zinc-900/50 hover:from-zinc-800 hover:to-zinc-800/80 border border-white/10 hover:border-orange-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)] hover:-translate-y-1"
+                        className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1"
                     >
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/50 transition-colors">
-                                <Zap className="w-6 h-6 text-orange-500 group-hover:text-orange-400 transition-colors" />
+                                <Flame className="w-6 h-6 text-orange-500 group-hover:text-orange-400 transition-colors" />
                             </div>
                             <div className="text-left">
                                 <h3 className="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">
