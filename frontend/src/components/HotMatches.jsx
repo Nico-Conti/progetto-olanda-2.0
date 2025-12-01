@@ -62,17 +62,6 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
     return (
         <div className="space-y-6 relative">
-            {/* Animation Toggle */}
-            <button
-                onClick={onToggleAnimation}
-                className={`absolute top-0 right-0 z-10 p-2 rounded-lg border transition-all ${isAnimationEnabled
-                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                    : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
-            >
-                {isAnimationEnabled ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
-            </button>
 
             <div className="glass-panel p-5 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20">
                 <div>
