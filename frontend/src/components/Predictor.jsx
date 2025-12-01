@@ -1,16 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus } from 'lucide-react';
-import { calculatePrediction } from '../utils/stats';
+import { processData, calculatePrediction } from '../utils/stats';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
+import StatisticSelector from './StatisticSelector';
 
-const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
+const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+
+    // Independent Statistic State
+    const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
+
+    // Sync local statistic with global when global changes, but only if not in a specific view that overrides it?
+    // Or just set initial state. The user asked for "independently", so maybe we shouldn't auto-sync if they changed it locally.
+    // But if they change the global one, they probably expect the default to update.
+    // Let's sync it when selectedStatistic changes.
+    useEffect(() => {
+        setLocalStatistic(selectedStatistic);
+    }, [selectedStatistic]);
+
+    // Recalculate stats based on localStatistic
+    const localStats = useMemo(() => {
+        if (localStatistic === selectedStatistic) return globalStats;
+        return processData(matchData, localStatistic);
+    }, [matchData, localStatistic, selectedStatistic, globalStats]);
 
     // Custom Matchup State
     const [customHome, setCustomHome] = useState('');
@@ -27,28 +45,29 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, stats, nGames);
-    }, [customHome, customAway, stats, nGames, showCustomPrediction]);
+        return calculatePrediction(customHome, customAway, localStats, nGames);
+    }, [customHome, customAway, localStats, nGames, showCustomPrediction]);
 
     const upcomingMatches = useMemo(() => {
-        if (!fixtures || !stats) return [];
+        if (!fixtures || !globalStats) return [];
 
         // Filter fixtures that haven't been played yet
         // A match is considered played if the home team has a recorded match against the away team at home
         const unplayed = fixtures.filter(f => {
-            if (!stats[f.home]) return true; // If we don't have stats for home team, assume unplayed or invalid
-            const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
+            if (!globalStats[f.home]) return true; // If we don't have stats for home team, assume unplayed or invalid
+            const played = globalStats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
             return !played;
         });
 
         // Calculate predictions for all unplayed matches
+        // For the list view, we use the GLOBAL stats/statistic
         const predictions = unplayed.map(match => {
-            const pred = calculatePrediction(match.home, match.away, stats, nGames);
+            const pred = calculatePrediction(match.home, match.away, globalStats, nGames);
             return { ...match, prediction: pred };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, stats, nGames]);
+    }, [fixtures, globalStats, nGames]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -72,9 +91,8 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
     if (selectedMatch) {
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
-        // Actually, we can just use the one from the list or recalculate.
-        // Let's recalculate to be safe and simple with the existing UI components that might need specific props.
-        const detailPred = calculatePrediction(home, away, stats, nGames);
+        // Use LOCAL stats here
+        const detailPred = calculatePrediction(home, away, localStats, nGames);
 
         if (!detailPred) return <div>Error loading match details</div>;
 
@@ -95,6 +113,13 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                         Match Analysis
                     </h3>
                     <div className="flex items-center gap-3">
+                        {/* Local Statistic Selector */}
+                        <StatisticSelector
+                            value={localStatistic}
+                            onChange={(e) => setLocalStatistic(e.target.value)}
+                            className="w-[140px]"
+                        />
+                        <div className="w-px h-4 bg-white/10"></div>
                         <span className="text-xs font-bold text-zinc-400 uppercase">Sample Size:</span>
                         <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
                             {[3, 5, 'all'].map((n) => (
@@ -149,10 +174,10 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                 </div>
 
                 {/* Prediction Hero */}
-                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} />
+                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} />
 
                 {/* Stats Analysis Breakdown */}
-                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} />
+                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} selectedStatistic={localStatistic} />
 
                 {/* Detailed History */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -166,7 +191,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.homeMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
@@ -181,7 +206,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.awayMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
+                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
@@ -354,6 +379,16 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                     </button>
                 </div>
 
+                {showCustomPrediction && (
+                    <div className="flex justify-end mb-4">
+                        <StatisticSelector
+                            value={localStatistic}
+                            onChange={(e) => setLocalStatistic(e.target.value)}
+                            className="w-[140px]"
+                        />
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
                         <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Home Team</label>
@@ -386,7 +421,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                 {showCustomPrediction && customPrediction && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                         {/* Prediction Hero (Reused) */}
-                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} />
+                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} />
 
                         {/* Detailed History (Reused) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -400,7 +435,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.homeMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                     ))}
                                 </div>
                             </div>
@@ -415,7 +450,7 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                                 </div>
                                 <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                     {customPrediction.awayMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} />
+                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                     ))}
                                 </div>
                             </div>

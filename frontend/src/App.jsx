@@ -7,10 +7,11 @@ import TransitionAnimation from './components/TransitionAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
 import { useBackendHealth } from './hooks/useBackendHealth';
-
+import StatisticSelector from './components/StatisticSelector';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
+  const [selectedStatistic, setSelectedStatistic] = useState('corners');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
 
@@ -64,7 +65,7 @@ export default function App() {
     return fixturesData;
   }, [fixturesData, selectedLeague]);
 
-  const stats = useMemo(() => processData(filteredMatchData), [filteredMatchData]);
+  const stats = useMemo(() => processData(filteredMatchData, selectedStatistic), [filteredMatchData, selectedStatistic]);
   const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
   if (loading) {
@@ -121,7 +122,14 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-4">
+
+                <StatisticSelector
+                  value={selectedStatistic}
+                  onChange={(e) => setSelectedStatistic(e.target.value)}
+                  className="w-[180px]"
+                />
                 <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
+
                   <button
                     onClick={() => handleTabChange('trends')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
@@ -174,6 +182,7 @@ export default function App() {
                       <circle cx="16" cy="15" r="3" />
                     </svg>
                   </button>
+
                 </div>
 
                 {/* Animation Toggle */}
@@ -194,7 +203,7 @@ export default function App() {
           <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
             {activeTab === 'trends' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <LeagueTrends stats={stats} teamLogos={teamLogos} />
+                <LeagueTrends stats={stats} teamLogos={teamLogos} selectedStatistic={selectedStatistic} />
               </div>
             )}
 
@@ -205,6 +214,8 @@ export default function App() {
                   fixtures={filteredFixtures}
                   teams={teams}
                   teamLogos={teamLogos}
+                  selectedStatistic={selectedStatistic}
+                  matchData={filteredMatchData}
                 />
               </div>
             )}

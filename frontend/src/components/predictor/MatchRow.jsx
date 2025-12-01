@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-const MatchRow = ({ match, onShowAnalysis, teamLogos }) => {
+const MatchRow = ({ match, onShowAnalysis, teamLogos, selectedStatistic }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
         <div className="flex flex-col bg-white/5 rounded-lg border border-white/5 overflow-hidden transition-all">
             <div
-                className="flex items-center justify-between p-3 hover:bg-white/5 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-3 cursor-pointer transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex flex-col">
@@ -20,11 +20,11 @@ const MatchRow = ({ match, onShowAnalysis, teamLogos }) => {
                 <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center min-w-[30px]">
                         <span className="text-[10px] text-zinc-500 uppercase font-bold">For</span>
-                        <span className="text-base font-black text-emerald-400">{match.cornersFor}</span>
+                        <span className="text-base font-black text-emerald-400">{match.statFor}</span>
                     </div>
                     <div className="flex flex-col items-center min-w-[30px]">
                         <span className="text-[10px] text-zinc-500 uppercase font-bold">Ag</span>
-                        <span className="text-base font-black text-red-400">{match.cornersAg}</span>
+                        <span className="text-base font-black text-red-400">{match.statAg}</span>
                     </div>
                     <div className="w-px h-6 bg-white/10 mx-1"></div>
                     <div className="flex flex-col items-center min-w-[30px]">

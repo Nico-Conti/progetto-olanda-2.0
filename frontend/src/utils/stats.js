@@ -1,4 +1,4 @@
-export const processData = (matches) => {
+export const processData = (matches, statistic = 'corners') => {
     const teamStats = {};
 
     // Sort matches by giornata descending (newest first) to ensure "Last N" works correctly
@@ -7,8 +7,9 @@ export const processData = (matches) => {
     sortedMatches.forEach(match => {
         const homeTeam = match.squadre.home;
         const awayTeam = match.squadre.away;
-        const cHome = parseInt(match.calci_d_angolo.home, 10);
-        const cAway = parseInt(match.calci_d_angolo.away, 10);
+        const statObj = match.stats?.[statistic] || { home: 0, away: 0 };
+        const cHome = Number(statObj.home);
+        const cAway = Number(statObj.away);
         const total = cHome + cAway;
         const giornata = match.giornata;
 
@@ -23,13 +24,13 @@ export const processData = (matches) => {
         teamStats[homeTeam].home_for.push(cHome);
         teamStats[homeTeam].home_ag.push(cAway);
         teamStats[homeTeam].home_totals.push(total);
-        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', cornersFor: cHome, cornersAg: cAway, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
+        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
 
         // Away Team Stats
         teamStats[awayTeam].away_for.push(cAway);
         teamStats[awayTeam].away_ag.push(cHome);
         teamStats[awayTeam].away_totals.push(total);
-        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', cornersFor: cAway, cornersAg: cHome, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
+        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
     });
 
     return teamStats;
@@ -68,10 +69,10 @@ export const calculatePrediction = (home, away, stats, nGames = 5) => {
     const homeMatches = getRelevant(home, 'Home');
     const awayMatches = getRelevant(away, 'Away');
 
-    const hFor = getAvg(homeMatches.map(m => m.cornersFor));
-    const hAg = getAvg(homeMatches.map(m => m.cornersAg));
-    const aFor = getAvg(awayMatches.map(m => m.cornersFor));
-    const aAg = getAvg(awayMatches.map(m => m.cornersAg));
+    const hFor = getAvg(homeMatches.map(m => m.statFor));
+    const hAg = getAvg(homeMatches.map(m => m.statAg));
+    const aFor = getAvg(awayMatches.map(m => m.statFor));
+    const aAg = getAvg(awayMatches.map(m => m.statAg));
 
     const expHome = (hFor + aAg) / 2;
     const expAway = (aFor + hAg) / 2;
