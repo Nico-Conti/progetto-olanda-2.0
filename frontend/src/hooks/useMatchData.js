@@ -75,9 +75,15 @@ export const useMatchData = () => {
                         home: match.home_team || 'Unknown',
                         away: match.away_team || 'Unknown'
                     },
-                    calci_d_angolo: {
-                        home: (match.home_corners ?? 0).toString(),
-                        away: (match.away_corners ?? 0).toString()
+                    stats: {
+                        corners: { home: match.home_corners ?? 0, away: match.away_corners ?? 0 },
+                        fouls: { home: match.home_fouls ?? 0, away: match.away_fouls ?? 0 },
+                        yellow_cards: { home: match.home_yellow_cards ?? 0, away: match.away_yellow_cards ?? 0 },
+                        red_cards: { home: match.home_red_cards ?? 0, away: match.away_red_cards ?? 0 },
+                        shots: { home: match.home_shots ?? 0, away: match.away_shots ?? 0 },
+                        shots_on_target: { home: match.home_shots_on_target ?? 0, away: match.away_shots_on_target ?? 0 },
+                        goals: { home: match.home_goals ?? 0, away: match.away_goals ?? 0 },
+                        possession: { home: match.home_possession ?? 0, away: match.away_possession ?? 0 },
                     },
                     giornata: match.giornata || 0,
                     league: match.league, // Include league for filtering
