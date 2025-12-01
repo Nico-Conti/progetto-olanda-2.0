@@ -4,7 +4,7 @@ import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
 
 const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
-    const [sliderValue, setSliderValue] = useState(1); // 0: 3, 1: 5, 2: 10, 3: All
+    const [sliderValue, setSliderValue] = useState(0); // 0: 3, 1: 5, 2: 10, 3: All
     const options = [3, 5, 10, 'all'];
     const nGames = options[sliderValue];
 

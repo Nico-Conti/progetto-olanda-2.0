@@ -145,6 +145,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       const audio = new Audio('/sounds/malepisello.mp3');
+                      audio.playbackRate = Math.random() * (100 - 1) + 1;
                       audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
                     }}
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -264,6 +265,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       const audio = new Audio('/sounds/malepisello.mp3');
+                      audio.playbackRate = Math.random() * (1.5 - 0.5) + 0.5;
                       audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
                     }}
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
