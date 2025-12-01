@@ -50,7 +50,8 @@ export const useMatchData = () => {
                         home: f.home_team || 'Unknown',
                         away: f.away_team || 'Unknown',
                         date: dateStr,
-                        matchday: mDay ? parseInt(mDay, 10) : 0
+                        matchday: mDay ? parseInt(mDay, 10) : 0,
+                        league: f.league
                     };
                 });
 

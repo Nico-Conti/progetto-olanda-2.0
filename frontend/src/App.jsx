@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Activity, TrendingUp, Calculator, Trophy, Zap, ZapOff } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
+import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
 import TransitionAnimation from './components/TransitionAnimation';
 import { useMatchData } from './hooks/useMatchData';
@@ -11,6 +12,7 @@ import StatisticSelector from './components/StatisticSelector';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
+  const [view, setView] = useState('landing'); // 'landing', 'dashboard', 'hot-matches'
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
@@ -20,6 +22,7 @@ export default function App() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [pendingTab, setPendingTab] = useState(null);
   const [pendingLeague, setPendingLeague] = useState(undefined);
+  const [pendingView, setPendingView] = useState(null);
 
   const handleTabChange = (tab) => {
     if (tab === activeTab || isAnimating) return;
@@ -37,9 +40,22 @@ export default function App() {
 
     if (isAnimationEnabled) {
       setPendingLeague(league);
+      setPendingView('dashboard'); // Switch to dashboard view when league selected
       setIsAnimating(true);
     } else {
       setSelectedLeague(league);
+      setView('dashboard');
+    }
+  };
+
+  const handleViewChange = (newView) => {
+    if (newView === view || isAnimating) return;
+
+    if (isAnimationEnabled) {
+      setPendingView(newView);
+      setIsAnimating(true);
+    } else {
+      setView(newView);
     }
   };
 
@@ -66,6 +82,7 @@ export default function App() {
   }, [fixturesData, selectedLeague]);
 
   const stats = useMemo(() => processData(filteredMatchData, selectedStatistic), [filteredMatchData, selectedStatistic]);
+  const allStats = useMemo(() => processData(matchData, selectedStatistic), [matchData, selectedStatistic]);
   const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
   if (loading) {
@@ -79,23 +96,53 @@ export default function App() {
         onMidPoint={() => {
           if (pendingTab) setActiveTab(pendingTab);
           if (pendingLeague !== undefined) setSelectedLeague(pendingLeague);
+          if (pendingView) setView(pendingView);
         }}
         onComplete={() => {
           setIsAnimating(false);
           setPendingTab(null);
           setPendingLeague(undefined);
+          setPendingView(null);
         }}
       />
 
-      {!selectedLeague ? (
+
+
+      {view === 'landing' && (
         <LandingPage
           availableLeagues={availableLeagues}
           leaguesData={leagues}
           onSelectLeague={handleLeagueChange}
           isAnimationEnabled={isAnimationEnabled}
           onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+          onOpenTopCorners={() => handleViewChange('hot-matches')}
         />
-      ) : (
+      )}
+
+      {view === 'hot-matches' && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
+          <button
+            onClick={() => handleViewChange('landing')}
+            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-6"
+          >
+            <TrendingUp className="w-4 h-4 rotate-180" />
+            <span className="font-bold text-sm uppercase tracking-wide">Back to Home</span>
+          </button>
+          <div className="animate-in fade-in slide-in-from-bottom-4">
+            <HotMatches
+              stats={allStats}
+              fixtures={fixturesData}
+              teamLogos={teamLogos}
+              isAnimationEnabled={isAnimationEnabled}
+              onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+              selectedStatistic={selectedStatistic}
+              onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {view === 'dashboard' && (
         <>
           {/* Navbar */}
           <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
@@ -105,11 +152,11 @@ export default function App() {
                   src="/logo.png"
                   alt="Progetto Olanda 2.0"
                   className="w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
-                  onClick={() => handleLeagueChange(null)}
+                  onClick={() => handleViewChange('landing')}
                 />
                 <h1
                   className="text-lg font-black tracking-tight text-white leading-none cursor-pointer"
-                  onClick={() => handleLeagueChange(null)}
+                  onClick={() => handleViewChange('landing')}
                 >
                   Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                 </h1>
@@ -151,7 +198,7 @@ export default function App() {
                     <span className="hidden md:inline">Predictor</span>
                   </button>
                   <button
-                    onClick={() => handleLeagueChange(null)}
+                    onClick={() => handleViewChange('landing')}
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
                   >
                     <Trophy className="w-4 h-4" />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trophy, ArrowRight, Zap, ZapOff } from 'lucide-react';
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation }) => {
+const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners }) => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
             {/* Animation Toggle */}
@@ -73,6 +73,27 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                             No leagues found. Activate Backend server.
                         </div>
                     )}
+                </div>
+
+                {/* Top Corners Button */}
+                <div className="w-full max-w-lg mx-auto mt-4">
+                    <button
+                        onClick={onOpenTopCorners}
+                        className="w-full group relative flex items-center justify-between p-6 bg-gradient-to-r from-zinc-900/80 to-zinc-900/50 hover:from-zinc-800 hover:to-zinc-800/80 border border-white/10 hover:border-orange-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)] hover:-translate-y-1"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/50 transition-colors">
+                                <Zap className="w-6 h-6 text-orange-500 group-hover:text-orange-400 transition-colors" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-lg font-bold text-white group-hover:text-orange-300 transition-colors">
+                                    Hot Matches
+                                </h3>
+                                <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">Best Matchups</span>
+                            </div>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-orange-400 transform group-hover:translate-x-1 transition-all" />
+                    </button>
                 </div>
             </div>
 
