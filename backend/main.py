@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Import services
 # Note: We need to ensure the services directory is in the python path or imported correctly.
 # Since main.py is in backend/, and services is in backend/services/, this relative import works.
-from .services.gemini_service import analyze_match_comments
+from services.gemini_service import analyze_match_comments
 from supabase import create_client, Client
 
 load_dotenv()
