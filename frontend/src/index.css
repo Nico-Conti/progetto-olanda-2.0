@@ -26,6 +26,22 @@
     .text-gradient {
         @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400;
     }
+    
+    .animate-float {
+        animation: float 20s infinite ease-in-out;
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-100px) rotate(180deg);
+    }
+    100% {
+        transform: translateY(0) rotate(360deg);
+    }
 }
 
 /* Custom Scrollbar */

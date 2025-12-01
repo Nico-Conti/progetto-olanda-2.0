@@ -5,6 +5,7 @@ import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
 import TransitionAnimation from './components/TransitionAnimation';
+import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
 import { useBackendHealth } from './hooks/useBackendHealth';
@@ -90,7 +91,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans">
+    <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans relative">
+      <BackgroundAnimation />
       <TransitionAnimation
         isActive={isAnimating}
         onMidPoint={() => {

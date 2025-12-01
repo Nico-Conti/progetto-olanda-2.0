@@ -16,7 +16,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                 {isAnimationEnabled ? <Zap className="w-6 h-6" /> : <ZapOff className="w-6 h-6" />}
             </button>
             {/* Background Effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 z-0"></div>
+
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
 
