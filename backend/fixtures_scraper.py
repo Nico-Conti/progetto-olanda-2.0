@@ -28,21 +28,25 @@ def setup_supabase_client():
         return None
 
 def setup_driver():
-    options = uc.ChromeOptions()
-    options.add_argument("--headless=new")  # Use new headless mode
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-popup-blocking")
-    
-    # Add user agent to avoid detection
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
-    # Let undetected-chromedriver handle versioning automatically
-    driver = uc.Chrome(options=options) 
-    return driver
+    try:
+        options = uc.ChromeOptions()
+        options.add_argument("--headless=new")  # Use new headless mode
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-popup-blocking")
+        
+        # Add user agent to avoid detection
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        
+        # Let undetected-chromedriver handle versioning automatically
+        driver = uc.Chrome(options=options) 
+        return driver
+    except Exception as e:
+        print(f"Error setting up driver: {e}")
+        return None
 
 def parse_date(date_str, time_str):
     # Diretta format example: "29.11. 20:00" or "01.12. 12:15"
@@ -63,30 +67,29 @@ def parse_date(date_str, time_str):
         print(f"Error parsing date {date_str} {time_str}: {e}")
         return None
 
-def scrape_fixtures():
-    supabase = setup_supabase_client()
-    if not supabase:
-        return
-
-    driver = setup_driver()
-    url = "https://www.diretta.it/calcio/spagna/laliga/calendario/"
-    
+def scrape_league(driver, supabase, league_name, url):
     print(f"Connecting to {url}...")
     driver.get(url)
+    print("  -> Page loaded, waiting for content...")
+    time.sleep(5) # Extra wait for initial load
     
     try:
         # Wait for the main table to load
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".sportName"))
+        print("  -> Waiting for match table...")
+        WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".sportName, .event__match, #live-table"))
         )
+        print("  -> Match table found.")
         
         # Accept cookies if present
         try:
-            accept_btn = driver.find_element(By.ID, "onetrust-accept-btn-handler")
+            accept_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))
+            )
             accept_btn.click()
-            time.sleep(1)
+            time.sleep(2)
         except:
-            pass
+            print("  -> Cookie banner not found or already accepted.")
 
         # Expand "Show more matches" - Loop to click all of them
         max_retries = 3
@@ -170,42 +173,62 @@ def scrape_fixtures():
                     # Part 2: Away Team
                     # (Sometimes there are extra parts like scores if live, but this is calendar)
                     
-                    if len(parts) >= 3:
-                        # Check if the first part is time (Old format)
-                        if "." in parts[0] and ":" in parts[0]:
-                            raw_time = parts[0]
-                            home_team = parts[1]
-                            away_team = parts[2]
-                        # Check if the last part is time (New format observed in logs)
-                        elif "." in parts[-1] and ":" in parts[-1]:
+                    if len(parts) >= 2:
+                        home_team = None
+                        away_team = None
+                        match_date = None
+                        status = "SCHEDULED"
+                        
+                        # Case 1: Date + Teams (len >= 3)
+                        if len(parts) >= 3:
+                            # Check if the first part is time (Old format)
+                            if "." in parts[0] and ":" in parts[0]:
+                                raw_time = parts[0]
+                                home_team = parts[1]
+                                away_team = parts[2]
+                            # Check if the last part is time (New format observed in logs)
+                            elif "." in parts[-1] and ":" in parts[-1]:
+                                home_team = parts[0]
+                                away_team = parts[1]
+                                raw_time = parts[-1]
+                            else:
+                                # Maybe TBD with extra info? Treat as TBD if we can find teams
+                                # Assume first two are teams if they look like strings
+                                home_team = parts[0]
+                                away_team = parts[1]
+                                status = "POSTPONED" # Assume postponed/TBD if no time found
+                        
+                        # Case 2: Only Teams (len == 2) -> TBD/Postponed
+                        elif len(parts) == 2:
                             home_team = parts[0]
                             away_team = parts[1]
-                            raw_time = parts[-1]
-                        else:
-                            # print(f"Skipping row, could not identify time format. Parts: {parts}")
-                            continue
+                            status = "POSTPONED"
 
-                        # Validate time format to be sure
-                        if "." in raw_time and ":" in raw_time:
+                        # Validate time format to be sure if we found one
+                        if 'raw_time' in locals() and "." in raw_time and ":" in raw_time:
                             if " " in raw_time:
-                                date_part, time_part = raw_time.split(" ")
-                                match_date = parse_date(date_part, time_part)
+                                try:
+                                    date_part, time_part = raw_time.split(" ")
+                                    match_date_obj = parse_date(date_part, time_part)
+                                    if match_date_obj:
+                                        match_date = match_date_obj.isoformat()
+                                except:
+                                    match_date = None
                             else:
                                 match_date = None
                                 
-                            if match_date:
-                                fixtures.append({
-                                    "home_team": home_team,
-                                    "away_team": away_team,
-                                    "match_date": match_date.isoformat(),
-                                    "giornata": current_round,
-                                    "status": "SCHEDULED"
-                                })
-                                print(f"  -> Scraped: {home_team} vs {away_team} ({match_date})")
-                        else:
-                            # Fallback or log if format is unexpected
-                            # print(f"Skipping row, unexpected time format: {raw_time}. Parts: {parts}")
-                            pass
+                        if home_team and away_team:
+                            # If we have teams but no date, it's likely postponed/TBD
+                            # We still want to update it in DB to reflect the status change
+                            fixtures.append({
+                                "home_team": home_team,
+                                "away_team": away_team,
+                                "match_date": match_date, # Can be None
+                                "giornata": current_round,
+                                "status": status,
+                                "league": league_name
+                            })
+                            print(f"  -> Scraped: {home_team} vs {away_team} ({status}, Date: {match_date})")
                     else:
                         # print(f"DEBUG: Not enough parts in row: {parts}")
                         pass
@@ -218,21 +241,130 @@ def scrape_fixtures():
                 # print(f"DEBUG: Skipped row with classes: {classes}")
                 pass
 
-        print(f"Total fixtures scraped: {len(fixtures)}")
+        print(f"Total fixtures scraped for {league_name}: {len(fixtures)}")
         
-        # Insert into Supabase
+        # Insert/Update into Supabase (Manual Logic to avoid missing constraint issue)
         if fixtures:
-            # Using upsert to avoid duplicates
             try:
-                data, count = supabase.table("fixtures").upsert(fixtures, on_conflict="home_team, away_team, match_date").execute()
-                print("Successfully inserted/updated fixtures in Supabase.")
+                print("  -> Fetching existing fixtures from DB for comparison...")
+                # Fetch ID as well to allow update by ID
+                # We fetch ALL fixtures to ensure we catch duplicates even if league is NULL
+                # This might be heavy but necessary if league is not populated
+                existing_db_fixtures = supabase.table("fixtures").select("id, home_team, away_team, match_date, league").execute()
+                
+                # Map "home_away" -> {id, match_date, league}
+                existing_map = {f"{f['home_team']}_{f['away_team']}": f for f in existing_db_fixtures.data}
+                
+                to_insert = []
+                updates_count = 0
+                
+                for f in fixtures:
+                    key = f"{f['home_team']}_{f['away_team']}"
+                    existing_record = existing_map.get(key)
+                    
+                    if not existing_record:
+                        # New match -> Insert
+                        to_insert.append(f)
+                    else:
+                        # Existing match -> Check if update needed
+                        existing_date = existing_record.get('match_date')
+                        match_id = existing_record.get('id')
+                        existing_league = existing_record.get('league')
+                        
+                        # Check if date changed OR league needs update (was NULL)
+                        date_changed = f['match_date'] != existing_date
+                        league_needs_update = existing_league != league_name
+                        
+                        if date_changed or league_needs_update:
+                            if date_changed:
+                                print(f"    -> Date changed for {f['home_team']} vs {f['away_team']}: {existing_date} -> {f['match_date']}")
+                            if league_needs_update:
+                                # print(f"    -> Updating league for {f['home_team']} vs {f['away_team']}")
+                                pass
+                                
+                            # Update this single record by ID
+                            try:
+                                supabase.table("fixtures").update(f).eq("id", match_id).execute()
+                                updates_count += 1
+                            except Exception as update_e:
+                                print(f"    -> Error updating match {match_id}: {update_e}")
+                
+                # Batch Insert
+                if to_insert:
+                    print(f"  -> Inserting {len(to_insert)} new matches...")
+                    try:
+                        data, count = supabase.table("fixtures").insert(to_insert).execute()
+                        print(f"  -> Successfully inserted {len(to_insert)} matches.")
+                    except Exception as insert_e:
+                        print(f"  -> Error inserting matches: {insert_e}")
+                
+                print(f"  -> Updated {updates_count} existing matches.")
+                print(f"  -> No changes for {len(fixtures) - len(to_insert) - updates_count} matches.")
+
             except Exception as e:
-                print(f"Error inserting into Supabase: {e}")
+                print(f"Error interacting with Supabase: {e}")
+                try:
+                    print("  -> Page Source Snippet:")
+                    print(driver.page_source[:1000])
+                except:
+                    pass
             
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred scraping {league_name}: {e}")
+        try:
+            print("  -> Page Source Snippet:")
+            print(driver.page_source[:1000])
+        except:
+            pass
     finally:
-        driver.quit()
+        # Don't quit driver here, let the main loop handle it or pass it in
+        pass
+
+def get_next_fixtures(supabase):
+    print("\n--- Next Fixtures Detection ---")
+    try:
+        now = datetime.datetime.now().isoformat()
+        # Fetch fixtures after now, ordered by date
+        response = supabase.table("fixtures").select("*").gt("match_date", now).order("match_date", desc=False).limit(5).execute()
+        next_games = response.data
+        
+        if next_games:
+            print(f"Found {len(next_games)} upcoming matches:")
+            for game in next_games:
+                print(f"  [{game.get('league', 'Unknown')}] {game['match_date']}: {game['home_team']} vs {game['away_team']}")
+        else:
+            print("No upcoming fixtures found in DB.")
+            
+    except Exception as e:
+        print(f"Error fetching next fixtures: {e}")
+
+def scrape_fixtures():
+    supabase = setup_supabase_client()
+    if not supabase:
+        return
+
+    leagues = [
+        {"name": "La Liga", "url": "https://www.diretta.it/calcio/spagna/laliga/calendario/"},
+        {"name": "Eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/calendario/"}
+    ]
+
+    for league in leagues:
+        print(f"\n--- Scraping {league['name']} ---")
+        driver = setup_driver()
+        if not driver:
+            print("Failed to initialize driver. Skipping.")
+            continue
+            
+        try:
+            scrape_league(driver, supabase, league['name'], league['url'])
+        except Exception as e:
+            print(f"Critical error scraping {league['name']}: {e}")
+        finally:
+            if driver:
+                driver.quit()
+                
+    # Check next fixtures
+    get_next_fixtures(supabase)
 
 if __name__ == "__main__":
     scrape_fixtures()
