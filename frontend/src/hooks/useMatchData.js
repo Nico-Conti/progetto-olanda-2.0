@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { API_BASE_URL } from '../config';
 
 export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
@@ -13,10 +14,10 @@ export const useMatchData = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                console.log("Fetching data from Backend (localhost:8000)...");
+                console.log(`Fetching data from Backend (${API_BASE_URL})...`);
 
                 // Fetch Matches
-                const matchesResponse = await fetch('http://localhost:8000/matches');
+                const matchesResponse = await fetch(`${API_BASE_URL}/matches`);
                 if (!matchesResponse.ok) {
                     throw new Error(`Error fetching matches: ${matchesResponse.statusText}`);
                 }
@@ -24,7 +25,7 @@ export const useMatchData = () => {
                 console.log("Matches fetched:", matches?.length);
 
                 // Fetch Fixtures
-                const fixturesResponse = await fetch('http://localhost:8000/fixtures');
+                const fixturesResponse = await fetch(`${API_BASE_URL}/fixtures`);
                 if (!fixturesResponse.ok) {
                     throw new Error(`Error fetching fixtures: ${fixturesResponse.statusText}`);
                 }
@@ -57,7 +58,7 @@ export const useMatchData = () => {
                 setFixturesData(flatFixtures);
 
                 // Fetch Teams (Logos)
-                const teamsResponse = await fetch('http://localhost:8000/teams');
+                const teamsResponse = await fetch(`${API_BASE_URL}/teams`);
                 let teamLogosMap = {};
                 if (teamsResponse.ok) {
                     const teams = await teamsResponse.json();
@@ -88,7 +89,7 @@ export const useMatchData = () => {
                 setTeamLogos(teamLogosMap);
 
                 // Fetch Leagues
-                const leaguesResponse = await fetch('http://localhost:8000/leagues');
+                const leaguesResponse = await fetch(`${API_BASE_URL}/leagues`);
                 if (leaguesResponse.ok) {
                     const leaguesData = await leaguesResponse.json();
                     setLeagues(leaguesData);
