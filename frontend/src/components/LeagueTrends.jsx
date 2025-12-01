@@ -3,7 +3,7 @@ import { Info, TrendingUp, Flame, Snowflake } from 'lucide-react';
 import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
 
-const LeagueTrends = ({ stats, teamLogos }) => {
+const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
     const [sliderValue, setSliderValue] = useState(1); // 0: 3, 1: 5, 2: 10, 3: All
     const options = [3, 5, 10, 'all'];
     const nGames = options[sliderValue];
@@ -70,7 +70,7 @@ const LeagueTrends = ({ stats, teamLogos }) => {
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-emerald-400" />
-                            League Trends
+                            League Trends ({selectedStatistic})
                         </h2>
                         <p className="text-zinc-400 text-sm mt-1">Comparing Season Averages vs Recent Form ({nGames === 'all' ? 'Entire Season' : `Last ${nGames} Games`})</p>
                     </div>

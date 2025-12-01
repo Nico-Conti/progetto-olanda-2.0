@@ -1,16 +1,16 @@
 import React from 'react';
 import { Flame, Info } from 'lucide-react';
 
-const PredictionHero = ({ prediction, home, away, teamLogos }) => {
+const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic }) => {
     if (!prediction) return null;
 
     return (
-        <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40">
+        <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40  z-[-1]">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
 
             <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total Corners</h2>
+                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-xs mb-6">Predicted Total {selectedStatistic}</h2>
 
                 <div className="flex items-center justify-center gap-8 mb-8 w-full">
                     <div className="text-right flex-1 flex flex-col items-end">

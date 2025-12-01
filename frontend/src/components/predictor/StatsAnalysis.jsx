@@ -1,7 +1,7 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 
-const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos }) => {
+const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStatistic }) => {
     if (!prediction) return null;
 
     return (
@@ -20,11 +20,11 @@ const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos }) => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} in favour</div>
                                 <div className="text-2xl font-mono font-bold text-white">{prediction.hFor.toFixed(2)}</div>
                             </div>
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} conceded</div>
                                 <div className="text-2xl font-mono font-bold text-red-400">{prediction.hAg.toFixed(2)}</div>
                             </div>
                         </div>
@@ -40,11 +40,11 @@ const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos }) => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner in favour</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} in favour</div>
                                 <div className="text-2xl font-mono font-bold text-white">{prediction.aFor.toFixed(2)}</div>
                             </div>
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg Corner conceded</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} conceded</div>
                                 <div className="text-2xl font-mono font-bold text-red-400">{prediction.aAg.toFixed(2)}</div>
                             </div>
                         </div>
