@@ -36,7 +36,7 @@ export default function App() {
   };
 
   const handleLeagueChange = (league) => {
-    if (league === selectedLeague || isAnimating) return;
+    if ((league === selectedLeague && view === 'dashboard') || isAnimating) return;
 
     if (isAnimationEnabled) {
       setPendingLeague(league);
