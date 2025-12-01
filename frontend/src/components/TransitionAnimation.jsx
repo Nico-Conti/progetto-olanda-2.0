@@ -146,7 +146,9 @@ const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
                 .animate-draw-tail {
                     stroke-dasharray: 0.4 1; /* 40% visible tail */
                     stroke-dashoffset: 0.4; /* Start with tail hidden before start */
-                    animation: draw-tail 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                    animation: 
+                        draw-tail 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards,
+                        fade-out-end 2.0s cubic-bezier(0.4, 0, 0.2, 1) forwards;
                 }
 
                 .animate-follow-path {
@@ -158,7 +160,7 @@ const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
 
                 @keyframes draw-tail {
                     from { stroke-dashoffset: 0.4; }
-                    to { stroke-dashoffset: -1; } /* Move dash all the way to end */
+                    to { stroke-dashoffset: -0.6; } /* Move dash so tip is exactly at end */
                 }
 
                 @keyframes follow-path {
