@@ -71,7 +71,8 @@ def analyze_match_comments(comments_list, corners_data=None):
         "IMPORTANTE: Usa i DATI UFFICIALI forniti per il conteggio totale, non provare a contarli dalla cronaca.\n"
         "Scrivi in ITALIANO.\n"
         "2. 'tldr': Un riassunto conciso (max 80 parole) che spiega brevemente il FLUSSO della partita (chi ha dominato, risultato se deducibile) "
-        "e la natura degli angoli per ENTRAMBE le squadre (es. 'Casa ha dominato vincendo, tanti angoli da assedio; Ospiti solo in contropiede'). Scrivi in ITALIANO.\n"
+        "e la natura degli angoli per ENTRAMBE le squadre (es. 'Casa ha dominato vincendo, tanti angoli da assedio; Ospiti solo in contropiede'). "
+        "QUESTO CAMPO È OBBLIGATORIO. Se non sei sicuro, riassumi brevemente l'analisi dettagliata. Scrivi in ITALIANO.\n"
     )
 
     full_prompt = f"{system_prompt}\n{stats_section}\n{goals_section}\n{formatted_comments}"
@@ -89,7 +90,19 @@ def analyze_match_comments(comments_list, corners_data=None):
             response = model.generate_content(full_prompt, generation_config=generation_config)
             
             # Parse JSON string to dict
-            return json.loads(response.text)
+            result = json.loads(response.text)
+            
+            # Fallback for missing tldr
+            if "detailed_summary" in result and ("tldr" not in result or not result["tldr"]):
+                detailed = result["detailed_summary"]
+                # Create a simple fallback summary from the first few sentences
+                sentences = detailed.split('.')
+                fallback_tldr = ". ".join(sentences[:2]) + "."
+                if len(fallback_tldr) > 200:
+                    fallback_tldr = fallback_tldr[:197] + "..."
+                result["tldr"] = fallback_tldr
+                
+            return result
             
         except Exception as e:
             if "429" in str(e) or "Quota exceeded" in str(e):
