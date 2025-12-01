@@ -32,6 +32,27 @@ def parse_percentage(value):
     except ValueError:
         return None
 
+def parse_crosses_count(value):
+    """
+    Parses '25%(4/16)' to 4 (int).
+    Returns None if parsing fails.
+    """
+    if not value:
+        return None
+    try:
+        # Look for the part inside parens: (4/16)
+        if "(" in value and "/" in value:
+            # "25%(4/16)" -> split "(" -> ["25%", "4/16)"] -> [1] -> "4/16)"
+            # split "/" -> ["4", "16)"] -> [0] -> "4"
+            parts = value.split("(")
+            if len(parts) > 1:
+                fraction = parts[1] # "4/16)"
+                numerator = fraction.split("/")[0] # "4"
+                return int(numerator)
+    except ValueError:
+        pass
+    return None
+
 def build_stats_payload(local_match):
     """Extracts and formats all stats for the payload."""
     payload = {}
@@ -44,22 +65,45 @@ def build_stats_payload(local_match):
     # 2. Detailed Stats
     stats = local_match.get("stats", {})
     
-    # Mapping: JSON key -> DB column
+    # Mapping: JSON key -> DB column, Type converter
     # Assuming DB columns follow the pattern: home_{stat}, away_{stat}
     stat_keys = [
-        ("corners", "corners"),
-        ("fouls", "fouls"),
-        ("yellow_cards", "yellow_cards"),
-        ("red_cards", "red_cards"),
-        ("shots", "shots"),
-        ("shots_on_target", "shots_on_target")
+        ("corners", "corners", int),
+        ("fouls", "fouls", int),
+        ("yellow_cards", "yellow_cards", int),
+        ("red_cards", "red_cards", int),
+        ("shots", "shots", int),
+        ("shots_on_target", "shots_on_target", int),
+        ("xg", "xg", float),
+        ("xgot", "xgot", float),
+        ("big_chances", "big_chances", int),
+        ("box_touches", "box_touches", int),
+        ("crosses", "crosses", parse_crosses_count),
+        ("goalkeeper_saves", "goalkeeper_saves", int),
+        ("interceptions", "blocked_shots", int) # User confirmed DB columns are blocked_shots
     ]
 
-    for json_key, db_suffix in stat_keys:
+    for json_key, db_suffix, converter in stat_keys:
         item = stats.get(json_key)
         if item:
-            if "home" in item: payload[f"home_{db_suffix}"] = int(item["home"])
-            if "away" in item: payload[f"away_{db_suffix}"] = int(item["away"])
+            if "home" in item: 
+                try:
+                    val = item["home"]
+                    if converter == str:
+                         payload[f"home_{db_suffix}"] = val
+                    else:
+                         payload[f"home_{db_suffix}"] = converter(val)
+                except ValueError:
+                    pass
+            if "away" in item: 
+                try:
+                    val = item["away"]
+                    if converter == str:
+                         payload[f"away_{db_suffix}"] = val
+                    else:
+                         payload[f"away_{db_suffix}"] = converter(val)
+                except ValueError:
+                    pass
 
     # Possession (needs parsing)
     possession = stats.get("possession")
@@ -115,7 +159,7 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
     print("⏳ Fetching matches from Supabase...")
     try:
         # Fetch all records (limit 1000 should be enough for now, or paginate if needed)
-        resp = requests.get(f"{url}/rest/v1/matches?select=*&limit=1000", headers=headers)
+        resp = requests.get(f"{url}/rest/v1/matches?select=*&limit=5000", headers=headers)
         resp.raise_for_status()
         db_matches = resp.json()
         print(f"✅ Fetched {len(db_matches)} matches from DB")
@@ -125,14 +169,19 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
 
     # 3. Build Lookup Dictionary
     db_lookup = {}
+    url_lookup = {}
     for match in db_matches:
         h = match.get("home_team", "")
         a = match.get("away_team", "")
         g = match.get("giornata", "")
+        u = match.get("url", "")
         
         if h and a and g:
             k = normalize_key(h, a, g)
             db_lookup[k] = match["id"]
+        
+        if u:
+            url_lookup[u] = match["id"]
 
     # 4. Sync Data
     updated_count = 0
@@ -153,10 +202,17 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
         # Prepare base payload
         payload = build_stats_payload(local_match)
 
-        if key in db_lookup:
-            # --- UPDATE ---
+        match_id = None
+        
+        # Try finding by URL first (most reliable)
+        if match_url and match_url in url_lookup:
+            match_id = url_lookup[match_url]
+        # Fallback to key
+        elif key in db_lookup:
             match_id = db_lookup[key]
-            
+
+        if match_id:
+            # --- UPDATE ---
             if payload:
                 try:
                     patch_url = f"{url}/rest/v1/matches?id=eq.{match_id}"
