@@ -72,7 +72,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen text-zinc-200 pb-12 selection:bg-emerald-500/30 font-sans">
+    <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans">
       <TransitionAnimation
         isActive={isAnimating}
         onMidPoint={() => {
@@ -191,7 +191,7 @@ export default function App() {
             </div>
           </nav>
 
-          <main className="max-w-7xl mx-auto px-4 md:px-8">
+          <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
             {activeTab === 'trends' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <LeagueTrends stats={stats} teamLogos={teamLogos} />
