@@ -25,6 +25,7 @@ export default function App() {
   const [pendingTab, setPendingTab] = useState(null);
   const [pendingLeague, setPendingLeague] = useState(undefined);
   const [pendingView, setPendingView] = useState(null);
+  const [matchStatistics, setMatchStatistics] = useState({});
 
   const handleTabChange = (tab) => {
     if (tab === activeTab || isAnimating) return;
@@ -311,6 +312,8 @@ export default function App() {
                   teamLogos={teamLogos}
                   selectedStatistic={selectedStatistic}
                   matchData={filteredMatchData}
+                  matchStatistics={matchStatistics}
+                  setMatchStatistics={setMatchStatistics}
                 />
               </div>
             )}

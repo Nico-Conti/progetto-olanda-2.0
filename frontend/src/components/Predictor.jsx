@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus } from 'lucide-react';
+import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown } from 'lucide-react';
 import { processData, calculatePrediction } from '../utils/stats';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -7,11 +7,31 @@ import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
 import StatisticSelector from './StatisticSelector';
 
-const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData }) => {
+const STAT_OPTIONS = [
+    { value: 'corners', label: 'Corners' },
+    { value: 'goals', label: 'Goals' },
+    { value: 'shots', label: 'Shots' },
+    { value: 'shots_on_target', label: 'Shots on Target' },
+    { value: 'fouls', label: 'Fouls' },
+    { value: 'yellow_cards', label: 'Yellow Cards' },
+    { value: 'red_cards', label: 'Red Cards' },
+    { value: 'possession', label: 'Possession' },
+];
+
+const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+
+    // Memoize all stats
+    const allProcessedStats = useMemo(() => {
+        const stats = {};
+        STAT_OPTIONS.forEach(opt => {
+            stats[opt.value] = processData(matchData, opt.value);
+        });
+        return stats;
+    }, [matchData]);
 
     // Independent Statistic State
     const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
@@ -60,14 +80,17 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
         });
 
         // Calculate predictions for all unplayed matches
-        // For the list view, we use the GLOBAL stats/statistic
         const predictions = unplayed.map(match => {
-            const pred = calculatePrediction(match.home, match.away, globalStats, nGames);
-            return { ...match, prediction: pred };
+            const matchId = `${match.home}-${match.away}`;
+            const stat = matchStatistics[matchId] || selectedStatistic;
+            const statsToUse = allProcessedStats[stat] || globalStats;
+
+            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames);
+            return { ...match, prediction: pred, selectedStat: stat };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -313,7 +336,7 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500">Home Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500">Away Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white">Total Exp</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider">Trend</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider">Stat</th>
                                 <th className="px-3 py-3"></th>
                             </tr>
                         </thead>
@@ -321,7 +344,11 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                             {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
                                 <tr
                                     key={idx}
-                                    onClick={() => setSelectedMatch(match)}
+                                    onClick={(e) => {
+                                        // Prevent navigation if clicking on the dropdown
+                                        if (e.target.closest('select')) return;
+                                        setSelectedMatch(match);
+                                    }}
                                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
                                 >
                                     <td className="px-5 py-4 whitespace-nowrap font-medium text-zinc-400">{match.date}</td>
@@ -331,22 +358,40 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                                                 <span className={`font-bold ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
                                                 <img src={teamLogos[match.home]} alt={match.home} className="w-6 h-6 object-contain" />
                                             </div>
-                                            <span className="text-zinc-600 font-bold text-xs">VS</span>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-zinc-600 font-bold text-xs">VS</span>
+
+                                            </div>
                                             <div className="flex items-center gap-2 w-[120px]">
                                                 <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 object-contain" />
                                                 <span className={`font-bold ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
                                             </div>
+                                            {match.prediction.total > 11.5 && match.selectedStat === 'corners' && (
+                                                <div className="mt-1 inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 text-red-500 animate-pulse">
+                                                    <Flame className="w-3 h-3 fill-current" />
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction.expHome.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction.expAway.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction.total.toFixed(1)}</td>
                                     <td className="px-3 py-4 text-center">
-                                        {match.prediction.total > 11.5 && (
-                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-500/10 text-red-500 animate-pulse">
-                                                <Flame className="w-4 h-4 fill-current" />
-                                            </div>
-                                        )}
+                                        <div className="relative inline-block">
+                                            <select
+                                                value={match.selectedStat}
+                                                onChange={(e) => {
+                                                    const matchId = `${match.home}-${match.away}`;
+                                                    setMatchStatistics(prev => ({ ...prev, [matchId]: e.target.value }));
+                                                }}
+                                                className="bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-md pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold w-[100px] cursor-pointer hover:bg-zinc-800"
+                                            >
+                                                {STAT_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
+                                        </div>
                                     </td>
                                     <td className="px-3 py-4 text-right">
                                         <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors inline-block" />
