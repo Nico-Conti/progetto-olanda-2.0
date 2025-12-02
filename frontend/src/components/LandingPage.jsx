@@ -110,7 +110,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                     <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
                                         Winning Factor
                                     </h3>
-                                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">High Value Bets</span>
+                                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">Bet Analysis</span>
                                 </div>
                             </div>
                             <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all" />
@@ -124,7 +124,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                 className="py-8 text-center text-zinc-600 text-xs font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
                 style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms`, animationFillMode: 'backwards' }}
             >
-                Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky
+                Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, Gabri Robot drago del k-means
             </div>
         </div>
     );

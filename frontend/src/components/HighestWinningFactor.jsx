@@ -1,37 +1,65 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, X, Trophy } from 'lucide-react';
+import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, Trophy } from 'lucide-react';
 import StatisticSelector from './StatisticSelector';
 import { processData } from '../utils/stats';
 
 const STAT_CONFIG = {
-    corners: { default: 9.5, step: 1, options: [7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5] },
-    goals: { default: 2.5, step: 1, options: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5] },
-    shots: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
-    shots_on_target: { default: 8.5, step: 1, options: [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] },
-    fouls: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
-    yellow_cards: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] },
-    red_cards: { default: 0.5, step: 0.5, options: [0.5] },
-    possession: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] },
+    corners: {
+        total: { default: 9.5, step: 1, options: [7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5] },
+        individual: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5, 7.5] }
+    },
+    goals: {
+        total: { default: 2.5, step: 1, options: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5] },
+        individual: { default: 1.5, step: 1, options: [0.5, 1.5, 2.5, 3.5] }
+    },
+    shots: {
+        total: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
+        individual: { default: 12.5, step: 1, options: [9.5, 10.5, 11.5, 12.5, 13.5, 14.5] }
+    },
+    shots_on_target: {
+        total: { default: 8.5, step: 1, options: [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] },
+        individual: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] }
+    },
+    fouls: {
+        total: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
+        individual: { default: 11.5, step: 1, options: [9.5, 10.5, 11.5, 12.5, 13.5] }
+    },
+    yellow_cards: {
+        total: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] },
+        individual: { default: 1.5, step: 1, options: [0.5, 1.5, 2.5, 3.5] }
+    },
+    red_cards: {
+        total: { default: 0.5, step: 0.5, options: [0.5] },
+        individual: { default: 0.5, step: 0.5, options: [0.5] }
+    },
+    possession: {
+        total: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] },
+        individual: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] }
+    },
 };
 
 const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
+    const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
     const [operator, setOperator] = useState('over');
-    const [threshold, setThreshold] = useState(STAT_CONFIG['corners'].default);
+    const [threshold, setThreshold] = useState(STAT_CONFIG['corners'].total.default);
     const [nGames, setNGames] = useState(5);
-    const [displayLimit, setDisplayLimit] = useState(20);
+    const [displayLimit, setDisplayLimit] = useState(5);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [isHistorySelectorOpen, setIsHistorySelectorOpen] = useState(false);
     const [isTeamNumberSelectorOpen, setIsTeamNumberSelectorOpen] = useState(false);
+    const [selectedLeague, setSelectedLeague] = useState('All');
+    const [isLeagueSelectorOpen, setIsLeagueSelectorOpen] = useState(false);
     const selectorRef = useRef(null);
     const historySelectorRef = useRef(null);
     const teamNumberSelectorRef = useRef(null);
+    const leagueSelectorRef = useRef(null);
 
-    // Update threshold when statistic changes
+    // Update threshold when statistic or mode changes
     useEffect(() => {
-        const config = STAT_CONFIG[selectedStatistic] || { default: 0.5 };
-        setThreshold(config.default);
-    }, [selectedStatistic]);
+        const config = STAT_CONFIG[selectedStatistic] || { total: { default: 0.5 }, individual: { default: 0.5 } };
+        setThreshold(config[analysisMode].default);
+    }, [selectedStatistic, analysisMode]);
 
     // Close selector when clicking outside
     useEffect(() => {
@@ -45,15 +73,18 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
             if (teamNumberSelectorRef.current && !teamNumberSelectorRef.current.contains(event.target)) {
                 setIsTeamNumberSelectorOpen(false);
             }
+            if (leagueSelectorRef.current && !leagueSelectorRef.current.contains(event.target)) {
+                setIsLeagueSelectorOpen(false);
+            }
         };
 
-        if (isSelectorOpen || isHistorySelectorOpen || isTeamNumberSelectorOpen) {
+        if (isSelectorOpen || isHistorySelectorOpen || isTeamNumberSelectorOpen || isLeagueSelectorOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isSelectorOpen, isHistorySelectorOpen, isTeamNumberSelectorOpen]);
+    }, [isSelectorOpen, isHistorySelectorOpen, isTeamNumberSelectorOpen, isLeagueSelectorOpen]);
 
     // Helper to adjust threshold
     const adjustThreshold = (delta) => {
@@ -63,33 +94,39 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
         });
     };
 
-    const currentConfig = STAT_CONFIG[selectedStatistic] || { step: 0.5, options: [] };
+    const currentConfig = (STAT_CONFIG[selectedStatistic] || { total: { step: 0.5, options: [] }, individual: { step: 0.5, options: [] } })[analysisMode];
+
+    const availableLeagues = useMemo(() => {
+        if (!matchData) return [];
+        const leagues = new Set(matchData.map(m => m.league).filter(Boolean));
+        return ['All', ...Array.from(leagues).sort()];
+    }, [matchData]);
 
     // Calculate Winning Factors
     const rankedTeams = useMemo(() => {
         if (!matchData || matchData.length === 0) return [];
 
-        const processedStats = processData(matchData, selectedStatistic);
+        const filteredMatchData = selectedLeague === 'All'
+            ? matchData
+            : matchData.filter(m => m.league === selectedLeague);
+
+        const processedStats = processData(filteredMatchData, selectedStatistic);
         const teams = Object.keys(processedStats);
         const results = [];
 
         teams.forEach(team => {
             const teamData = processedStats[team];
-            // Filter matches by location if needed, but for "winning factor" we usually look at all matches
-            // Sort by date descending (already done in processData usually, but let's be safe)
             const allMatches = [...teamData.all_matches].sort((a, b) => b.giornata - a.giornata);
-
-            // Take last N games
             const recentMatches = nGames === 'all' ? allMatches : allMatches.slice(0, nGames);
 
             if (recentMatches.length === 0) return;
 
             let winCount = 0;
             recentMatches.forEach(match => {
-                const total = match.total;
-                if (operator === 'over' && total > threshold) {
+                const value = analysisMode === 'total' ? match.total : match.statFor;
+                if (operator === 'over' && value > threshold) {
                     winCount++;
-                } else if (operator === 'under' && total < threshold) {
+                } else if (operator === 'under' && value < threshold) {
                     winCount++;
                 }
             });
@@ -110,7 +147,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
             if (b.winRate !== a.winRate) return b.winRate - a.winRate;
             return b.winCount - a.winCount;
         });
-    }, [matchData, selectedStatistic, operator, threshold, nGames]);
+    }, [matchData, selectedStatistic, operator, threshold, nGames, selectedLeague, analysisMode]);
 
     // Calculate max games played by any team to set the limit for "Season"
     const maxGames = useMemo(() => {
@@ -123,11 +160,9 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
         return Math.max(0, ...Object.values(counts));
     }, [matchData]);
 
-    // ... (existing refs and effects)
-
     return (
         <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
-            {/* ... Navbar ... */}
+            {/* Navbar */}
             <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -147,7 +182,6 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
             </nav>
 
             <main className="max-w-7xl mx-auto px-4 md:px-8">
-                {/* Tab Navigation */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Configuration Panel */}
                     <div className="lg:col-span-4 space-y-6">
@@ -158,82 +192,228 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                             </h2>
 
                             <div className="space-y-6">
-                                {/* Statistic Selection */}
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Statistic</label>
-                                    <StatisticSelector
-                                        value={selectedStatistic}
-                                        onChange={(e) => setSelectedStatistic(e.target.value)}
-                                        className="w-full"
-                                    />
-                                </div>
+                                {/* Section 1: Analysis Scope */}
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+                                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Analysis Scope</h3>
 
-                                {/* Operator Selection */}
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => setOperator('over')}
-                                            className={`px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wide transition-all ${operator === 'over'
-                                                ? 'bg-emerald-500 text-white shadow-lg'
-                                                : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                }`}
-                                        >
-                                            Over
-                                        </button>
-                                        <button
-                                            onClick={() => setOperator('under')}
-                                            className={`px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wide transition-all ${operator === 'under'
-                                                ? 'bg-red-500 text-white shadow-lg'
-                                                : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                }`}
-                                        >
-                                            Under
-                                        </button>
+                                    {/* League Selection */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">League</label>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setIsLeagueSelectorOpen(!isLeagueSelectorOpen)}
+                                                className="w-full h-10 flex items-center justify-between px-3 bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
+                                            >
+                                                <span className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                                                    {selectedLeague}
+                                                </span>
+                                                <ChevronDown className="w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
+                                            </button>
+
+                                            {isLeagueSelectorOpen && (
+                                                <div
+                                                    ref={leagueSelectorRef}
+                                                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-60 overflow-y-auto"
+                                                >
+                                                    <div className="flex flex-col gap-1">
+                                                        {availableLeagues.map((league) => (
+                                                            <button
+                                                                key={league}
+                                                                onClick={() => {
+                                                                    setSelectedLeague(league);
+                                                                    setIsLeagueSelectorOpen(false);
+                                                                }}
+                                                                className={`p-2 rounded-md font-bold text-xs text-left transition-all ${selectedLeague === league
+                                                                    ? 'bg-purple-500 text-white shadow-lg'
+                                                                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                                                    }`}
+                                                            >
+                                                                {league}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Mode Selection */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Mode</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setAnalysisMode('total')}
+                                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'total'
+                                                    ? 'bg-blue-500 text-white shadow-lg'
+                                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
+                                                    }`}
+                                            >
+                                                Match Total
+                                            </button>
+                                            <button
+                                                onClick={() => setAnalysisMode('individual')}
+                                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'individual'
+                                                    ? 'bg-purple-500 text-white shadow-lg'
+                                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
+                                                    }`}
+                                            >
+                                                Team Stats
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Threshold Selection */}
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Threshold</label>
-                                    <div className="flex items-center gap-2">
+                                {/* Section 2: Winning Criteria */}
+                                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
+                                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Winning Criteria</h3>
+
+                                    {/* Statistic Selection */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Statistic</label>
+                                        <StatisticSelector
+                                            value={selectedStatistic}
+                                            onChange={(e) => setSelectedStatistic(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {/* Operator Selection */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => setOperator('over')}
+                                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'over'
+                                                        ? 'bg-emerald-500 text-white shadow-lg'
+                                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
+                                                        }`}
+                                                >
+                                                    Over
+                                                </button>
+                                                <button
+                                                    onClick={() => setOperator('under')}
+                                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'under'
+                                                        ? 'bg-red-500 text-white shadow-lg'
+                                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
+                                                        }`}
+                                                >
+                                                    Under
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Threshold Selection */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Threshold</label>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => adjustThreshold(-currentConfig.step)}
+                                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                                >
+                                                    <Minus className="w-4 h-4" />
+                                                </button>
+
+                                                <div className="relative flex-grow">
+                                                    <button
+                                                        onClick={() => setIsSelectorOpen(!isSelectorOpen)}
+                                                        className="w-full h-10 flex items-center justify-center bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
+                                                    >
+                                                        <span className="text-xl font-black text-white font-mono group-hover:text-purple-400 transition-colors">
+                                                            {threshold}
+                                                        </span>
+                                                        <ChevronDown className="absolute right-3 w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
+                                                    </button>
+
+                                                    {isSelectorOpen && (
+                                                        <div
+                                                            ref={selectorRef}
+                                                            className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200"
+                                                        >
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                {currentConfig.options.map((opt) => (
+                                                                    <button
+                                                                        key={opt}
+                                                                        onClick={() => {
+                                                                            setThreshold(opt);
+                                                                            setIsSelectorOpen(false);
+                                                                        }}
+                                                                        className={`p-2 rounded-md font-bold text-xs transition-all ${threshold === opt
+                                                                            ? 'bg-purple-500 text-white shadow-lg'
+                                                                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                                                                            }`}
+                                                                    >
+                                                                        {opt}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <button
+                                                    onClick={() => adjustThreshold(currentConfig.step)}
+                                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Results List */}
+                    <div className="lg:col-span-8">
+                        <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                            <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-xl font-black text-white flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-yellow-500" />
+                                        Top
+                                    </h2>
+                                    <div className="flex items-center gap-1">
                                         <button
-                                            onClick={() => adjustThreshold(-currentConfig.step)}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                            onClick={() => {
+                                                setDisplayLimit(prev => Math.max(1, prev - 1));
+                                            }}
+                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
                                         >
-                                            <Minus className="w-4 h-4" />
+                                            <Minus className="w-3 h-3" />
                                         </button>
 
-                                        <div className="relative flex-grow">
+                                        <div className="relative">
                                             <button
-                                                onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                                                className="w-full h-12 flex items-center justify-center bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
+                                                onClick={() => setIsTeamNumberSelectorOpen(!isTeamNumberSelectorOpen)}
+                                                className="h-8 px-3 flex items-center justify-center gap-2 bg-zinc-950 rounded-md border border-white/10 hover:border-purple-500/50 transition-colors group min-w-[60px]"
                                             >
-                                                <span className="text-2xl font-black text-white font-mono group-hover:text-purple-400 transition-colors">
-                                                    {threshold}
+                                                <span className="text-sm font-bold text-white font-mono group-hover:text-purple-400 transition-colors">
+                                                    {displayLimit}
                                                 </span>
-                                                <ChevronDown className="absolute right-3 w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
+                                                <ChevronDown className="w-3 h-3 text-zinc-600 group-hover:text-purple-400" />
                                             </button>
 
-                                            {isSelectorOpen && (
+                                            {isTeamNumberSelectorOpen && (
                                                 <div
-                                                    ref={selectorRef}
-                                                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200"
+                                                    ref={teamNumberSelectorRef}
+                                                    className="absolute top-full left-0 mt-2 w-40 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200"
                                                 >
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        {currentConfig.options.map((opt) => (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[5, 10, 15, 20].map((n) => (
                                                             <button
-                                                                key={opt}
+                                                                key={n}
                                                                 onClick={() => {
-                                                                    setThreshold(opt);
-                                                                    setIsSelectorOpen(false);
+                                                                    setDisplayLimit(n);
+                                                                    setIsTeamNumberSelectorOpen(false);
                                                                 }}
-                                                                className={`p-2 rounded-md font-bold text-xs transition-all ${threshold === opt
+                                                                className={`p-2 rounded-md font-bold text-xs transition-all ${displayLimit === n
                                                                     ? 'bg-purple-500 text-white shadow-lg'
                                                                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
                                                                     }`}
                                                             >
-                                                                {opt}
+                                                                {n}
                                                             </button>
                                                         ))}
                                                     </div>
@@ -242,18 +422,23 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                         </div>
 
                                         <button
-                                            onClick={() => adjustThreshold(currentConfig.step)}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                            onClick={() => {
+                                                setDisplayLimit(prev => Math.min(20, prev + 1));
+                                            }}
+                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="w-3 h-3" />
                                         </button>
                                     </div>
+                                    <h2 className="text-xl font-black text-white">
+                                        Teams
+                                    </h2>
                                 </div>
-
-                                {/* History Size Selection */}
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">History Size</label>
-                                    <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-2">
+                                        Last Games:
+                                    </span>
+                                    <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => {
                                                 setNGames(prev => {
@@ -261,26 +446,26 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                                     return Math.max(1, val - 1);
                                                 });
                                             }}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
                                         >
-                                            <Minus className="w-4 h-4" />
+                                            <Minus className="w-3 h-3" />
                                         </button>
 
-                                        <div className="relative flex-grow">
+                                        <div className="relative">
                                             <button
                                                 onClick={() => setIsHistorySelectorOpen(!isHistorySelectorOpen)}
-                                                className="w-full h-12 flex items-center justify-center bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
+                                                className="h-8 px-3 flex items-center justify-center gap-2 bg-zinc-950 rounded-md border border-white/10 hover:border-purple-500/50 transition-colors group min-w-[80px]"
                                             >
-                                                <span className="text-2xl font-black text-white font-mono group-hover:text-purple-400 transition-colors">
+                                                <span className="text-sm font-bold text-white font-mono group-hover:text-purple-400 transition-colors">
                                                     {nGames === 'all' ? 'Season' : nGames}
                                                 </span>
-                                                <ChevronDown className="absolute right-3 w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
+                                                <ChevronDown className="w-3 h-3 text-zinc-600 group-hover:text-purple-400" />
                                             </button>
 
                                             {isHistorySelectorOpen && (
                                                 <div
                                                     ref={historySelectorRef}
-                                                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200"
+                                                    className="absolute top-full right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200"
                                                 >
                                                     <div className="grid grid-cols-2 gap-2">
                                                         {[3, 5, 10, 'all'].map((n) => (
@@ -311,88 +496,12 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                                     return prev + 1;
                                                 });
                                             }}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="w-3 h-3" />
                                         </button>
                                     </div>
                                 </div>
-
-                                {/* Display Limit Selection */}
-                                <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Show Top</label>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setDisplayLimit(prev => Math.max(1, prev - 1));
-                                            }}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </button>
-
-                                        <div className="relative flex-grow">
-                                            <button
-                                                onClick={() => setIsTeamNumberSelectorOpen(!isTeamNumberSelectorOpen)}
-                                                className="w-full h-12 flex items-center justify-center bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
-                                            >
-                                                <span className="text-2xl font-black text-white font-mono group-hover:text-purple-400 transition-colors">
-                                                    {displayLimit}
-                                                </span>
-                                                <ChevronDown className="absolute right-3 w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
-                                            </button>
-
-                                            {isTeamNumberSelectorOpen && (
-                                                <div
-                                                    ref={teamNumberSelectorRef}
-                                                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200"
-                                                >
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[5, 10, 15, 20].map((n) => (
-                                                            <button
-                                                                key={n}
-                                                                onClick={() => {
-                                                                    setDisplayLimit(n);
-                                                                    setIsTeamNumberSelectorOpen(false);
-                                                                }}
-                                                                className={`p-2 rounded-md font-bold text-xs transition-all ${displayLimit === n
-                                                                    ? 'bg-purple-500 text-white shadow-lg'
-                                                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                                                                    }`}
-                                                            >
-                                                                {n}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            onClick={() => {
-                                                setDisplayLimit(prev => Math.min(20, prev + 1));
-                                            }}
-                                            className="p-3 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Results List */}
-                    <div className="lg:col-span-8">
-                        <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
-                            <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                                <h2 className="text-xl font-black text-white flex items-center gap-2">
-                                    <Trophy className="w-5 h-5 text-yellow-500" />
-                                    Top {displayLimit} Teams
-                                </h2>
-                                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                                    Based on last {nGames === 'all' ? 'Season' : nGames} games
-                                </span>
                             </div>
 
                             <div className="overflow-x-auto">
@@ -440,13 +549,18 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                                                 style={{ width: `${team.winRate}%` }}
                                                             ></div>
                                                         </div>
-                                                        <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
-                                                            team.winRate >= 60 ? 'text-emerald-400' :
-                                                                team.winRate >= 40 ? 'text-yellow-500' :
-                                                                    'text-red-500'
-                                                            }`}>
-                                                            {team.winRate.toFixed(0)}%
-                                                        </span>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
+                                                                team.winRate >= 60 ? 'text-emerald-400' :
+                                                                    team.winRate >= 40 ? 'text-yellow-500' :
+                                                                        'text-red-500'
+                                                                }`}>
+                                                                {team.winRate.toFixed(0)}%
+                                                            </span>
+                                                            <span className="text-xs font-mono text-zinc-500 font-bold">
+                                                                @{team.winRate > 0 ? (100 / team.winRate).toFixed(2) : '-'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
