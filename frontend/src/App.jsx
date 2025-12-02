@@ -4,6 +4,7 @@ import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
+import HighestWinningFactor from './components/HighestWinningFactor';
 import TransitionAnimation from './components/TransitionAnimation';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
@@ -153,7 +154,19 @@ export default function App() {
           isAnimationEnabled={isAnimationEnabled}
           onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
           onOpenTopCorners={() => handleViewChange('hot-matches')}
+          onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}
         />
+      )}
+
+      {view === 'highest-winning-factor' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4">
+          <HighestWinningFactor
+            onBack={() => handleViewChange('landing')}
+            isAnimationEnabled={isAnimationEnabled}
+            matchData={matchData}
+            teamLogos={teamLogos}
+          />
+        </div>
       )}
 
       {view === 'hot-matches' && (

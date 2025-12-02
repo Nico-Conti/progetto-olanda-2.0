@@ -1,8 +1,8 @@
 import React from 'react';
-import { Flame, Trophy, ArrowRight } from 'lucide-react';
+import { Flame, Trophy, ArrowRight, Zap } from 'lucide-react';
 import ToggleSwitch from './ui/ToggleSwitch';
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners }) => {
+const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners, onOpenHighestWinningFactor }) => {
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden">
             {/* Animation Toggle */}
@@ -75,14 +75,14 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                         )}
                     </div>
 
-                    {/* Top Corners Button */}
+                    {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-lg mx-auto mt-4 flex justify-center animate-waterfall"
+                        className="w-full max-w-4xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-waterfall"
                         style={{ animationDelay: `${(availableLeagues.length + 1) * 100}ms` }}
                     >
                         <button
                             onClick={onOpenTopCorners}
-                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 w-full"
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/50 transition-colors">
@@ -96,6 +96,24 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                 </div>
                             </div>
                             <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-orange-400 transform group-hover:translate-x-1 transition-all" />
+                        </button>
+
+                        <button
+                            onClick={onOpenHighestWinningFactor}
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-purple-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:-translate-y-1"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:border-purple-500/50 transition-colors">
+                                    <Zap className="w-6 h-6 text-purple-500 group-hover:text-purple-400 transition-colors" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                                        Winning Factor
+                                    </h3>
+                                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">High Value Bets</span>
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all" />
                         </button>
                     </div>
                 </div>
