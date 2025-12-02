@@ -122,7 +122,11 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {topMatches.map((match, idx) => (
-                    <div key={`${match.home}-${match.away}-${idx}`} className="glass-panel rounded-xl p-5 border border-white/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden">
+                    <div
+                        key={`${match.home}-${match.away}-${idx}`}
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                        className="glass-panel rounded-xl p-5 border border-white/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden animate-waterfall"
+                    >
                         {/* Rank Badge */}
                         <div className="absolute top-0 right-0 bg-zinc-900/80 px-3 py-1.5 rounded-bl-xl border-l border-b border-white/5 font-black text-2xl text-zinc-700 group-hover:text-emerald-500/50 transition-colors">
                             #{idx + 1}

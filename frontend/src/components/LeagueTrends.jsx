@@ -101,7 +101,7 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">
-                            {teams.map(team => {
+                            {teams.map((team, index) => {
                                 const hTrend = getTrendData(stats[team].home_totals, nGames);
                                 const aTrend = getTrendData(stats[team].away_totals, nGames);
 
@@ -111,7 +111,11 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
                                 const aAgAvg = getAvg(stats[team].away_ag);
 
                                 return (
-                                    <tr key={team} className="hover:bg-white/[0.03] transition-colors group">
+                                    <tr
+                                        key={team}
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                        className="hover:bg-white/[0.03] transition-colors group animate-waterfall"
+                                    >
                                         <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5 flex items-center gap-3">
                                             <img src={teamLogos[team]} alt={team} className="w-6 h-6 object-contain" />
                                             {team}

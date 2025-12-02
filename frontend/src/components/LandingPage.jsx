@@ -19,10 +19,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 w-full relative z-10">
-                <div className="max-w-2xl w-full text-center space-y-12 animate-in fade-in zoom-in duration-700">
+                <div className="max-w-4xl w-full text-center space-y-12">
 
                     {/* Header */}
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-waterfall">
                         <div className="inline-flex items-center justify-center ">
                             <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         </div>
@@ -36,8 +36,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                     </div>
 
                     {/* League Selection */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg mx-auto">
-                        {availableLeagues.map((leagueName) => {
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto">
+                        {availableLeagues.map((leagueName, index) => {
                             const leagueObj = leaguesData?.find(l => l.name === leagueName);
                             const logoUrl = leagueObj?.logo_url;
 
@@ -45,7 +45,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                 <button
                                     key={leagueName}
                                     onClick={() => onSelectLeague(leagueName)}
-                                    className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1"
+                                    style={{ animationDelay: `${(index + 1) * 100}ms` }}
+                                    className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 animate-waterfall"
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center border border-zinc-200 group-hover:border-emerald-500/30 transition-colors overflow-hidden">
@@ -68,17 +69,20 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                         })}
 
                         {availableLeagues.length === 0 && (
-                            <div className="col-span-full p-8 text-zinc-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                            <div className="col-span-full p-8 text-zinc-500 bg-white/5 rounded-2xl border border-white/5 border-dashed animate-waterfall">
                                 No leagues found. Activate Backend server.
                             </div>
                         )}
                     </div>
 
                     {/* Top Corners Button */}
-                    <div className="w-full max-w-lg mx-auto mt-4 flex justify-center">
+                    <div
+                        className="w-full max-w-lg mx-auto mt-4 flex justify-center animate-waterfall"
+                        style={{ animationDelay: `${(availableLeagues.length + 1) * 100}ms` }}
+                    >
                         <button
                             onClick={onOpenTopCorners}
-                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1"
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 w-full"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/50 transition-colors">
@@ -98,7 +102,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
             </div>
 
             {/* Footer */}
-            <div className="py-8 text-center text-zinc-600 text-xs font-mono uppercase tracking-widest opacity-100 relative z-10">
+            <div
+                className="py-8 text-center text-zinc-600 text-xs font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
+                style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms`, animationFillMode: 'backwards' }}
+            >
                 Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky
             </div>
         </div>
