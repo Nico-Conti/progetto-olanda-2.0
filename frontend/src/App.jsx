@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy, Zap, ZapOff } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Trophy } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -10,6 +10,7 @@ import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
+import ToggleSwitch from './components/ui/ToggleSwitch';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
@@ -145,7 +146,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       const audio = new Audio('/sounds/malepisello.mp3');
-                      audio.playbackRate = Math.random() * (100 - 1) + 1;
+                      audio.playbackRate = Math.random() * 2;
                       audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
                     }}
                     className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -170,16 +171,10 @@ export default function App() {
                   </button>
                 </div>
 
-                <button
-                  onClick={() => setIsAnimationEnabled(!isAnimationEnabled)}
-                  className={`p-2 rounded-lg border transition-all ${isAnimationEnabled
-                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                    : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
-                >
-                  {isAnimationEnabled ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
-                </button>
+                <ToggleSwitch
+                  isOn={isAnimationEnabled}
+                  onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
+                />
               </div>
             </div>
           </nav>
@@ -292,16 +287,10 @@ export default function App() {
                 </div>
 
                 {/* Animation Toggle */}
-                <button
-                  onClick={() => setIsAnimationEnabled(!isAnimationEnabled)}
-                  className={`p-2 rounded-lg border transition-all ${isAnimationEnabled
-                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                    : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  title={isAnimationEnabled ? "Disable Animations" : "Enable Animations"}
-                >
-                  {isAnimationEnabled ? <Zap className="w-5 h-5" /> : <ZapOff className="w-5 h-5" />}
-                </button>
+                <ToggleSwitch
+                  isOn={isAnimationEnabled}
+                  onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
+                />
               </div>
             </div>
           </nav>
