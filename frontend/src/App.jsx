@@ -11,6 +11,7 @@ import { processData } from './utils/stats';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
 import ToggleSwitch from './components/ui/ToggleSwitch';
+import BetSlipModal from './components/BetSlipModal';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
@@ -26,6 +27,30 @@ export default function App() {
   const [pendingLeague, setPendingLeague] = useState(undefined);
   const [pendingView, setPendingView] = useState(null);
   const [matchStatistics, setMatchStatistics] = useState({});
+
+  // Bet Slip State
+  const [bets, setBets] = useState([]);
+  const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
+
+  const addToBet = (game, option, value, stat) => {
+    setBets(prev => {
+      const existingIndex = prev.findIndex(b => b.game === game);
+      if (existingIndex >= 0) {
+        const newBets = [...prev];
+        newBets[existingIndex] = { game, option, value, stat };
+        return newBets;
+      }
+      return [...prev, { game, option, value, stat }];
+    });
+  };
+
+  const removeFromBet = (game) => {
+    setBets(prev => prev.filter(b => b.game !== game));
+  };
+
+  const clearBets = () => {
+    setBets([]);
+  };
 
   const handleTabChange = (tab) => {
     if (tab === activeTab || isAnimating) return;
@@ -108,6 +133,14 @@ export default function App() {
           setPendingLeague(undefined);
           setPendingView(null);
         }}
+      />
+
+      <BetSlipModal
+        isOpen={isBetSlipOpen}
+        onClose={() => setIsBetSlipOpen(false)}
+        bets={bets}
+        onRemove={removeFromBet}
+        onClear={clearBets}
       />
 
 
@@ -287,6 +320,23 @@ export default function App() {
 
                 </div>
 
+                {/* Bet Slip Button */}
+                <button
+                  onClick={() => setIsBetSlipOpen(true)}
+                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition-all group ml-4"
+                >
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                    {bets.length}
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </button>
+
                 {/* Animation Toggle */}
                 <ToggleSwitch
                   isOn={isAnimationEnabled}
@@ -314,6 +364,8 @@ export default function App() {
                   matchData={filteredMatchData}
                   matchStatistics={matchStatistics}
                   setMatchStatistics={setMatchStatistics}
+                  addToBet={addToBet}
+                  bets={bets}
                 />
               </div>
             )}

@@ -6,6 +6,7 @@ import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
 import StatisticSelector from './StatisticSelector';
+import BetBuilderCell from './BetBuilderCell';
 
 const STAT_OPTIONS = [
     { value: 'corners', label: 'Corners' },
@@ -18,7 +19,7 @@ const STAT_OPTIONS = [
     { value: 'possession', label: 'Possession' },
 ];
 
-const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics }) => {
+const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, bets }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
@@ -337,6 +338,7 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500">Away Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white">Total Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider">Stat</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider">Bet Builder</th>
                                 <th className="px-3 py-3"></th>
                             </tr>
                         </thead>
@@ -393,6 +395,14 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                                             </select>
                                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
                                         </div>
+                                    </td>
+                                    <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                        <BetBuilderCell
+                                            game={`${match.home} vs ${match.away}`}
+                                            stat={match.selectedStat}
+                                            onAdd={addToBet}
+                                            existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}`)}
+                                        />
                                     </td>
                                     <td className="px-3 py-4 text-right">
                                         <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors inline-block" />
