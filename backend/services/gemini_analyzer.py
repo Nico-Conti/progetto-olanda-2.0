@@ -15,13 +15,14 @@ def configure_gemini():
     genai.configure(api_key=api_key)
     return True
 
-def analyze_match_comments(comments_list, corners_data=None):
+def analyze_match_comments(comments_list, corners_data=None, teams=None):
     """
     Sends match comments to Gemini for analysis.
     
     Args:
         comments_list (list): List of dictionaries with 'time', 'type', 'text'.
         corners_data (dict, optional): {'home': 'X', 'away': 'Y'}
+        teams (dict, optional): {'home': 'Team A', 'away': 'Team B'}
         
     Returns:
         dict: The analysis result from Gemini (JSON), or an error dict.
@@ -50,10 +51,14 @@ def analyze_match_comments(comments_list, corners_data=None):
     # Add Official Stats to Prompt
     stats_section = ""
     if corners_data:
+        home_team_name = teams.get('home', 'Casa') if teams else 'Casa'
+        away_team_name = teams.get('away', 'Ospite') if teams else 'Ospite'
+        
         stats_section = (
-            f"\nDATI UFFICIALI CALCI D'ANGOLO (Usa questi come verità assoluta):\n"
-            f"Squadra di Casa: {corners_data.get('home', 'N/A')}\n"
-            f"Squadra Ospite: {corners_data.get('away', 'N/A')}\n"
+            f"\nDATI UFFICIALI:\n"
+            f"Squadra di Casa: {home_team_name} (Angoli: {corners_data.get('home', 'N/A')})\n"
+            f"Squadra Ospite: {away_team_name} (Angoli: {corners_data.get('away', 'N/A')})\n"
+            f"IMPORTANTE: Associa CORRETTAMENTE i commenti alle squadre. {home_team_name} è in casa, {away_team_name} è fuori casa.\n"
         )
 
     # Add Goals Section
