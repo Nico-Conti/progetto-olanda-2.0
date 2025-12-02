@@ -82,7 +82,8 @@ def main():
                 if not args.skip_analysis and not is_serieb:
                     print("    -> Requesting Gemini analysis...")
                     corners = details.get('calci_d_angolo', {})
-                    analysis = analyze_match_comments(details.get('commenti', []), corners_data=corners)
+                    teams = details.get('squadre', {})
+                    analysis = analyze_match_comments(details.get('commenti', []), corners_data=corners, teams=teams)
                     del details['commenti'] 
                     details['gemini_analysis'] = analysis
                     print("    -> Analysis complete.")
