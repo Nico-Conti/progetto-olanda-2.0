@@ -344,12 +344,13 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
                             {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
                                 <tr
                                     key={idx}
+                                    style={{ animationDelay: `${idx * 50}ms` }}
                                     onClick={(e) => {
                                         // Prevent navigation if clicking on the dropdown
                                         if (e.target.closest('select')) return;
                                         setSelectedMatch(match);
                                     }}
-                                    className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                                    className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
                                 >
                                     <td className="px-5 py-4 whitespace-nowrap font-medium text-zinc-400">{match.date}</td>
                                     <td className="px-5 py-4">
