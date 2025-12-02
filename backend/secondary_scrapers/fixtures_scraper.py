@@ -1,7 +1,18 @@
 import os
+import sys
 import time
 import datetime
-import undetected_chromedriver as uc
+
+# Add project root to path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from backend.scraper.driver import make_driver
+import time
+import datetime
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -27,26 +38,7 @@ def setup_supabase_client():
         print(f"Error initializing Supabase client: {e}")
         return None
 
-def setup_driver():
-    try:
-        options = uc.ChromeOptions()
-        options.add_argument("--headless=new")  # Use new headless mode
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-popup-blocking")
-        
-        # Add user agent to avoid detection
-        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        
-        # Let undetected-chromedriver handle versioning automatically
-        driver = uc.Chrome(options=options) 
-        return driver
-    except Exception as e:
-        print(f"Error setting up driver: {e}")
-        return None
+
 
 def parse_date(date_str, time_str):
     # Diretta format example: "29.11. 20:00" or "01.12. 12:15"
@@ -338,19 +330,33 @@ def get_next_fixtures(supabase):
     except Exception as e:
         print(f"Error fetching next fixtures: {e}")
 
+import argparse
+
 def scrape_fixtures():
+    parser = argparse.ArgumentParser(description="Scrape fixtures for a specific league.")
+    parser.add_argument("league", nargs="?", help="League to scrape (serieb, eredivisie, laliga)")
+    args = parser.parse_args()
+
     supabase = setup_supabase_client()
     if not supabase:
         return
 
     leagues = [
-        {"name": "La Liga", "url": "https://www.diretta.it/calcio/spagna/laliga/calendario/"},
-        {"name": "Eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/calendario/"}
+        {"name": "La Liga", "key": "laliga", "url": "https://www.diretta.it/calcio/spagna/laliga/calendario/"},
+        {"name": "Eredivisie", "key": "eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/calendario/"},
+        {"name": "Serie B", "key": "serieb", "url": "https://www.diretta.it/calcio/italia/serie-b/calendario/"}
     ]
+    
+    target_leagues = leagues
+    if args.league:
+        target_leagues = [l for l in leagues if l["key"] == args.league.lower() or l["name"].lower() == args.league.lower()]
+        if not target_leagues:
+            print(f"League '{args.league}' not found. Available: {[l['key'] for l in leagues]}")
+            return
 
-    for league in leagues:
+    for league in target_leagues:
         print(f"\n--- Scraping {league['name']} ---")
-        driver = setup_driver()
+        driver = make_driver()
         if not driver:
             print("Failed to initialize driver. Skipping.")
             continue
