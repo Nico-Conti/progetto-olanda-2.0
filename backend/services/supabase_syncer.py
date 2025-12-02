@@ -246,6 +246,8 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
             league = "eredivisie" # Default
             if "laliga" in json_path.lower():
                 league = "La Liga"
+            elif "serieb" in json_path.lower():
+                league = "Serie B"
             elif "eredivisie" in json_path.lower():
                 league = "Eredivisie"
             
