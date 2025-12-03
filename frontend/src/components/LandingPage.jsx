@@ -1,8 +1,10 @@
 import React from 'react';
-import { Flame, Trophy, ArrowRight, Zap } from 'lucide-react';
+import { Flame, Trophy, ArrowRight, Zap, X, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import ToggleSwitch from './ui/ToggleSwitch';
 
 const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners, onOpenHighestWinningFactor }) => {
+    const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
+
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden">
             {/* Animation Toggle */}
@@ -35,50 +37,101 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                         </p>
                     </div>
 
-                    {/* League Selection */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto">
-                        {availableLeagues.map((leagueName, index) => {
-                            const leagueObj = leaguesData?.find(l => l.name === leagueName);
-                            const logoUrl = leagueObj?.logo_url;
+                    {/* League Selection - Horizontal Scroll with Controls */}
+                    <div className="w-full max-w-5xl mx-auto relative group/scroll px-4 md:px-0">
+                        <div className="flex items-center gap-4">
 
-                            return (
-                                <button
-                                    key={leagueName}
-                                    onClick={() => onSelectLeague(leagueName)}
-                                    style={{ animationDelay: `${(index + 1) * 100}ms` }}
-                                    className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 animate-waterfall"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center border border-zinc-200 group-hover:border-emerald-500/30 transition-colors overflow-hidden">
-                                            {logoUrl ? (
-                                                <img src={logoUrl} alt={leagueName} className="w-8 h-8 object-contain" />
-                                            ) : (
-                                                <Trophy className="w-6 h-6 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
-                                            )}
-                                        </div>
-                                        <div className="text-left">
-                                            <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors capitalize">
+                            {/* Left Scroll Button */}
+                            <button
+                                onClick={() => {
+                                    const container = document.getElementById('league-scroll-container');
+                                    if (container) container.scrollBy({ left: -300, behavior: 'smooth' });
+                                }}
+                                className="hidden md:flex p-3 rounded-full bg-zinc-900/80 border border-white/10 hover:bg-zinc-800 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all hover:scale-110 z-20"
+                            >
+                                <ChevronLeft className="w-6 h-6" />
+                            </button>
+
+                            {/* Scrollable Container */}
+                            <div
+                                id="league-scroll-container"
+                                className="flex-grow overflow-x-auto flex gap-3 pb-4 pt-2 px-1 snap-x scrollbar-hide mask-linear-fade"
+                            >
+                                {availableLeagues.map((leagueName, index) => {
+                                    const leagueObj = leaguesData?.find(l => l.name === leagueName);
+                                    const logoUrl = leagueObj?.logo_url;
+                                    const countryFlag = leagueObj?.country_flag;
+
+                                    return (
+                                        <button
+                                            key={leagueName}
+                                            onClick={() => onSelectLeague(leagueName)}
+                                            style={{ animationDelay: `${(index + 1) * 100}ms` }}
+                                            className="flex-shrink-0 w-48 snap-center group relative flex flex-col items-center justify-center p-4 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-xl transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:-translate-y-1 animate-waterfall"
+                                        >
+                                            <div className="relative">
+                                                <div className="w-12 h-12 mb-3 rounded-lg bg-white flex items-center justify-center border border-zinc-200 group-hover:border-emerald-500/30 transition-colors overflow-hidden">
+                                                    {logoUrl ? (
+                                                        <img src={logoUrl} alt={leagueName} className="w-8 h-8 object-contain" />
+                                                    ) : (
+                                                        <Trophy className="w-6 h-6 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
+                                                    )}
+                                                </div>
+                                                {countryFlag && (
+                                                    <img
+                                                        src={countryFlag}
+                                                        alt="Flag"
+                                                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-zinc-900 object-cover shadow-sm"
+                                                    />
+                                                )}
+                                            </div>
+                                            <h3 className="text-base font-bold text-white group-hover:text-emerald-300 transition-colors capitalize">
                                                 {leagueName}
                                             </h3>
-                                            <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">View Stats</span>
-                                        </div>
-                                    </div>
-                                    <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-emerald-400 transform group-hover:translate-x-1 transition-all" />
-                                </button>
-                            );
-                        })}
+                                            <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400 mt-1">View Stats</span>
+                                        </button>
+                                    );
+                                })}
 
-                        {availableLeagues.length === 0 && (
-                            <div className="col-span-full p-8 text-zinc-500 bg-white/5 rounded-2xl border border-white/5 border-dashed animate-waterfall">
-                                No leagues found. Activate Backend server.
+                                {availableLeagues.length === 0 && (
+                                    <div className="w-full p-8 text-zinc-500 bg-white/5 rounded-2xl border border-white/5 border-dashed animate-waterfall">
+                                        No leagues found. Activate Backend server.
+                                    </div>
+                                )}
                             </div>
-                        )}
+
+                            {/* Right Scroll Button */}
+                            <button
+                                onClick={() => {
+                                    const container = document.getElementById('league-scroll-container');
+                                    if (container) container.scrollBy({ left: 300, behavior: 'smooth' });
+                                }}
+                                className="hidden md:flex p-3 rounded-full bg-zinc-900/80 border border-white/10 hover:bg-zinc-800 hover:border-emerald-500/50 text-zinc-400 hover:text-emerald-400 transition-all hover:scale-110 z-20"
+                            >
+                                <ChevronRight className="w-6 h-6" />
+                            </button>
+
+                            {/* All Button - Fixed Outside */}
+                            <div className="h-full flex items-center pl-2 border-l border-white/10">
+                                <button
+                                    onClick={() => setIsLeagueModalOpen(true)}
+                                    className="flex flex-col items-center justify-center p-4 w-20 h-full bg-zinc-900/30 hover:bg-zinc-800/50 border border-white/5 hover:border-white/20 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-waterfall"
+                                    style={{ animationDelay: `${(availableLeagues.length + 1) * 100}ms` }}
+                                >
+                                    <div className="w-10 h-10 mb-2 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/30 transition-colors">
+                                        <List className="w-5 h-5 text-zinc-400 group-hover:text-white transition-colors" />
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-300">All</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
 
                     {/* Feature Buttons */}
                     <div
                         className="w-full max-w-4xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-waterfall"
-                        style={{ animationDelay: `${(availableLeagues.length + 1) * 100}ms` }}
+                        style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms` }}
                     >
                         <button
                             onClick={onOpenTopCorners}
@@ -122,10 +175,64 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
             {/* Footer */}
             <div
                 className="py-8 text-center text-zinc-600 text-xs font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
-                style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms`, animationFillMode: 'backwards' }}
+                style={{ animationDelay: `${(availableLeagues.length + 3) * 100}ms`, animationFillMode: 'backwards' }}
             >
                 Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, Gabri Robot drago del k-means
             </div>
+
+            {/* League Selection Modal */}
+            {isLeagueModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-zinc-900 border border-white/10 rounded-3xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-white">Select League</h2>
+                            <button
+                                onClick={() => setIsLeagueModalOpen(false)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X className="w-6 h-6 text-zinc-400 hover:text-white" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {availableLeagues.map((leagueName) => {
+                                const leagueObj = leaguesData?.find(l => l.name === leagueName);
+                                const logoUrl = leagueObj?.logo_url;
+                                const countryFlag = leagueObj?.country_flag;
+                                return (
+                                    <button
+                                        key={leagueName}
+                                        onClick={() => {
+                                            onSelectLeague(leagueName);
+                                            setIsLeagueModalOpen(false);
+                                        }}
+                                        className="group relative flex flex-col items-center justify-center p-4 bg-zinc-800/50 hover:bg-zinc-700/80 border border-white/5 hover:border-emerald-500/50 rounded-xl transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                                    >
+                                        <div className="relative">
+                                            <div className="w-12 h-12 mb-3 rounded-lg bg-white flex items-center justify-center border border-zinc-200 group-hover:border-emerald-500/30 transition-colors overflow-hidden">
+                                                {logoUrl ? (
+                                                    <img src={logoUrl} alt={leagueName} className="w-8 h-8 object-contain" />
+                                                ) : (
+                                                    <Trophy className="w-6 h-6 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
+                                                )}
+                                            </div>
+                                            {countryFlag && (
+                                                <img
+                                                    src={countryFlag}
+                                                    alt="Flag"
+                                                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-zinc-800 object-cover shadow-sm"
+                                                />
+                                            )}
+                                        </div>
+                                        <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors capitalize text-center">
+                                            {leagueName}
+                                        </h3>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
