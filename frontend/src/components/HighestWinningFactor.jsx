@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, Trophy } from 'lucide-react';
+import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, Trophy, X } from 'lucide-react';
 import StatisticSelector from './StatisticSelector';
 import ToggleSwitch from './ui/ToggleSwitch';
 import { processData } from '../utils/stats';
@@ -39,7 +39,7 @@ const STAT_CONFIG = {
     },
 };
 
-const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, teamLogos, bets, addToBet, onOpenBetSlip }) => {
+const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, teamLogos, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
     const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
     const [operator, setOperator] = useState('over');
@@ -590,14 +590,24 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                                                     <button
                                                         onClick={() => {
                                                             const opt = operator === 'over' ? 'O' : 'U';
-                                                            addToBet(team.team, opt, threshold, selectedStatistic);
+                                                            const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === opt && b.value === threshold);
+
+                                                            if (isAdded) {
+                                                                removeFromBet(team.team);
+                                                            } else {
+                                                                addToBet(team.team, opt, threshold, selectedStatistic);
+                                                            }
                                                         }}
                                                         className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
-                                                            ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                                            ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                                                             : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
                                                             }`}
                                                     >
-                                                        <Plus className={`w-4 h-4 ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? 'rotate-45' : ''} transition-transform`} />
+                                                        {bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? (
+                                                            <X className="w-4 h-4" />
+                                                        ) : (
+                                                            <Plus className="w-4 h-4 transition-transform" />
+                                                        )}
                                                     </button>
                                                 </td>
                                             </tr>

@@ -168,6 +168,7 @@ export default function App() {
             teamLogos={teamLogos}
             bets={bets}
             addToBet={addToBet}
+            removeFromBet={removeFromBet}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
           />
         </div>
