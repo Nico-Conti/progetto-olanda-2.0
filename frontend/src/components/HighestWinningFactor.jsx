@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, Trophy } from 'lucide-react';
 import StatisticSelector from './StatisticSelector';
+import ToggleSwitch from './ui/ToggleSwitch';
 import { processData } from '../utils/stats';
 
 const STAT_CONFIG = {
@@ -38,7 +39,7 @@ const STAT_CONFIG = {
     },
 };
 
-const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos }) => {
+const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, teamLogos, bets, addToBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
     const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
     const [operator, setOperator] = useState('over');
@@ -177,6 +178,27 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                         <h1 className="text-lg font-black tracking-tight text-white leading-none">
                             Highest <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Winning Factor</span>
                         </h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onOpenBetSlip}
+                            className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition-all group"
+                        >
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                {bets?.length || 0}
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </button>
+                        <ToggleSwitch
+                            isOn={isAnimationEnabled}
+                            onToggle={onToggleAnimation}
+                        />
                     </div>
                 </div>
             </nav>
@@ -512,6 +534,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                             <th className="px-6 py-4">Team</th>
                                             <th className="px-6 py-4 text-center">Record</th>
                                             <th className="px-6 py-4 text-center">Win Rate</th>
+                                            <th className="px-6 py-4 text-center">Add to Slip</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
@@ -562,6 +585,20 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, matchData, teamLogos
                                                             </span>
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => {
+                                                            const opt = operator === 'over' ? 'O' : 'U';
+                                                            addToBet(team.team, opt, threshold, selectedStatistic);
+                                                        }}
+                                                        className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
+                                                            ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                                                            : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        <Plus className={`w-4 h-4 ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? 'rotate-45' : ''} transition-transform`} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}

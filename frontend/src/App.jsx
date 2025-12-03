@@ -163,8 +163,12 @@ export default function App() {
           <HighestWinningFactor
             onBack={() => handleViewChange('landing')}
             isAnimationEnabled={isAnimationEnabled}
+            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             matchData={matchData}
             teamLogos={teamLogos}
+            bets={bets}
+            addToBet={addToBet}
+            onOpenBetSlip={() => setIsBetSlipOpen(true)}
           />
         </div>
       )}
