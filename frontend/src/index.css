@@ -26,9 +26,45 @@
     .text-gradient {
         @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400;
     }
-    
+
     .animate-float {
         animation: float 20s infinite ease-in-out;
+    }
+
+    .animate-waterfall {
+        animation: waterfall 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    }
+
+    /* Fire Effect */
+    .hover-fire:hover {
+        @apply border-orange-500/50 bg-zinc-800/90;
+        box-shadow: 0 0 30px rgba(249, 115, 22, 0.2);
+    }
+
+    .fire-particle {
+        @apply absolute bottom-0 left-1/2 rounded-full pointer-events-none opacity-0;
+        background: radial-gradient(circle, rgba(255, 200, 0, 1) 0%, rgba(255, 80, 0, 0.8) 60%, transparent 100%);
+        transform: translateX(-50%);
+    }
+
+    .group:hover .fire-particle {
+        animation: rise-fire 1s ease-out infinite;
+    }
+
+    /* Lightning Effect */
+    .hover-lightning:hover {
+        @apply border-purple-500/50 bg-zinc-800/90;
+        box-shadow: 0 0 30px rgba(168, 85, 247, 0.2);
+    }
+
+    .lightning-bolt {
+        @apply absolute bottom-0 left-1/2 pointer-events-none opacity-0;
+        transform: translateX(-50%);
+        filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.8));
+    }
+
+    .group:hover .lightning-bolt {
+        animation: rise-lightning 1.5s ease-out infinite;
     }
 }
 
@@ -36,11 +72,58 @@
     0% {
         transform: translateY(0) rotate(0deg);
     }
+
     50% {
         transform: translateY(-100px) rotate(180deg);
     }
+
     100% {
         transform: translateY(0) rotate(360deg);
+    }
+}
+
+@keyframes waterfall {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rise-fire {
+    0% {
+        transform: translateX(-50%) translateY(20%) scale(0.5);
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(calc(-50% + var(--tx))) translateY(-150%) scale(0);
+        opacity: 0;
+    }
+}
+
+@keyframes rise-lightning {
+    0% {
+        transform: translateX(-50%) translateY(20%) scale(0.3) rotate(var(--rot));
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+        transform: translateX(calc(-50% + var(--tx) * 0.2)) translateY(0) scale(1) rotate(var(--rot));
+    }
+
+    100% {
+        transform: translateX(calc(-50% + var(--tx))) translateY(-150%) scale(0.5) rotate(var(--rot));
+        opacity: 0;
     }
 }
 
@@ -59,28 +142,12 @@
 }
 
 /* Hide number input spinners */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; 
-  margin: 0; 
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
+
 input[type=number] {
-  -moz-appearance: textfield;
-}
-
-@layer utilities {
-    .animate-waterfall {
-        animation: waterfall 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-    }
-}
-
-@keyframes waterfall {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    -moz-appearance: textfield;
 }

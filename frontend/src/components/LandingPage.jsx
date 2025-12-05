@@ -130,14 +130,31 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-4xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-waterfall"
+                        className="w-full max-w-xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-10 animate-waterfall"
                         style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms` }}
                     >
                         <button
                             onClick={onOpenTopCorners}
-                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-emerald-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:-translate-y-1"
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 border border-white/10 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover-fire overflow-visible"
                         >
-                            <div className="flex items-center gap-4">
+                            {/* Fire Effect */}
+                            <div className="absolute inset-x-0 -top-10 bottom-0 pointer-events-none overflow-visible">
+                                {[...Array(12)].map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className="fire-particle w-8 h-8"
+                                        style={{
+                                            '--tx': `${(Math.random() - 0.5) * 100}px`,
+                                            animationDelay: `${Math.random() * 0.5}s`,
+                                            animationDuration: `${0.8 + Math.random() * 0.5}s`,
+                                            left: `${30 + Math.random() * 40}%`
+                                        }}
+                                    />
+                                ))}
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-orange-500/20 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            </div>
+
+                            <div className="flex items-center gap-4 relative z-10">
                                 <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 group-hover:border-orange-500/50 transition-colors">
                                     <Flame className="w-6 h-6 text-orange-500 group-hover:text-orange-400 transition-colors" />
                                 </div>
@@ -148,14 +165,36 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">Best Matchups</span>
                                 </div>
                             </div>
-                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-orange-400 transform group-hover:translate-x-1 transition-all" />
+                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-orange-400 transform group-hover:translate-x-1 transition-all relative z-10" />
                         </button>
 
                         <button
                             onClick={onOpenHighestWinningFactor}
-                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-purple-500/50 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:-translate-y-1"
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 border border-white/10 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover-lightning overflow-visible"
                         >
-                            <div className="flex items-center gap-4">
+                            {/* Lightning Effect */}
+                            <div className="absolute inset-x-0 -top-10 bottom-0 pointer-events-none overflow-visible">
+                                {[...Array(12)].map((_, i) => (
+                                    <svg
+                                        key={i}
+                                        className="lightning-bolt w-8 h-8 text-purple-400"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        style={{
+                                            '--tx': `${(Math.random() - 0.5) * 150}px`,
+                                            '--rot': `${(Math.random() - 0.5) * 60}deg`,
+                                            animationDelay: `${Math.random() * 0.5}s`,
+                                            animationDuration: `${0.8 + Math.random() * 0.5}s`,
+                                            left: `${30 + Math.random() * 40}%`
+                                        }}
+                                    >
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                                    </svg>
+                                ))}
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-purple-500/20 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            </div>
+
+                            <div className="flex items-center gap-4 relative z-10">
                                 <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:border-purple-500/50 transition-colors">
                                     <Zap className="w-6 h-6 text-purple-500 group-hover:text-purple-400 transition-colors" />
                                 </div>
@@ -166,7 +205,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">Bet Analysis</span>
                                 </div>
                             </div>
-                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all" />
+                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all relative z-10" />
                         </button>
                     </div>
                 </div>
