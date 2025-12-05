@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, Calculator, ChevronDown, Plus, Minus, Trophy, X } from 'lucide-react';
-import StatisticSelector from './StatisticSelector';
-import ToggleSwitch from './ui/ToggleSwitch';
+import React, { useState, useEffect, useMemo } from 'react';
+import Header from './Header';
+import ConfigurationPanel from './highest-winning-factor/ConfigurationPanel';
+import ResultsList from './highest-winning-factor/ResultsList';
 import { processData } from '../utils/stats';
 
 const STAT_CONFIG = {
@@ -39,6 +39,8 @@ const STAT_CONFIG = {
     },
 };
 
+import StatisticSelector from './StatisticSelector';
+
 const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, teamLogos, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
     const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
@@ -46,46 +48,13 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
     const [threshold, setThreshold] = useState(STAT_CONFIG['corners'].total.default);
     const [nGames, setNGames] = useState(5);
     const [displayLimit, setDisplayLimit] = useState(5);
-    const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-    const [isHistorySelectorOpen, setIsHistorySelectorOpen] = useState(false);
-    const [isTeamNumberSelectorOpen, setIsTeamNumberSelectorOpen] = useState(false);
     const [selectedLeague, setSelectedLeague] = useState('All');
-    const [isLeagueSelectorOpen, setIsLeagueSelectorOpen] = useState(false);
-    const selectorRef = useRef(null);
-    const historySelectorRef = useRef(null);
-    const teamNumberSelectorRef = useRef(null);
-    const leagueSelectorRef = useRef(null);
 
     // Update threshold when statistic or mode changes
     useEffect(() => {
         const config = STAT_CONFIG[selectedStatistic] || { total: { default: 0.5 }, individual: { default: 0.5 } };
         setThreshold(config[analysisMode].default);
     }, [selectedStatistic, analysisMode]);
-
-    // Close selector when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (selectorRef.current && !selectorRef.current.contains(event.target)) {
-                setIsSelectorOpen(false);
-            }
-            if (historySelectorRef.current && !historySelectorRef.current.contains(event.target)) {
-                setIsHistorySelectorOpen(false);
-            }
-            if (teamNumberSelectorRef.current && !teamNumberSelectorRef.current.contains(event.target)) {
-                setIsTeamNumberSelectorOpen(false);
-            }
-            if (leagueSelectorRef.current && !leagueSelectorRef.current.contains(event.target)) {
-                setIsLeagueSelectorOpen(false);
-            }
-        };
-
-        if (isSelectorOpen || isHistorySelectorOpen || isTeamNumberSelectorOpen || isLeagueSelectorOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isSelectorOpen, isHistorySelectorOpen, isTeamNumberSelectorOpen, isLeagueSelectorOpen]);
 
     // Helper to adjust threshold
     const adjustThreshold = (delta) => {
@@ -161,469 +130,78 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
         return Math.max(0, ...Object.values(counts));
     }, [matchData]);
 
+    const appTitle = (
+        <h1 className="text-lg font-black tracking-tight text-white leading-none">
+            Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
+        </h1>
+    );
+
+    const pageName = (
+        <h1 className="text-lg font-black tracking-tight text-white leading-none">
+            Malissimo<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Pisello</span>
+        </h1>
+    );
+
     return (
         <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
             {/* Navbar */}
-            <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={onBack}
-                            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                            <span className="font-bold text-sm uppercase tracking-wide">Back</span>
-                        </button>
-                        <div className="h-6 w-px bg-white/10"></div>
-                        <h1 className="text-lg font-black tracking-tight text-white leading-none">
-                            Highest <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Winning Factor</span>
-                        </h1>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={onOpenBetSlip}
-                            className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition-all group"
-                        >
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                                {bets?.length || 0}
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                <polyline points="10 9 9 9 8 9"></polyline>
-                            </svg>
-                        </button>
-                        <ToggleSwitch
-                            isOn={isAnimationEnabled}
-                            onToggle={onToggleAnimation}
-                        />
-                    </div>
-                </div>
-            </nav>
+            <Header
+                title={appTitle}
+                onLogoClick={onBack}
+                showSound={true}
+                showAnimationToggle={true}
+                isAnimationEnabled={isAnimationEnabled}
+                onToggleAnimation={onToggleAnimation}
+                pageName={pageName}
+                showBetSlip={true}
+                betsCount={bets.length}
+                onOpenBetSlip={onOpenBetSlip}
+            >
+                <StatisticSelector
+                    value={selectedStatistic}
+                    onChange={(e) => setSelectedStatistic(e.target.value)}
+                    className="w-[180px]"
+                />
+            </Header>
 
             <main className="max-w-7xl mx-auto px-4 md:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Configuration Panel */}
                     <div className="lg:col-span-4 space-y-6">
-                        <div className="glass-panel p-6 rounded-2xl border border-white/10 sticky top-24">
-                            <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-                                <Calculator className="w-5 h-5 text-purple-400" />
-                                Configuration
-                            </h2>
-
-                            <div className="space-y-6">
-                                {/* Section 1: Analysis Scope */}
-                                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Analysis Scope</h3>
-
-                                    {/* League Selection */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">League</label>
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => setIsLeagueSelectorOpen(!isLeagueSelectorOpen)}
-                                                className="w-full h-10 flex items-center justify-between px-3 bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
-                                            >
-                                                <span className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
-                                                    {selectedLeague}
-                                                </span>
-                                                <ChevronDown className="w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
-                                            </button>
-
-                                            {isLeagueSelectorOpen && (
-                                                <div
-                                                    ref={leagueSelectorRef}
-                                                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-60 overflow-y-auto"
-                                                >
-                                                    <div className="flex flex-col gap-1">
-                                                        {availableLeagues.map((league) => (
-                                                            <button
-                                                                key={league}
-                                                                onClick={() => {
-                                                                    setSelectedLeague(league);
-                                                                    setIsLeagueSelectorOpen(false);
-                                                                }}
-                                                                className={`p-2 rounded-md font-bold text-xs text-left transition-all ${selectedLeague === league
-                                                                    ? 'bg-purple-500 text-white shadow-lg'
-                                                                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                                                                    }`}
-                                                            >
-                                                                {league}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Mode Selection */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Mode</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={() => setAnalysisMode('total')}
-                                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'total'
-                                                    ? 'bg-blue-500 text-white shadow-lg'
-                                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                    }`}
-                                            >
-                                                Match Total
-                                            </button>
-                                            <button
-                                                onClick={() => setAnalysisMode('individual')}
-                                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'individual'
-                                                    ? 'bg-purple-500 text-white shadow-lg'
-                                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                    }`}
-                                            >
-                                                Team Stats
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Section 2: Winning Criteria */}
-                                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Winning Criteria</h3>
-
-                                    {/* Statistic Selection */}
-                                    <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Statistic</label>
-                                        <StatisticSelector
-                                            value={selectedStatistic}
-                                            onChange={(e) => setSelectedStatistic(e.target.value)}
-                                            className="w-full"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {/* Operator Selection */}
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => setOperator('over')}
-                                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'over'
-                                                        ? 'bg-emerald-500 text-white shadow-lg'
-                                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                        }`}
-                                                >
-                                                    Over
-                                                </button>
-                                                <button
-                                                    onClick={() => setOperator('under')}
-                                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'under'
-                                                        ? 'bg-red-500 text-white shadow-lg'
-                                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                                        }`}
-                                                >
-                                                    Under
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Threshold Selection */}
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Threshold</label>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => adjustThreshold(-currentConfig.step)}
-                                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                                >
-                                                    <Minus className="w-4 h-4" />
-                                                </button>
-
-                                                <div className="relative flex-grow">
-                                                    <button
-                                                        onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                                                        className="w-full h-10 flex items-center justify-center bg-zinc-950 rounded-lg border border-white/10 hover:border-purple-500/50 transition-colors group"
-                                                    >
-                                                        <span className="text-xl font-black text-white font-mono group-hover:text-purple-400 transition-colors">
-                                                            {threshold}
-                                                        </span>
-                                                        <ChevronDown className="absolute right-3 w-4 h-4 text-zinc-600 group-hover:text-purple-400" />
-                                                    </button>
-
-                                                    {isSelectorOpen && (
-                                                        <div
-                                                            ref={selectorRef}
-                                                            className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-200"
-                                                        >
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {currentConfig.options.map((opt) => (
-                                                                    <button
-                                                                        key={opt}
-                                                                        onClick={() => {
-                                                                            setThreshold(opt);
-                                                                            setIsSelectorOpen(false);
-                                                                        }}
-                                                                        className={`p-2 rounded-md font-bold text-xs transition-all ${threshold === opt
-                                                                            ? 'bg-purple-500 text-white shadow-lg'
-                                                                            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                                                                            }`}
-                                                                    >
-                                                                        {opt}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    onClick={() => adjustThreshold(currentConfig.step)}
-                                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                                >
-                                                    <Plus className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <ConfigurationPanel
+                            selectedLeague={selectedLeague}
+                            setSelectedLeague={setSelectedLeague}
+                            availableLeagues={availableLeagues}
+                            analysisMode={analysisMode}
+                            setAnalysisMode={setAnalysisMode}
+                            selectedStatistic={selectedStatistic}
+                            setSelectedStatistic={setSelectedStatistic}
+                            operator={operator}
+                            setOperator={setOperator}
+                            threshold={threshold}
+                            setThreshold={setThreshold}
+                            adjustThreshold={adjustThreshold}
+                            currentConfig={currentConfig}
+                        />
                     </div>
 
                     {/* Results List */}
                     <div className="lg:col-span-8">
-                        <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden">
-                            <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <h2 className="text-xl font-black text-white flex items-center gap-2">
-                                        <Trophy className="w-5 h-5 text-yellow-500" />
-                                        Top
-                                    </h2>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => {
-                                                setDisplayLimit(prev => Math.max(1, prev - 1));
-                                            }}
-                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Minus className="w-3 h-3" />
-                                        </button>
-
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => setIsTeamNumberSelectorOpen(!isTeamNumberSelectorOpen)}
-                                                className="h-8 px-3 flex items-center justify-center gap-2 bg-zinc-950 rounded-md border border-white/10 hover:border-purple-500/50 transition-colors group min-w-[60px]"
-                                            >
-                                                <span className="text-sm font-bold text-white font-mono group-hover:text-purple-400 transition-colors">
-                                                    {displayLimit}
-                                                </span>
-                                                <ChevronDown className="w-3 h-3 text-zinc-600 group-hover:text-purple-400" />
-                                            </button>
-
-                                            {isTeamNumberSelectorOpen && (
-                                                <div
-                                                    ref={teamNumberSelectorRef}
-                                                    className="absolute top-full left-0 mt-2 w-40 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200"
-                                                >
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[5, 10, 15, 20].map((n) => (
-                                                            <button
-                                                                key={n}
-                                                                onClick={() => {
-                                                                    setDisplayLimit(n);
-                                                                    setIsTeamNumberSelectorOpen(false);
-                                                                }}
-                                                                className={`p-2 rounded-md font-bold text-xs transition-all ${displayLimit === n
-                                                                    ? 'bg-purple-500 text-white shadow-lg'
-                                                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                                                                    }`}
-                                                            >
-                                                                {n}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            onClick={() => {
-                                                setDisplayLimit(prev => Math.min(20, prev + 1));
-                                            }}
-                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Plus className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                    <h2 className="text-xl font-black text-white">
-                                        Teams
-                                    </h2>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-2">
-                                        Last Games:
-                                    </span>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => {
-                                                setNGames(prev => {
-                                                    const val = prev === 'all' ? maxGames : prev;
-                                                    return Math.max(1, val - 1);
-                                                });
-                                            }}
-                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Minus className="w-3 h-3" />
-                                        </button>
-
-                                        <div className="relative">
-                                            <button
-                                                onClick={() => setIsHistorySelectorOpen(!isHistorySelectorOpen)}
-                                                className="h-8 px-3 flex items-center justify-center gap-2 bg-zinc-950 rounded-md border border-white/10 hover:border-purple-500/50 transition-colors group min-w-[80px]"
-                                            >
-                                                <span className="text-sm font-bold text-white font-mono group-hover:text-purple-400 transition-colors">
-                                                    {nGames === 'all' ? 'Season' : nGames}
-                                                </span>
-                                                <ChevronDown className="w-3 h-3 text-zinc-600 group-hover:text-purple-400" />
-                                            </button>
-
-                                            {isHistorySelectorOpen && (
-                                                <div
-                                                    ref={historySelectorRef}
-                                                    className="absolute top-full right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200"
-                                                >
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[3, 5, 10, 'all'].map((n) => (
-                                                            <button
-                                                                key={n}
-                                                                onClick={() => {
-                                                                    setNGames(n);
-                                                                    setIsHistorySelectorOpen(false);
-                                                                }}
-                                                                className={`p-2 rounded-md font-bold text-xs transition-all ${nGames === n
-                                                                    ? 'bg-purple-500 text-white shadow-lg'
-                                                                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                                                                    }`}
-                                                            >
-                                                                {n === 'all' ? 'Season' : n}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            onClick={() => {
-                                                setNGames(prev => {
-                                                    if (prev === 'all') return 'all';
-                                                    if (prev + 1 >= maxGames) return 'all';
-                                                    return prev + 1;
-                                                });
-                                            }}
-                                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
-                                        >
-                                            <Plus className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
-                                        <tr>
-                                            <th className="px-6 py-4 text-center w-16">Rank</th>
-                                            <th className="px-6 py-4">Team</th>
-                                            <th className="px-6 py-4 text-center">Record</th>
-                                            <th className="px-6 py-4 text-center">Win Rate</th>
-                                            <th className="px-6 py-4 text-center">Add to Slip</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {rankedTeams.slice(0, displayLimit).map((team, index) => (
-                                            <tr key={team.team} className="hover:bg-white/[0.02] transition-colors group">
-                                                <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
-                                                    #{index + 1}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <img
-                                                            src={teamLogos[team.team]}
-                                                            alt={team.team}
-                                                            className="w-8 h-8 object-contain"
-                                                        />
-                                                        <span className="font-bold text-white text-lg group-hover:text-purple-400 transition-colors">
-                                                            {team.team}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="font-mono font-bold text-zinc-300 bg-zinc-900 px-3 py-1 rounded-md border border-white/5">
-                                                        {team.winCount} / {team.totalGames}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                                            <div
-                                                                className={`h-full rounded-full ${team.winRate >= 80 ? 'bg-emerald-500' :
-                                                                    team.winRate >= 60 ? 'bg-emerald-400' :
-                                                                        team.winRate >= 40 ? 'bg-yellow-500' :
-                                                                            'bg-red-500'
-                                                                    }`}
-                                                                style={{ width: `${team.winRate}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <div className="flex flex-col items-center">
-                                                            <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
-                                                                team.winRate >= 60 ? 'text-emerald-400' :
-                                                                    team.winRate >= 40 ? 'text-yellow-500' :
-                                                                        'text-red-500'
-                                                                }`}>
-                                                                {team.winRate.toFixed(0)}%
-                                                            </span>
-                                                            <span className="text-xs font-mono text-zinc-500 font-bold">
-                                                                @{team.winRate > 0 ? (100 / team.winRate).toFixed(2) : '-'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button
-                                                        onClick={() => {
-                                                            const opt = operator === 'over' ? 'O' : 'U';
-                                                            const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === opt && b.value === threshold);
-
-                                                            if (isAdded) {
-                                                                removeFromBet(team.team);
-                                                            } else {
-                                                                addToBet(team.team, opt, threshold, selectedStatistic);
-                                                            }
-                                                        }}
-                                                        className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
-                                                            ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-                                                            : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        {bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? (
-                                                            <X className="w-4 h-4" />
-                                                        ) : (
-                                                            <Plus className="w-4 h-4 transition-transform" />
-                                                        )}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-
-                                        {rankedTeams.length === 0 && (
-                                            <tr>
-                                                <td colSpan="4" className="px-6 py-12 text-center text-zinc-500">
-                                                    No data available for the selected criteria.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <ResultsList
+                            rankedTeams={rankedTeams}
+                            displayLimit={displayLimit}
+                            setDisplayLimit={setDisplayLimit}
+                            nGames={nGames}
+                            setNGames={setNGames}
+                            maxGames={maxGames}
+                            teamLogos={teamLogos}
+                            bets={bets}
+                            addToBet={addToBet}
+                            removeFromBet={removeFromBet}
+                            selectedStatistic={selectedStatistic}
+                            operator={operator}
+                            threshold={threshold}
+                        />
                     </div>
                 </div>
             </main>
