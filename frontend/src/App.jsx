@@ -29,6 +29,9 @@ export default function App() {
   const [pendingLeague, setPendingLeague] = useState(undefined);
   const [pendingView, setPendingView] = useState(null);
   const [matchStatistics, setMatchStatistics] = useState({});
+  const [preSelectedMatch, setPreSelectedMatch] = useState(null);
+  const [backView, setBackView] = useState('hot-matches');
+  const [backLabel, setBackLabel] = useState('Back to Hot Matches');
 
   // Bet Slip State
   const [bets, setBets] = useState([]);
@@ -178,11 +181,27 @@ export default function App() {
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             matchData={matchData}
+            fixturesData={fixturesData}
             teamLogos={teamLogos}
             bets={bets}
             addToBet={addToBet}
             removeFromBet={removeFromBet}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
+            onMatchClick={(match) => {
+              setPreSelectedMatch(match);
+              setBackView('highest-winning-factor');
+              setBackLabel('Back to Winning Factor');
+              if (isAnimationEnabled) {
+                setPendingLeague(match.league);
+                setPendingTab('predictor');
+                setPendingView('dashboard');
+                setIsAnimating(true);
+              } else {
+                setSelectedLeague(match.league);
+                setActiveTab('predictor');
+                setView('dashboard');
+              }
+            }}
           />
         </div>
       )}
@@ -198,6 +217,21 @@ export default function App() {
             selectedStatistic={selectedStatistic}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
+            onMatchClick={(match) => {
+              setPreSelectedMatch(match);
+              setBackView('hot-matches');
+              setBackLabel('Back to Hot Matches');
+              if (isAnimationEnabled) {
+                setPendingLeague(match.league);
+                setPendingTab('predictor');
+                setPendingView('dashboard');
+                setIsAnimating(true);
+              } else {
+                setSelectedLeague(match.league);
+                setActiveTab('predictor');
+                setView('dashboard');
+              }
+            }}
           />
         </div>
       )}
@@ -339,6 +373,12 @@ export default function App() {
                   setMatchStatistics={setMatchStatistics}
                   addToBet={addToBet}
                   bets={bets}
+                  preSelectedMatch={preSelectedMatch}
+                  onExitPreview={() => {
+                    setPreSelectedMatch(null);
+                    handleViewChange(backView);
+                  }}
+                  backButtonLabel={backLabel}
                 />
               </div>
             )}

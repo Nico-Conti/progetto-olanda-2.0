@@ -41,7 +41,7 @@ const STAT_CONFIG = {
 
 import StatisticSelector from './StatisticSelector';
 
-const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, teamLogos, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
+const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, fixturesData, onMatchClick, teamLogos, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
     const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
     const [operator, setOperator] = useState('over');
@@ -201,6 +201,52 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                             selectedStatistic={selectedStatistic}
                             operator={operator}
                             threshold={threshold}
+                            onTeamClick={(team) => {
+                                if (fixturesData && onMatchClick) {
+                                    // 1. Find all fixtures for this team
+                                    const teamFixtures = fixturesData.filter(f => f.home === team || f.away === team);
+
+                                    // 2. Filter out matches that have already been played (exist in matchData)
+                                    // We use matchData to check if a match is "finished/recorded"
+                                    const unplayedFixtures = teamFixtures.filter(f => {
+                                        const isPlayed = matchData.some(m =>
+                                            ((m.squadre.home === f.home && m.squadre.away === f.away) ||
+                                                (m.squadre.home === f.away && m.squadre.away === f.home)) && // Check both ways just in case specific logic differs
+                                            (m.giornata === f.matchday) // Strict matchday check
+                                        );
+                                        return !isPlayed;
+                                    });
+
+                                    // 3. Sort by matchday to find the "next" one
+                                    unplayedFixtures.sort((a, b) => {
+                                        if (a.matchday && b.matchday) return a.matchday - b.matchday;
+                                        return 0; // Fallback
+                                    });
+
+                                    if (unplayedFixtures.length > 0) {
+                                        const nextMatch = unplayedFixtures[0];
+
+                                        // 4. Check if the match's league is valid (exists in matchData)
+                                        // If not, use the team's primary league from matchData to allow prediction using domestic stats
+                                        const validLeagues = new Set(matchData.map(m => m.league).filter(Boolean));
+
+                                        if (!validLeagues.has(nextMatch.league)) {
+                                            const teamEntry = matchData.find(m => m.squadre.home === team || m.squadre.away === team);
+                                            if (teamEntry && teamEntry.league) {
+                                                console.log(`League mismatch for ${team}. Fixture: ${nextMatch.league}, Using: ${teamEntry.league}`);
+                                                // Create a copy with the valid league
+                                                onMatchClick({ ...nextMatch, league: teamEntry.league });
+                                                return;
+                                            }
+                                        }
+
+                                        onMatchClick(nextMatch);
+                                    } else {
+                                        console.log("No upcoming unplayed matches found for", team);
+                                        // Optional: Show a toast or alert? For now just log.
+                                    }
+                                }
+                            }}
                         />
                     </div>
                 </div>

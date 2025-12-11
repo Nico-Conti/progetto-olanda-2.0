@@ -4,7 +4,7 @@ import { calculatePrediction } from '../utils/stats';
 import StatisticSelector from './StatisticSelector';
 import Header from './Header';
 
-const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack }) => {
+const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
     const [nGames, setNGames] = useState(5);
     const [displayCount, setDisplayCount] = useState(9);
     // 1. Identify upcoming matchday for each league
@@ -149,7 +149,8 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                             <div
                                 key={`${match.home}-${match.away}-${idx}`}
                                 style={{ animationDelay: `${idx * 100}ms` }}
-                                className="glass-panel rounded-xl p-5 border border-white/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden animate-waterfall"
+                                className="glass-panel rounded-xl p-5 border border-white/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden animate-waterfall cursor-pointer"
+                                onClick={() => onMatchClick && onMatchClick(match)}
                             >
                                 {/* Rank Badge */}
                                 <div className="absolute top-0 right-0 bg-zinc-900/80 px-3 py-1.5 rounded-bl-xl border-l border-b border-white/5 font-black text-2xl text-zinc-700 group-hover:text-emerald-500/50 transition-colors">

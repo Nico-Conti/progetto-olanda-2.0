@@ -16,7 +16,8 @@ const ResultsList = ({
     removeFromBet,
     selectedStatistic,
     operator,
-    threshold
+    threshold,
+    onTeamClick
 }) => {
 
     const displayLimitOptions = [5, 10, 15, 20].map(n => ({ value: n, label: n.toString() }));
@@ -118,7 +119,10 @@ const ResultsList = ({
                                     #{index + 1}
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
+                                    <div
+                                        className="flex items-center gap-3 cursor-pointer"
+                                        onClick={() => onTeamClick && onTeamClick(team.team)}
+                                    >
                                         <img
                                             src={teamLogos[team.team]}
                                             alt={team.team}

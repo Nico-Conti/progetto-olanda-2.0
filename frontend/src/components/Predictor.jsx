@@ -19,11 +19,18 @@ const STAT_OPTIONS = [
     { value: 'possession', label: 'Possession' },
 ];
 
-const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, bets }) => {
+const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+
+    // Sync preSelectedMatch
+    useEffect(() => {
+        if (preSelectedMatch) {
+            setSelectedMatch(preSelectedMatch);
+        }
+    }, [preSelectedMatch]);
 
     // Memoize all stats
     const allProcessedStats = useMemo(() => {
@@ -123,11 +130,19 @@ const Predictor = ({ stats: globalStats, fixtures, teams, teamLogos, selectedSta
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <button
-                    onClick={() => setSelectedMatch(null)}
+                    onClick={() => {
+                        if (preSelectedMatch && onExitPreview) {
+                            onExitPreview();
+                        } else {
+                            setSelectedMatch(null);
+                        }
+                    }}
                     className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-2"
                 >
                     <ChevronRight className="w-4 h-4 rotate-180" />
-                    <span className="font-bold text-sm uppercase tracking-wide">Back to Fixtures</span>
+                    <span className="font-bold text-sm uppercase tracking-wide">
+                        {preSelectedMatch ? (backButtonLabel || 'Back to Previous') : 'Back to Fixtures'}
+                    </span>
                 </button>
 
                 {/* Configuration (Sample Size Only) */}
