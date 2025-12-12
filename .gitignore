@@ -36,3 +36,5 @@ env/
 *.pyc
 *.pyd
 *.pyo
+
+backend/*.json
