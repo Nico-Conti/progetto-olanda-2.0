@@ -5,6 +5,7 @@ export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
     const [fixturesData, setFixturesData] = useState([]);
     const [teamLogos, setTeamLogos] = useState({});
+    const [teamIds, setTeamIds] = useState({});
     const [leagues, setLeagues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -13,10 +14,10 @@ export const useMatchData = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                console.log("Fetching data from Backend (localhost:8000)...");
+                console.log("Fetching data from Backend (localhost:8002)...");
 
                 // Fetch Matches
-                const matchesResponse = await fetch('http://localhost:8000/matches');
+                const matchesResponse = await fetch('http://localhost:8002/matches');
                 if (!matchesResponse.ok) {
                     throw new Error(`Error fetching matches: ${matchesResponse.statusText}`);
                 }
@@ -24,7 +25,7 @@ export const useMatchData = () => {
                 console.log("Matches fetched:", matches?.length);
 
                 // Fetch Fixtures
-                const fixturesResponse = await fetch('http://localhost:8000/fixtures');
+                const fixturesResponse = await fetch('http://localhost:8002/fixtures');
                 if (!fixturesResponse.ok) {
                     throw new Error(`Error fetching fixtures: ${fixturesResponse.statusText}`);
                 }
@@ -57,12 +58,14 @@ export const useMatchData = () => {
                 setFixturesData(flatFixtures);
 
                 // Fetch Teams (Logos)
-                const teamsResponse = await fetch('http://localhost:8000/teams');
+                const teamsResponse = await fetch('http://localhost:8002/teams');
                 let teamLogosMap = {};
+                let teamIdsMap = {};
                 if (teamsResponse.ok) {
                     const teams = await teamsResponse.json();
                     teams.forEach(t => {
                         teamLogosMap[t.name] = t.logo_url;
+                        teamIdsMap[t.name] = t.id;
                     });
                 } else {
                     console.error("Failed to fetch teams:", teamsResponse.statusText);
@@ -86,9 +89,10 @@ export const useMatchData = () => {
 
                 setMatchData(formattedData);
                 setTeamLogos(teamLogosMap);
+                setTeamIds(teamIdsMap);
 
                 // Fetch Leagues
-                const leaguesResponse = await fetch('http://localhost:8000/leagues');
+                const leaguesResponse = await fetch('http://localhost:8002/leagues');
                 if (leaguesResponse.ok) {
                     const leaguesData = await leaguesResponse.json();
                     setLeagues(leaguesData);
@@ -107,5 +111,5 @@ export const useMatchData = () => {
         fetchData();
     }, []);
 
-    return { matchData, fixturesData, teamLogos, leagues, loading, error };
+    return { matchData, fixturesData, teamLogos, teamIds, leagues, loading, error };
 };

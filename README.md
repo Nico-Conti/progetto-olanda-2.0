@@ -1,35 +1,54 @@
-# Progetto Olanda 2.0
+# 🇳🇱 Progetto Olanda 2.0
 
-Welcome to the new and improved Progetto Olanda! This version is split into a Python backend (for scraping and AI analysis) and a React frontend (for a slick UI).
+**The Ultimate Eredivisie Prediction Engine.**
 
-## Where we are at
-This is currently a **test setup** to make sure everything connects properly.
-- **Backend**: Handles the heavy lifting (scraping data, talking to Supabase, and running Gemini analysis).
-- **Frontend**: Displays the stats, trends, and predictions in a nice dark-mode interface.
+![Project Banner](https://img.shields.io/badge/Status-Active-success) ![Version](https://img.shields.io/badge/Version-2.0-blue) ![League](https://img.shields.io/badge/League-Eredivisie-orange)
 
-## How to Run It
+## 🚀 Introduction
 
-### 1. Fire up the Backend
-Open a terminal in the main folder (`progetto-olanda/`) and run:
+**Progetto Olanda 2.0** is a state-of-the-art football analytics platform designed to predict match outcomes in the Dutch Eredivisie with high precision. Unlike standard predictors that rely solely on historical averages, this system uses **Advanced Metrics** (xG, xGOT, Box Touches) and **Machine Learning Regression** to analyze team form and "pressure".
+
+## ✨ Key Features
+
+-   **🎯 Advanced Corner Predictor**:
+    -   **Hybrid Model**: Combines historical data with recent form regression.
+    -   **Pressure Analysis**: Uses "Box Touches" and "Shots" to gauge attacking intensity.
+-   **⚽ Goal & Winner Models**:
+    -   **"High Octane" Goal Model**: Predicts total goals using xGOT (Expected Goals on Target).
+    -   **Poisson Match Winner**: Calculates precise 1X2 probabilities.
+-   **📊 Modern Dashboard**:
+    -   Beautiful "Glassmorphism" UI.
+    -   Interactive charts and stats visualization.
+    -   Custom Matchup Analysis.
+
+## 📚 Documentation
+
+For a deep dive into the architecture, database schema, and the mathematics behind our prediction models, please refer to the **Technical Documentation**:
+
+👉 **[READ THE TECHNICAL DOCS (TECHNICAL_DOCS.md)](TECHNICAL_DOCS.md)** 👈
+
+## 🛠️ Quick Start
+
+### Prerequisites
+-   Python 3.10+
+-   Node.js 16+
+-   Supabase Account
+
+### 1. Backend Setup
 ```bash
-sudo docker-compose up -d --build
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
-This starts the API server on `http://localhost:8000`.
 
-### 2. Start the Frontend
-Open a new terminal, go to the frontend folder, and start the dev server:
+### 2. Frontend Setup
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
-This will launch the app on `http://localhost:5173`.
 
-## What to Look For
-Open the app in your browser. If you see a green **"Backend Online"** badge in the top header, you're good to go!
-
-## Features Ready to Test
-- **League Trends**: Check out the "Trends" tab to see how teams are performing (Season vs Last 3/5/10 games).
-- **Predictor**: Go to the "Predictor" tab to see AI-powered match predictions.
-- **Scraper**: You can manually run the scraper to fetch new data (see `backend/scraper.py`).
-
-Enjoy! 🚀
+---
+*Developed by [Your Name] for Progetto Olanda.*

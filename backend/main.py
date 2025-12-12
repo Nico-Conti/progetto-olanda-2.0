@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 # Note: We need to ensure the services directory is in the python path or imported correctly.
 # Since main.py is in backend/, and services is in backend/services/, this relative import works.
 from .services.gemini_service import analyze_match_comments
+from .services.prediction_service import PredictionService
 from supabase import create_client, Client
 
 load_dotenv()
@@ -81,6 +82,35 @@ def analyze_match(data: MatchData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+prediction_service = PredictionService()
+
+@app.get("/predict/corners/{home_team_id}/{away_team_id}")
+def predict_corners(home_team_id: str, away_team_id: str, model: str = "hybrid"):
+    """
+    Predicts expected corners for a match using advanced statistics.
+    """
+    try:
+        result = prediction_service.predict_match_corners(home_team_id, away_team_id, model)
+        if "error" in result:
+             raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/predict/goals/{home_team_id}/{away_team_id}")
+def predict_goals(home_team_id: str, away_team_id: str):
+    """
+    Predicts expected goals and match winner probabilities.
+    """
+    try:
+        result = prediction_service.predict_match_goals(home_team_id, away_team_id)
+        if "error" in result:
+             raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8002)

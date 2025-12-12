@@ -6,7 +6,7 @@ import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
 
-const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
+const Predictor = ({ stats, fixtures, teams, teamLogos, teamIds }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
@@ -16,6 +16,9 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
     const [customHome, setCustomHome] = useState('');
     const [customAway, setCustomAway] = useState('');
     const [showCustomPrediction, setShowCustomPrediction] = useState(false);
+    const [backendPrediction, setBackendPrediction] = useState(null);
+    const [loadingBackend, setLoadingBackend] = useState(false);
+    const [selectedModel, setSelectedModel] = useState("hybrid"); // hybrid, regression, historical
 
     // Initialize custom teams
     useEffect(() => {
@@ -29,6 +32,44 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
         return calculatePrediction(customHome, customAway, stats, nGames);
     }, [customHome, customAway, stats, nGames, showCustomPrediction]);
+
+    // Fetch Backend Prediction
+    useEffect(() => {
+        const fetchBackendPrediction = async () => {
+            if (!showCustomPrediction || !customHome || !customAway || !teamIds) {
+                setBackendPrediction(null); // Clear prediction if conditions are not met
+                return;
+            }
+
+            const homeId = teamIds[customHome];
+            const awayId = teamIds[customAway];
+
+            if (!homeId || !awayId) {
+                console.warn("Missing team IDs for backend prediction");
+                setBackendPrediction(null);
+                return;
+            }
+
+            setLoadingBackend(true);
+            try {
+                const response = await fetch(`http://localhost:8002/predict/corners/${homeId}/${awayId}?model=${selectedModel}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setBackendPrediction(data);
+                } else {
+                    console.error("Failed to fetch backend prediction");
+                    setBackendPrediction(null);
+                }
+            } catch (error) {
+                console.error("Error fetching backend prediction:", error);
+                setBackendPrediction(null);
+            } finally {
+                setLoadingBackend(false);
+            }
+        };
+
+        fetchBackendPrediction();
+    }, [showCustomPrediction, customHome, customAway, teamIds, selectedModel]);
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !stats) return [];
@@ -383,10 +424,34 @@ const Predictor = ({ stats, fixtures, teams, teamLogos }) => {
                     </div>
                 </div>
 
+                {/* Model Selection */}
+                <div className="mb-6">
+                    <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Prediction Model</label>
+                    <div className="relative">
+                        <select
+                            className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-medium"
+                            value={selectedModel}
+                            onChange={(e) => setSelectedModel(e.target.value)}
+                        >
+                            <option value="hybrid">Hybrid (Recommended) - 60% Recent / 40% History</option>
+                            <option value="regression">Regression Only (Recent Form)</option>
+                            <option value="historical">Historical Average Only</option>
+                        </select>
+                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 rotate-90 pointer-events-none" />
+                    </div>
+                </div>
+
                 {showCustomPrediction && customPrediction && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                         {/* Prediction Hero (Reused) */}
-                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} />
+                        <PredictionHero
+                            prediction={customPrediction}
+                            backendPrediction={backendPrediction}
+                            loadingBackend={loadingBackend}
+                            home={customHome}
+                            away={customAway}
+                            teamLogos={teamLogos}
+                        />
 
                         {/* Detailed History (Reused) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

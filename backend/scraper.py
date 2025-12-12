@@ -173,8 +173,39 @@ def scrape_basic_info(soup):
         print(f"    Error scraping teams/score: {e}")
         return {}
 
+def clean_stat_value(value):
+    """
+    Cleans stat strings like '19% (4/21)' -> 21 (attempts) or '3.42' -> 3.42.
+    Returns a string representation of the number or '0'.
+    """
+    if not value:
+        return "0"
+    
+    value = value.strip()
+    
+    # Handle "(4/21)" or "19% (4/21)" -> take the second number in parenthesis (total) 
+    # OR take the first if we want successful. 
+    # Let's take the TOTAL attempts for pressure (21).
+    if "(" in value and "/" in value:
+        try:
+            # Extract "4/21"
+            parts = value.split("(")
+            fraction = parts[-1].replace(")", "") # "4/21"
+            if "/" in fraction:
+                return fraction.split("/")[1] # Return denominator (total)
+        except:
+            pass
+            
+    # Handle "55%" -> 55
+    if "%" in value:
+        return value.replace("%", "")
+        
+    return value
+
 def scrape_stats(driver):
-    """Clicks Statistics tab and extracts various match stats."""
+    """
+    Clicks Statistics tab and extracts various match stats using robust text-based selectors.
+    """
     stats_data = {
         "corners": {"home": "0", "away": "0"},
         "fouls": {"home": "0", "away": "0"},
@@ -182,54 +213,108 @@ def scrape_stats(driver):
         "red_cards": {"home": "0", "away": "0"},
         "shots": {"home": "0", "away": "0"},
         "shots_on_target": {"home": "0", "away": "0"},
-        "possession": {"home": "0%", "away": "0%"}
+        "possession": {"home": "0%", "away": "0%"},
+        # New Advanced Stats
+        "xg": {"home": "0.0", "away": "0.0"},
+        "xgot": {"home": "0.0", "away": "0.0"},
+        "big_chances": {"home": "0", "away": "0"},
+        "box_touches": {"home": "0", "away": "0"},
+        "crosses": {"home": "0", "away": "0"},
+        "goalkeeper_saves": {"home": "0", "away": "0"},
+        "blocked_shots": {"home": "0", "away": "0"}
     }
     
     try:
-        # 1. Click the 'Statistiche' button
-        stats_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[text()='Statistiche'] | //a[contains(@href, '#match-summary/match-statistics')]"))
-        )
-        driver.execute_script("arguments[0].scrollIntoView(true);", stats_btn)
-        time.sleep(1)
-        driver.execute_script("arguments[0].click();", stats_btn)
+        # 1. Click 'Statistiche' using JS for robustness
+        # print("    -> Clicking 'Statistiche' via JS...")
+        try:
+            driver.execute_script("""
+                var xpath = "//button[text()='Statistiche'] | //a[contains(@href, '#match-summary/match-statistics')]";
+                var matchingElement = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (matchingElement) {
+                    matchingElement.scrollIntoView();
+                    matchingElement.click();
+                } else {
+                    throw "Stats button not found";
+                }
+            """)
+            time.sleep(3)
+        except Exception as e:
+            # print(f"    -> JS Click failed: {e}")
+            return stats_data
 
-        # 2. Wait for a specific stats element to load to ensure DOM update
-        WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "wcl-row_2oCpS"))
-        )
+        # 2. Wait for 'Tiri totali' or similar text to appear
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Tiri totali') or contains(text(), 'Possesso palla')]"))
+            )
+        except:
+            # print("    -> Timed out waiting for stats text.")
+            pass
         
-        # 3. Parse content
+        time.sleep(2)
+        
+        # 3. Parse content with BeautifulSoup
         soup = BeautifulSoup(driver.page_source, "html.parser")
         
-        # 4. Iterate through rows and map categories
-        # Mapping Italian label -> internal key
-        stat_map = {
+        # 4. Text-based extraction
+        # Map of "Text Label" -> "internal_key"
+        label_map = {
             "Calci d'angolo": "corners",
             "Falli": "fouls",
             "Ammonizioni": "yellow_cards",
+            "Cartellini gialli": "yellow_cards",
             "Espulsioni": "red_cards",
+            "Cartellini rossi": "red_cards",
             "Tiri totali": "shots",
             "Tiri in porta": "shots_on_target",
-            "Possesso palla": "possession"
+            "Possesso palla": "possession",
+            # New Stats Mappings
+            "Goal previsti (xG)": "xg",
+            "xG sui Tiri in porta (xGOT)": "xgot",
+            "Grandi occasioni": "big_chances",
+            "Palloni toccati nell'area avversaria": "box_touches",
+            "Cross": "crosses",
+            "Parate": "goalkeeper_saves",
+            "Tiri fermati": "blocked_shots"
         }
 
-        for div in soup.select('div.wcl-row_2oCpS > div.wcl-category_Ydwqh'):
-            category_element = div.select_one('div.wcl-category_6sT1J')
-            if not category_element:
-                continue
-
-            category_text = category_element.text.strip()
+        # Find all elements that match our labels
+        for label_text, key in label_map.items():
+            elements = soup.find_all(string=lambda text: text and label_text.lower() == text.strip().lower())
             
-            # Check if this category is one we want
-            if category_text in stat_map:
-                key = stat_map[category_text]
-                values = div.select('div[data-testid="wcl-statistics-value"]')
-                if len(values) >= 2:
-                    stats_data[key] = {
-                        "home": values[0].text.strip(),
-                        "away": values[1].text.strip()
-                    }
+            for el in elements:
+                parent = el.parent
+                for _ in range(4): # Traverse up a few levels
+                    if not parent: break
+                    
+                    text_content = list(parent.stripped_strings)
+                    
+                    # Check for [Value] [Label] [Value] pattern
+                    # We need to be careful with exact matches
+                    
+                    try:
+                        # Find index of label
+                        # Note: text_content items might not be exact matches if stripped differently, but usually are.
+                        # We look for the item that *is* our label.
+                        idx = -1
+                        for i, t in enumerate(text_content):
+                            if t.lower() == label_text.lower():
+                                idx = i
+                                break
+                        
+                        if idx > 0 and idx < len(text_content) - 1:
+                             # Found it!
+                             val_home = text_content[idx-1]
+                             val_away = text_content[idx+1]
+                             
+                             stats_data[key]["home"] = clean_stat_value(val_home)
+                             stats_data[key]["away"] = clean_stat_value(val_away)
+                             break
+                    except ValueError:
+                        pass
+                        
+                    parent = parent.parent
                 
     except Exception as e:
         # print(f"    -> ⚠️ Failed to scrape stats: {e}")
@@ -336,12 +421,18 @@ def scrape_match_details(driver, product_url):
         final_data['squadre'] = scrape_basic_info(initial_soup)
 
         # 3. Get Stats (Corners, Fouls, etc.)
-        final_data['stats'] = scrape_stats(driver)
-        # Flatten for backward compatibility if needed, or keep structured.
-        # For now, let's keep 'calci_d_angolo' as a top level key if other parts depend on it,
-        # or just use the new structure. The user asked for extraction, so I'll provide the new structure.
-        # I will alias 'calci_d_angolo' to stats['corners'] for safety with existing analysis logic.
-        final_data['calci_d_angolo'] = final_data['stats']['corners']
+        stats = scrape_stats(driver)
+        final_data['stats'] = stats
+        
+        # Flatten key stats for backward compatibility and direct access
+        final_data['calci_d_angolo'] = stats['corners']
+        final_data['xg'] = stats['xg']
+        final_data['xgot'] = stats['xgot']
+        final_data['big_chances'] = stats['big_chances']
+        final_data['box_touches'] = stats['box_touches']
+        final_data['crosses'] = stats['crosses']
+        final_data['goalkeeper_saves'] = stats['goalkeeper_saves']
+        final_data['blocked_shots'] = stats['blocked_shots']
 
         # 4. Get Comments 
         final_data['commenti'] = scrape_comments(driver)

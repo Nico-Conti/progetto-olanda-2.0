@@ -6,7 +6,7 @@ export const useBackendHealth = () => {
     useEffect(() => {
         const checkHealth = async () => {
             try {
-                const response = await fetch('http://localhost:8000/');
+                const response = await fetch('http://localhost:8002/');
                 if (response.ok) {
                     setIsOnline(true);
                 } else {

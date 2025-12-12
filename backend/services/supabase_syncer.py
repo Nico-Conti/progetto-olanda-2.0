@@ -52,7 +52,15 @@ def build_stats_payload(local_match):
         ("yellow_cards", "yellow_cards"),
         ("red_cards", "red_cards"),
         ("shots", "shots"),
-        ("shots_on_target", "shots_on_target")
+        ("shots_on_target", "shots_on_target"),
+        # New Stats
+        ("xg", "xg"),
+        ("xgot", "xgot"),
+        ("big_chances", "big_chances"),
+        ("box_touches", "box_touches"),
+        ("crosses", "crosses"),
+        ("goalkeeper_saves", "goalkeeper_saves"),
+        ("blocked_shots", "blocked_shots")
     ]
 
     for json_key, db_suffix in stat_keys:

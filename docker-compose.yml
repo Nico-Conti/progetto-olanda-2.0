@@ -3,12 +3,12 @@ services:
     build: .
     container_name: olanda_backend
     ports:
-      - "8000:8000"
+      - "8002:8002"
     volumes:
       - .:/app
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8002 --reload
     restart: unless-stopped

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy, Zap, ZapOff } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Trophy, Zap, ZapOff, Info } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import LandingPage from './components/LandingPage';
+import InfoPage from './components/InfoPage';
 import TransitionAnimation from './components/TransitionAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
@@ -11,7 +12,7 @@ import { useBackendHealth } from './hooks/useBackendHealth';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
+  const { matchData, fixturesData, teamLogos, teamIds, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
 
   // Animation State
@@ -135,12 +136,22 @@ export default function App() {
                   <button
                     onClick={() => handleTabChange('predictor')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
-                      ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                      ? 'bg-emerald-500 text-white shadow-sm border border-emerald-400/20'
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                       }`}
                   >
                     <Calculator className="w-4 h-4" />
                     <span className="hidden md:inline">Predictor</span>
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('info')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'info'
+                      ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                      }`}
+                  >
+                    <Info className="w-4 h-4" />
+                    <span className="hidden md:inline">Info & Models</span>
                   </button>
                   <button
                     onClick={() => handleLeagueChange(null)}
@@ -191,23 +202,25 @@ export default function App() {
             </div>
           </nav>
 
-          <main className="max-w-7xl mx-auto px-4 md:px-8">
+          <main className="container mx-auto px-4">
             {activeTab === 'trends' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <LeagueTrends stats={stats} teamLogos={teamLogos} />
-              </div>
+              <LeagueTrends
+                stats={stats}
+                fixtures={filteredFixtures}
+                teams={teams}
+                teamLogos={teamLogos}
+              />
             )}
-
             {activeTab === 'predictor' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4">
-                <Predictor
-                  stats={stats}
-                  fixtures={filteredFixtures}
-                  teams={teams}
-                  teamLogos={teamLogos}
-                />
-              </div>
+              <Predictor
+                stats={stats}
+                fixtures={filteredFixtures}
+                teams={teams}
+                teamLogos={teamLogos}
+                teamIds={teamIds}
+              />
             )}
+            {activeTab === 'info' && <InfoPage />}
           </main>
         </>
       )}
