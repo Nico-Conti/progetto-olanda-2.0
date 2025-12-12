@@ -16,17 +16,36 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic }
                     <div className="text-right flex-1 flex flex-col items-end">
                         <img src={teamLogos[home]} alt={home} className="w-16 h-16 object-contain mb-2" />
                         <div className="text-2xl font-bold text-white truncate">{home}</div>
-                        <div className="text-emerald-400 font-mono text-base font-bold mt-1">Home Exp: {prediction.expHome.toFixed(2)}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="text-emerald-400 font-mono text-base font-bold">
+                                Exp: {prediction.expHome.toFixed(2)}
+                            </div>
+                            <div className="text-emerald-400/60 font-mono text-sm font-bold">
+                                ±{prediction.expHomeStd.toFixed(2)}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${prediction.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
-                        {prediction.total.toFixed(1)}
+                    <div className="flex flex-col items-center">
+                        <div className={`text-7xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${prediction.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
+                            {prediction.total.toFixed(1)}
+                        </div>
+                        <div className={`font-mono text-lg font-bold mt-[-10px] ${prediction.total > 11.5 ? 'text-orange-500/60' : 'text-zinc-500'}`}>
+                            ±{prediction.totalStd.toFixed(2)}
+                        </div>
                     </div>
 
                     <div className="text-left flex-1 flex flex-col items-start">
                         <img src={teamLogos[away]} alt={away} className="w-16 h-16 object-contain mb-2" />
                         <div className="text-2xl font-bold text-white truncate">{away}</div>
-                        <div className="text-blue-400 font-mono text-base font-bold mt-1">Away Exp: {prediction.expAway.toFixed(2)}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="text-blue-400 font-mono text-base font-bold">
+                                Exp: {prediction.expAway.toFixed(2)}
+                            </div>
+                            <div className="text-blue-400/60 font-mono text-sm font-bold">
+                                ±{prediction.expAwayStd.toFixed(2)}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

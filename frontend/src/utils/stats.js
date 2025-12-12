@@ -52,6 +52,17 @@ export const getTrendData = (list, nGames) => {
     };
 };
 
+export const getStdDev = (list) => {
+    if (!list || list.length === 0) return 0;
+    const mean = getAvg(list);
+    const squareDiffs = list.map(value => {
+        const diff = value - mean;
+        return diff * diff;
+    });
+    const avgSquareDiff = getAvg(squareDiffs);
+    return Math.sqrt(avgSquareDiff);
+};
+
 export const calculatePrediction = (home, away, stats, nGames = 5) => {
     if (!stats[home] || !stats[away]) return null;
 
@@ -69,14 +80,50 @@ export const calculatePrediction = (home, away, stats, nGames = 5) => {
     const homeMatches = getRelevant(home, 'Home');
     const awayMatches = getRelevant(away, 'Away');
 
-    const hFor = getAvg(homeMatches.map(m => m.statFor));
-    const hAg = getAvg(homeMatches.map(m => m.statAg));
-    const aFor = getAvg(awayMatches.map(m => m.statFor));
-    const aAg = getAvg(awayMatches.map(m => m.statAg));
+    const hForList = homeMatches.map(m => m.statFor);
+    const hAgList = homeMatches.map(m => m.statAg);
+    const aForList = awayMatches.map(m => m.statFor);
+    const aAgList = awayMatches.map(m => m.statAg);
+    const hTotalList = homeMatches.map(m => m.total);
+    const aTotalList = awayMatches.map(m => m.total);
+
+    const hFor = getAvg(hForList);
+    const hAg = getAvg(hAgList);
+    const aFor = getAvg(aForList);
+    const aAg = getAvg(aAgList);
+
+    const hForStd = getStdDev(hForList);
+    const hAgStd = getStdDev(hAgList);
+    const aForStd = getStdDev(aForList);
+    const aAgStd = getStdDev(aAgList);
+
+    // Calculate standard deviation for the total prediction
+    // We use the combined list of totals from both contexts to represent the overall variability
+    const totalStd = getStdDev([...hTotalList, ...aTotalList]);
 
     const expHome = (hFor + aAg) / 2;
     const expAway = (aFor + hAg) / 2;
     const total = expHome + expAway;
 
-    return { expHome, expAway, total, hFor, hAg, aFor, aAg, homeMatches, awayMatches };
+    // Calculate standard deviation for the expectations
+    // Std(ExpHome) = 0.5 * sqrt(Std(hFor)^2 + Std(aAg)^2)
+    const expHomeStd = 0.5 * Math.sqrt(Math.pow(hForStd, 2) + Math.pow(aAgStd, 2));
+    const expAwayStd = 0.5 * Math.sqrt(Math.pow(aForStd, 2) + Math.pow(hAgStd, 2));
+
+    return {
+        expHome,
+        expAway,
+        total,
+        hFor,
+        hAg,
+        aFor,
+        aAg,
+        hForStd,
+        aForStd,
+        expHomeStd,
+        expAwayStd,
+        totalStd,
+        homeMatches,
+        awayMatches
+    };
 };
