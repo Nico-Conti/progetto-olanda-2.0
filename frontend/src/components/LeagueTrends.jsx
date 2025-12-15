@@ -3,7 +3,7 @@ import { Info, TrendingUp, Flame, Snowflake } from 'lucide-react';
 import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
 
-const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
+const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick }) => {
     const [sliderValue, setSliderValue] = useState(0); // 0: 3, 1: 5, 2: 10, 3: All
     const options = [3, 5, 10, 'all'];
     const nGames = options[sliderValue];
@@ -92,7 +92,10 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
                                 style={{ animationDelay: `${index * 50}ms` }}
                                 className="glass-panel p-4 rounded-xl border border-white/10 animate-waterfall"
                             >
-                                <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-3">
+                                <div
+                                    className="flex items-center gap-3 mb-4 border-b border-white/5 pb-3 cursor-pointer hover:bg-white/5 transition-colors rounded-lg px-2 -mx-2"
+                                    onClick={() => onTeamClick(team)}
+                                >
                                     <img src={teamLogos[team]} alt={team} className="w-8 h-8 object-contain" />
                                     <span className="font-bold text-white text-lg">{team}</span>
                                 </div>
@@ -188,9 +191,14 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
                                         style={{ animationDelay: `${index * 50}ms` }}
                                         className="hover:bg-white/[0.03] transition-colors group animate-waterfall"
                                     >
-                                        <td className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5 flex items-center gap-3">
-                                            <img src={teamLogos[team]} alt={team} className="w-6 h-6 object-contain" />
-                                            {team}
+                                        <td
+                                            className="px-5 py-3 font-bold text-white text-base group-hover:text-emerald-400 transition-colors border-r border-white/5 cursor-pointer"
+                                            onClick={() => onTeamClick(team)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <img src={teamLogos[team]} alt={team} className="w-6 h-6 object-contain" />
+                                                {team}
+                                            </div>
                                         </td>
 
                                         {/* Home Stats */}

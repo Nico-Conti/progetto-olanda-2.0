@@ -14,6 +14,7 @@ import StatisticSelector from './components/StatisticSelector';
 import ToggleSwitch from './components/ui/ToggleSwitch';
 import BetSlipModal from './components/BetSlipModal';
 import Header from './components/Header';
+import TeamDetails from './components/TeamDetails';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
@@ -30,6 +31,7 @@ export default function App() {
   const [pendingView, setPendingView] = useState(null);
   const [matchStatistics, setMatchStatistics] = useState({});
   const [preSelectedMatch, setPreSelectedMatch] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [backView, setBackView] = useState('hot-matches');
   const [backLabel, setBackLabel] = useState('Back to Hot Matches');
 
@@ -95,6 +97,11 @@ export default function App() {
     } else {
       setView(newView);
     }
+  };
+
+  const handleTeamClick = (team) => {
+    setSelectedTeam(team);
+    handleTabChange('team-details');
   };
 
   // Extract unique leagues from data
@@ -462,7 +469,26 @@ export default function App() {
           <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
             {activeTab === 'trends' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <LeagueTrends stats={stats} teamLogos={teamLogos} selectedStatistic={selectedStatistic} />
+                <LeagueTrends
+                  stats={stats}
+                  teamLogos={teamLogos}
+                  selectedStatistic={selectedStatistic}
+                  onTeamClick={handleTeamClick}
+                />
+              </div>
+            )}
+
+            {activeTab === 'team-details' && selectedTeam && (
+              <div className="animate-in fade-in slide-in-from-bottom-4">
+                <TeamDetails
+                  team={selectedTeam}
+                  teamLogo={teamLogos[selectedTeam]}
+                  stats={stats[selectedTeam]}
+                  fixtures={filteredFixtures}
+                  onBack={() => handleTabChange('trends')}
+                  teamLogos={teamLogos}
+                  selectedStatistic={selectedStatistic}
+                />
               </div>
             )}
 
