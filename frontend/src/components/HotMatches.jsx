@@ -160,7 +160,13 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {match.date ? new Date(match.date).toLocaleDateString() : 'TBD'}
+                                        {(() => {
+                                            if (!match.date) return 'TBD';
+                                            const d = new Date(match.date);
+                                            return !isNaN(d.getTime())
+                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                                : match.date;
+                                        })()}
                                     </div>
                                     <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-12">
                                         {match.league || 'Unknown League'}

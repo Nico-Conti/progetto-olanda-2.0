@@ -364,7 +364,13 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                         >
                             {/* Date Badge */}
                             <div className="absolute top-0 right-0 bg-zinc-900/80 px-2 py-1 rounded-bl-lg border-l border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                                {match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
+                                {(() => {
+                                    if (!match.date) return 'TBD';
+                                    const d = new Date(match.date);
+                                    return !isNaN(d.getTime())
+                                        ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                        : match.date;
+                                })()}
                             </div>
 
                             {/* Teams */}

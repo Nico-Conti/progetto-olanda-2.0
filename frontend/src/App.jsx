@@ -85,6 +85,10 @@ export default function App() {
   const handleViewChange = (newView) => {
     if (newView === view || isAnimating) return;
 
+    if (newView === 'landing') {
+      setPreSelectedMatch(null);
+    }
+
     if (isAnimationEnabled) {
       setPendingView(newView);
       setIsAnimating(true);
@@ -264,11 +268,41 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Mobile Actions (Bet Slip + Menu) */}
-              <div className="flex items-center gap-3 md:hidden">
+              {/* Mobile Actions (Icons + Stat Selector) */}
+              <div className="flex items-center gap-2 md:hidden">
+                {/* Trends Tab */}
+                <button
+                  onClick={() => handleTabChange('trends')}
+                  className={`p-2 rounded-lg border transition-all ${activeTab === 'trends'
+                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
+                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
+                    }`}
+                >
+                  <TrendingUp className="w-5 h-5" />
+                </button>
+
+                {/* Predictor Tab */}
+                <button
+                  onClick={() => handleTabChange('predictor')}
+                  className={`p-2 rounded-lg border transition-all ${activeTab === 'predictor'
+                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
+                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
+                    }`}
+                >
+                  <Calculator className="w-5 h-5" />
+                </button>
+
+                {/* Statistic Selector */}
+                <StatisticSelector
+                  value={selectedStatistic}
+                  onChange={(e) => setSelectedStatistic(e.target.value)}
+                  className="w-[115px]"
+                />
+
+                {/* Bet Slip (Existing) */}
                 <button
                   onClick={() => setIsBetSlipOpen(true)}
-                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400"
+                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
                 >
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
                     {bets.length}
@@ -280,12 +314,6 @@ export default function App() {
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                   </svg>
-                </button>
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="p-2 text-zinc-400 hover:text-white transition-colors"
-                >
-                  {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
               </div>
 
