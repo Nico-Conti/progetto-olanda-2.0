@@ -76,7 +76,79 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic }) => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Mobile View (Cards) */}
+                <div className="md:hidden space-y-4">
+                    {teams.map((team, index) => {
+                        const hTrend = getTrendData(stats[team].home_totals, nGames);
+                        const aTrend = getTrendData(stats[team].away_totals, nGames);
+                        const hForAvg = getAvg(stats[team].home_for);
+                        const hAgAvg = getAvg(stats[team].home_ag);
+                        const aForAvg = getAvg(stats[team].away_for);
+                        const aAgAvg = getAvg(stats[team].away_ag);
+
+                        return (
+                            <div
+                                key={team}
+                                style={{ animationDelay: `${index * 50}ms` }}
+                                className="glass-panel p-4 rounded-xl border border-white/10 animate-waterfall"
+                            >
+                                <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-3">
+                                    <img src={teamLogos[team]} alt={team} className="w-8 h-8 object-contain" />
+                                    <span className="font-bold text-white text-lg">{team}</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Home Stats */}
+                                    <div className="bg-zinc-900/40 p-3 rounded-lg border border-white/5">
+                                        <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2 text-center">Home</div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-zinc-500">Avg For</span>
+                                                <span className="text-white font-mono">{hForAvg.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-zinc-500">Avg Ag</span>
+                                                <span className="text-white font-mono">{hAgAvg.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm bg-white/5 p-1 rounded">
+                                                <span className="text-zinc-400">Recent</span>
+                                                <span className="text-white font-bold font-mono">{hTrend.recent.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-center pt-1">
+                                                <TrendBadge diff={hTrend.diff} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Away Stats */}
+                                    <div className="bg-zinc-900/40 p-3 rounded-lg border border-white/5">
+                                        <div className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2 text-center">Away</div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-zinc-500">Avg For</span>
+                                                <span className="text-white font-mono">{aForAvg.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-zinc-500">Avg Ag</span>
+                                                <span className="text-white font-mono">{aAgAvg.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm bg-white/5 p-1 rounded">
+                                                <span className="text-zinc-400">Recent</span>
+                                                <span className="text-white font-bold font-mono">{aTrend.recent.toFixed(1)}</span>
+                                            </div>
+                                            <div className="flex justify-center pt-1">
+                                                <TrendBadge diff={aTrend.diff} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Desktop View (Table) */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>

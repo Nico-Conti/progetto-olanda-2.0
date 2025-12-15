@@ -146,67 +146,74 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </button>
 
                 {/* Configuration (Sample Size Only) */}
-                <div className="glass-panel p-4 rounded-xl border border-white/10 flex items-center justify-between">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                {/* Configuration (Sample Size Only) */}
+                <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2 self-start md:self-auto">
                         <Calculator className="w-5 h-5 text-emerald-400" />
                         Match Analysis
                     </h3>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         {/* Local Statistic Selector */}
-                        <StatisticSelector
-                            value={localStatistic}
-                            onChange={(e) => setLocalStatistic(e.target.value)}
-                            className="w-[140px]"
-                        />
-                        <div className="w-px h-4 bg-white/10"></div>
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Sample Size:</span>
-                        <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
-                            {[3, 5, 'all'].map((n) => (
-                                <button
-                                    key={n}
-                                    onClick={() => setNGames(n)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${nGames === n
-                                        ? 'bg-zinc-700 text-white shadow-sm'
-                                        : 'text-zinc-500 hover:text-zinc-300'
-                                        }`}
-                                >
-                                    {n === 'all' ? 'Season' : `Last ${n}`}
-                                </button>
-                            ))}
-                            <div className="w-px h-4 bg-white/10 mx-1"></div>
-                            <div className={`flex items-center p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
-                                ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                                : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
-                                }`}>
-                                <button
-                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
-                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                >
-                                    <Minus className="w-3 h-3" />
-                                </button>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="30"
-                                    value={nGames === 'all' ? '' : nGames}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === '') {
-                                            setNGames('');
-                                        } else {
-                                            const parsed = parseInt(val);
-                                            if (!isNaN(parsed) && parsed > 0) setNGames(parsed);
-                                        }
-                                    }}
-                                    placeholder="#"
-                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
-                                />
-                                <button
-                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
-                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                </button>
+                        <div className="w-full sm:w-auto">
+                            <StatisticSelector
+                                value={localStatistic}
+                                onChange={(e) => setLocalStatistic(e.target.value)}
+                                className="w-full sm:w-[140px]"
+                            />
+                        </div>
+
+                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
+
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
+                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap mb-1 sm:mb-0">Sample Size:</span>
+                            <div className="flex flex-wrap bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1 w-full sm:w-auto">
+                                {[3, 5, 'all'].map((n) => (
+                                    <button
+                                        key={n}
+                                        onClick={() => setNGames(n)}
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all text-center whitespace-nowrap ${nGames === n
+                                            ? 'bg-zinc-700 text-white shadow-sm'
+                                            : 'text-zinc-500 hover:text-zinc-300'
+                                            } hidden sm:block`}
+                                    >
+                                        {n === 'all' ? 'Season' : `Last ${n}`}
+                                    </button>
+                                ))}
+                                <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
+                                <div className={`flex items-center justify-between flex-1 sm:flex-none p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
+                                    ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                                    : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
+                                    }`}>
+                                    <button
+                                        onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
+                                        className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                    >
+                                        <Minus className="w-3 h-3" />
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={nGames === 'all' ? '' : nGames}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === '') {
+                                                setNGames('');
+                                            } else {
+                                                const parsed = parseInt(val);
+                                                if (!isNaN(parsed) && parsed > 0) setNGames(parsed);
+                                            }
+                                        }}
+                                        placeholder="#"
+                                        className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
+                                    />
+                                    <button
+                                        onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
+                                        className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -267,7 +274,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     <p className="text-zinc-400 text-sm mt-1">Predictions based on {nGames === 'all' ? 'Season' : `Last ${nGames || 5}`} games form</p>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
                     {/* Matchday Selector */}
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-zinc-400 uppercase">Matchday:</span>
@@ -297,12 +304,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${nGames === n
                                         ? 'bg-zinc-700 text-white shadow-sm'
                                         : 'text-zinc-500 hover:text-zinc-300'
-                                        }`}
+                                        } hidden sm:block`}
                                 >
                                     {n === 'all' ? 'Season' : `Last ${n}`}
                                 </button>
                             ))}
-                            <div className="w-px h-4 bg-white/10 mx-1"></div>
+                            <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
                             <div className={`flex items-center p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
                                 ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
                                 : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
@@ -343,7 +350,102 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             </div>
 
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
-                <div className="overflow-x-auto">
+                {/* Mobile View (Cards) */}
+                <div className="md:hidden space-y-4">
+                    {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
+                        <div
+                            key={idx}
+                            style={{ animationDelay: `${idx * 50}ms` }}
+                            onClick={(e) => {
+                                if (e.target.closest('select') || e.target.closest('button')) return;
+                                setSelectedMatch(match);
+                            }}
+                            className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-95 transition-transform"
+                        >
+                            {/* Date Badge */}
+                            <div className="absolute top-0 right-0 bg-zinc-900/80 px-2 py-1 rounded-bl-lg border-l border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                {match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
+                            </div>
+
+                            {/* Teams */}
+                            <div className="flex items-center justify-between mt-2 mb-4">
+                                <div className="flex flex-col items-center w-1/3 text-center">
+                                    <img src={teamLogos[match.home]} alt={match.home} className="w-10 h-10 object-contain mb-1" />
+                                    <span className={`text-xs font-bold leading-tight ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
+                                </div>
+
+                                <div className="flex flex-col items-center justify-center w-1/3">
+                                    <span className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Total</span>
+                                    <div className="text-2xl font-black text-white tracking-tighter bg-white/5 px-3 py-1 rounded-lg border border-white/5">
+                                        {match.prediction.total.toFixed(1)}
+                                    </div>
+                                    {match.prediction.total > 11.5 && match.selectedStat === 'corners' && (
+                                        <div className="mt-1 flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase animate-pulse">
+                                            <Flame className="w-3 h-3 text-red-500" /> Hot
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col items-center w-1/3 text-center">
+                                    <img src={teamLogos[match.away]} alt={match.away} className="w-10 h-10 object-contain mb-1" />
+                                    <span className={`text-xs font-bold leading-tight ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
+                                </div>
+                            </div>
+
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2 text-center">
+                                    <div className="text-[10px] text-emerald-500/70 font-bold uppercase">Home Exp</div>
+                                    <div className="text-lg font-mono font-bold text-emerald-400">{match.prediction.expHome.toFixed(2)}</div>
+                                </div>
+                                <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2 text-center">
+                                    <div className="text-[10px] text-blue-500/70 font-bold uppercase">Away Exp</div>
+                                    <div className="text-lg font-mono font-bold text-blue-400">{match.prediction.expAway.toFixed(2)}</div>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5">
+                                <div className="relative flex-grow">
+                                    <select
+                                        value={match.selectedStat}
+                                        onChange={(e) => {
+                                            const matchId = `${match.home}-${match.away}`;
+                                            setMatchStatistics(prev => ({ ...prev, [matchId]: e.target.value }));
+                                        }}
+                                        className="w-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-8 py-2 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {STAT_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
+                                </div>
+
+                                <div onClick={(e) => e.stopPropagation()}>
+                                    <BetBuilderCell
+                                        game={`${match.home} vs ${match.away}`}
+                                        stat={match.selectedStat}
+                                        onAdd={addToBet}
+                                        existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}`)}
+                                    />
+                                </div>
+
+                                <button className="p-2 bg-zinc-800 rounded-lg text-zinc-400">
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )) : (
+                        <div className="glass-panel p-8 text-center text-zinc-500 rounded-xl border border-white/10 border-dashed">
+                            No upcoming fixtures found for this matchday.
+                        </div>
+                    )}
+                </div>
+
+                {/* Desktop View (Table) */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>

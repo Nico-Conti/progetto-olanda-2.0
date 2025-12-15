@@ -131,7 +131,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
     }, [matchData]);
 
     const appTitle = (
-        <h1 className="text-lg font-black tracking-tight text-white leading-none">
+        <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
             Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
         </h1>
     );

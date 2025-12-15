@@ -62,7 +62,7 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
     }, [fixtures, stats, nGames, upcomingMatchdays, displayCount]);
 
     const appTitle = (
-        <h1 className="text-lg font-black tracking-tight text-white leading-none">
+        <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
             Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
         </h1>
     );
@@ -103,7 +103,7 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                             <p className="text-zinc-400 text-sm mt-1">Highest predicted total {selectedStatistic.replace('_', ' ')} for the upcoming matchday across all leagues</p>
                         </div>
 
-                        <div className="flex items-center gap-6 mr-12">
+                        <div className="flex flex-wrap md:flex-nowrap items-center justify-center md:justify-end gap-y-4 gap-x-6 md:mr-12">
                             {/* Display Count Selector */}
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-zinc-400 uppercase">View:</span>

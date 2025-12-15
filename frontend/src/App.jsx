@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Trophy, Menu, X } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -36,6 +36,7 @@ export default function App() {
   // Bet Slip State
   const [bets, setBets] = useState([]);
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const addToBet = (game, option, value, stat) => {
     setBets(prev => {
@@ -239,22 +240,23 @@ export default function App() {
       {view === 'dashboard' && (
         <>
           {/* Navbar */}
+          {/* Navbar */}
           <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
               <div className="flex flex-col items-center gap-0.5">
                 <img
                   src="/logo.png"
                   alt="Progetto Olanda 2.0"
-                  className="w-12 h-12 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
+                  className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
                   onClick={() => handleViewChange('landing')}
                 />
                 <h1
-                  className="text-lg font-black tracking-tight text-white leading-none cursor-pointer"
+                  className="text-sm md:text-lg font-black tracking-tight text-white leading-none cursor-pointer hidden sm:block"
                   onClick={() => handleViewChange('landing')}
                 >
                   Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                 </h1>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                   <div className={`w-2 h-2 rounded-full ${isBackendOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${isBackendOnline ? 'text-emerald-500' : 'text-red-500'}`}>
                     {isBackendOnline ? 'Backend Online' : 'Backend Offline'}
@@ -262,7 +264,33 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              {/* Mobile Actions (Bet Slip + Menu) */}
+              <div className="flex items-center gap-3 md:hidden">
+                <button
+                  onClick={() => setIsBetSlipOpen(true)}
+                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400"
+                >
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                    {bets.length}
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="p-2 text-zinc-400 hover:text-white transition-colors"
+                >
+                  {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+              </div>
+
+              {/* Desktop Nav */}
+              <div className="hidden md:flex items-center gap-4">
 
                 <StatisticSelector
                   value={selectedStatistic}
@@ -351,6 +379,56 @@ export default function App() {
                 />
               </div>
             </div>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+              <div className="md:hidden border-t border-white/5 bg-zinc-950/95 backdrop-blur-xl animate-in slide-in-from-top-2">
+                <div className="p-4 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase">View</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => { handleTabChange('trends'); setIsMobileMenuOpen(false); }}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'trends' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
+                      >
+                        <TrendingUp className="w-4 h-4" /> Trends
+                      </button>
+                      <button
+                        onClick={() => { handleTabChange('predictor'); setIsMobileMenuOpen(false); }}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'predictor' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
+                      >
+                        <Calculator className="w-4 h-4" /> Predictor
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase">Statistic</label>
+                    <StatisticSelector
+                      value={selectedStatistic}
+                      onChange={(e) => setSelectedStatistic(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      onClick={() => { handleViewChange('landing'); setIsMobileMenuOpen(false); }}
+                      className="p-3 bg-zinc-900 rounded-lg border border-white/10 text-zinc-300 text-sm font-bold flex items-center justify-center gap-2"
+                    >
+                      <Trophy className="w-4 h-4" /> Change League
+                    </button>
+                    <div className="flex items-center justify-between bg-zinc-900 p-2 px-3 rounded-lg border border-white/10">
+                      <span className="text-xs font-bold text-zinc-400">Animations</span>
+                      <ToggleSwitch
+                        isOn={isAnimationEnabled}
+                        onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </nav>
 
           <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">

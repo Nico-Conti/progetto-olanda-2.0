@@ -54,42 +54,50 @@ const Header = ({
                 </div>
 
                 {pageName && (
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                         {pageName}
                     </div>
                 )}
                 {/* Right Section: Controls */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4">
                     {children}
 
-
-                    {showSound && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                playSound();
-                            }}
-                            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
-                            title="Play Sound"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="w-5 h-5"
+                    <div className="hidden md:flex items-center gap-4">
+                        {showSound && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    playSound();
+                                }}
+                                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                                title="Play Sound"
                             >
-                                <path d="M10 13V6a2 2 0 0 1 4 0v7" />
-                                <circle cx="8" cy="15" r="3" />
-                                <circle cx="16" cy="15" r="3" />
-                            </svg>
-                        </button>
-                    )}
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="w-5 h-5"
+                                >
+                                    <path d="M10 13V6a2 2 0 0 1 4 0v7" />
+                                    <circle cx="8" cy="15" r="3" />
+                                    <circle cx="16" cy="15" r="3" />
+                                </svg>
+                            </button>
+                        )}
+
+                        {showAnimationToggle && (
+                            <ToggleSwitch
+                                isOn={isAnimationEnabled}
+                                onToggle={onToggleAnimation}
+                            />
+                        )}
+                    </div>
 
                     {showBetSlip && (
                         <button
@@ -107,13 +115,6 @@ const Header = ({
                                 <polyline points="10 9 9 9 8 9"></polyline>
                             </svg>
                         </button>
-                    )}
-
-                    {showAnimationToggle && (
-                        <ToggleSwitch
-                            isOn={isAnimationEnabled}
-                            onToggle={onToggleAnimation}
-                        />
                     )}
                 </div>
             </div>

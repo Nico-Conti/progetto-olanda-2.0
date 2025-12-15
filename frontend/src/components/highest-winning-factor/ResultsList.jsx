@@ -21,7 +21,23 @@ const ResultsList = ({
 }) => {
 
     const displayLimitOptions = [5, 10, 15, 20].map(n => ({ value: n, label: n.toString() }));
-    const nGamesOptions = [3, 5, 10, 'all'].map(n => ({ value: n, label: n === 'all' ? 'Season' : n.toString() }));
+
+    // Ensure current nGames is always an option in the dropdown
+    const nGamesOptions = React.useMemo(() => {
+        const defaults = [3, 5, 10, 'all'];
+        if (!defaults.includes(nGames)) {
+            defaults.push(nGames);
+            defaults.sort((a, b) => {
+                if (a === 'all') return 1;
+                if (b === 'all') return -1;
+                return a - b;
+            });
+        }
+        return defaults.map(n => ({
+            value: n,
+            label: n === 'all' ? 'Season' : n.toString()
+        }));
+    }, [nGames]);
 
     return (
         <GlassPanel className="rounded-2xl overflow-hidden">
@@ -101,7 +117,78 @@ const ResultsList = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile View (Cards) */}
+            <div className="md:hidden space-y-3 p-4">
+                {rankedTeams.slice(0, displayLimit).map((team, index) => (
+                    <div
+                        key={team.team}
+                        className="bg-zinc-900/40 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
+                    >
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                                <span className="font-mono text-zinc-600 font-bold">#{index + 1}</span>
+                                <div
+                                    className="flex items-center gap-2 cursor-pointer"
+                                    onClick={() => onTeamClick && onTeamClick(team.team)}
+                                >
+                                    <img
+                                        src={teamLogos[team.team]}
+                                        alt={team.team}
+                                        className="w-8 h-8 object-contain"
+                                    />
+                                    <span className="font-bold text-white text-lg">{team.team}</span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const opt = operator === 'over' ? 'O' : 'U';
+                                    const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === opt && b.value === threshold);
+
+                                    if (isAdded) {
+                                        removeFromBet(team.team);
+                                    } else {
+                                        addToBet(team.team, opt, threshold, selectedStatistic);
+                                    }
+                                }}
+                                className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
+                                    ? 'bg-red-500/20 text-red-500 border border-red-500/50'
+                                    : 'bg-white/5 text-zinc-400'
+                                    }`}
+                            >
+                                {bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? (
+                                    <X className="w-4 h-4" />
+                                ) : (
+                                    <Plus className="w-4 h-4" />
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
+                                <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Record</span>
+                                <span className="font-mono text-white font-bold">{team.winCount} / {team.totalGames}</span>
+                            </div>
+                            <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
+                                <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Win Rate</span>
+                                <span className={`font-black ${team.winRate >= 80 ? 'text-emerald-500' :
+                                    team.winRate >= 60 ? 'text-emerald-400' :
+                                        team.winRate >= 40 ? 'text-yellow-500' :
+                                            'text-red-500'
+                                    }`}>
+                                    {team.winRate.toFixed(0)}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                {rankedTeams.length === 0 && (
+                    <div className="text-center py-8 text-zinc-500">
+                        No data available.
+                    </div>
+                )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                     <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
                         <tr>
