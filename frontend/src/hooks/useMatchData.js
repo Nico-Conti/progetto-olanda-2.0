@@ -34,22 +34,13 @@ export const useMatchData = () => {
 
                 // Transform fixtures to a flat list for easier consumption
                 const flatFixtures = fixtures.map(f => {
-                    let dateStr = 'TBD';
-                    try {
-                        if (f.match_date) {
-                            dateStr = new Date(f.match_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-                        }
-                    } catch (e) {
-                        console.error("Invalid date:", f.match_date);
-                    }
-
                     // Handle potential column name differences (matchday vs giornata) and ensure number type
                     const mDay = f.matchday || f.giornata;
 
                     return {
                         home: f.home_team || 'Unknown',
                         away: f.away_team || 'Unknown',
-                        date: dateStr,
+                        date: f.match_date, // Keep raw date for sorting/filtering
                         matchday: mDay ? parseInt(mDay, 10) : 0,
                         league: f.league
                     };

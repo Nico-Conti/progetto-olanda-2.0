@@ -77,10 +77,14 @@ export default function App() {
     if (isAnimationEnabled) {
       setPendingLeague(league);
       setPendingView('dashboard'); // Switch to dashboard view when league selected
+      setPendingTab('trends'); // Reset to trends tab
       setIsAnimating(true);
+      setSelectedTeam(null); // Clear selected team
     } else {
       setSelectedLeague(league);
       setView('dashboard');
+      setActiveTab('trends'); // Reset to trends tab
+      setSelectedTeam(null); // Clear selected team
     }
   };
 
@@ -488,6 +492,12 @@ export default function App() {
                   onBack={() => handleTabChange('trends')}
                   teamLogos={teamLogos}
                   selectedStatistic={selectedStatistic}
+                  onMatchClick={(match) => {
+                    setBackView('dashboard');
+                    setBackLabel('Back to ' + selectedTeam + '\'s details');
+                    setPreSelectedMatch(match);
+                    handleTabChange('predictor');
+                  }}
                 />
               </div>
             )}
@@ -508,7 +518,12 @@ export default function App() {
                   preSelectedMatch={preSelectedMatch}
                   onExitPreview={() => {
                     setPreSelectedMatch(null);
-                    handleViewChange(backView);
+                    if (backView === 'dashboard') {
+                      if (selectedTeam) setActiveTab('team-details');
+                      else setActiveTab('trends');
+                    } else {
+                      handleViewChange(backView);
+                    }
                   }}
                   backButtonLabel={backLabel}
                 />

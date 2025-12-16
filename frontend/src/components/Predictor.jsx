@@ -29,6 +29,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     useEffect(() => {
         if (preSelectedMatch) {
             setSelectedMatch(preSelectedMatch);
+            setSelectedAnalysisMatch(preSelectedMatch);
         }
     }, [preSelectedMatch]);
 
