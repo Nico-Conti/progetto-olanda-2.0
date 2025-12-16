@@ -24,7 +24,7 @@ from .match_details import scrape_match_details
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape match data for Eredivisie, La Liga, or Serie B.")
-    parser.add_argument("league", nargs="?", default="eredivisie", choices=["eredivisie", "laliga", "serieb", "seriea"], help="League to scrape")
+    parser.add_argument("league", nargs="?", default="eredivisie", choices=["eredivisie", "laliga", "serieb", "seriea", "bundesliga"], help="League to scrape")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to scrape")
     parser.add_argument("--skip-analysis", action="store_true", help="Skip Gemini analysis")
     parser.add_argument("--skip-sync", action="store_true", help="Skip syncing to Supabase")

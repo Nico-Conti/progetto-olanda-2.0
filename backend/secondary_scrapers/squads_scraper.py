@@ -147,7 +147,8 @@ def main():
         {"name": "Serie B", "key": "serieb", "url": "https://www.diretta.it/calcio/italia/serie-b/classifiche/"},
         {"name": "Eredivisie", "key": "eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/classifiche/"},
         {"name": "La Liga", "key": "laliga", "url": "https://www.diretta.it/calcio/spagna/laliga/classifiche/"},
-        {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/classifiche/"}
+        {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/classifiche/"},
+        {"name": "Bundesliga", "key": "bundesliga", "url": "https://www.diretta.it/calcio/germania/bundesliga/classifiche/"}
     ]
     
     target_leagues = leagues

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Calendar, Trophy, History, ChevronDown, ChevronUp, MapPin, Target } from 'lucide-react';
 
-const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selectedStatistic }) => {
+const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selectedStatistic, onMatchClick }) => {
     // Find next fixture
     // Fixtures are expected to be chronological, but let's be safe
     // Assuming fixtures is just a list of upcoming games
@@ -43,7 +43,10 @@ const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selec
                 {/* Left Column: Next Match & Stats Summary */}
                 <div className="space-y-6">
                     {/* Next Match Card */}
-                    <div className="glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden group">
+                    <div
+                        onClick={() => nextFixture && onMatchClick && onMatchClick(nextFixture)}
+                        className={`glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden group transition-all ${nextFixture ? 'cursor-pointer hover:border-emerald-500/30 hover:bg-white/5' : ''}`}
+                    >
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Calendar className="w-24 h-24 text-emerald-500" />
                         </div>
@@ -53,29 +56,26 @@ const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selec
 
                         {nextFixture ? (
                             <div className="space-y-4 relative z-10">
-                                <div className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-lg border border-white/5">
-                                    <div className="text-center w-1/3">
-                                        <div className="text-xs text-zinc-500 mb-1">{nextFixture.home === team ? 'Home' : 'Away'}</div>
-                                        <div className="font-bold text-white text-lg leading-tight">{team}</div>
+                                <div className="flex justify-between items-center bg-zinc-900/50 p-4 rounded-lg border border-white/5">
+                                    <div className="flex flex-col items-center w-5/12 text-center gap-2">
+                                        <img src={teamLogos[nextFixture.home]} alt={nextFixture.home} className="w-10 h-10 object-contain" />
+                                        <div className="font-bold text-white text-sm leading-tight">{nextFixture.home}</div>
+                                        <div className="text-[10px] text-zinc-500 uppercase">Home</div>
                                     </div>
-                                    <div className="text-center w-1/3 text-xs font-mono text-emerald-400 bg-emerald-500/10 py-1 px-2 rounded">
-                                        VS
+
+                                    <div className="flex flex-col items-center justify-center w-2/12">
+                                        <div className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 py-1 px-2 rounded mb-1">VS</div>
                                     </div>
-                                    <div className="text-center w-1/3 opacity-80">
-                                        {(() => {
-                                            const opponent = nextFixture.home === team ? nextFixture.away : nextFixture.home;
-                                            return (
-                                                <>
-                                                    <div className="text-xs text-zinc-500 mb-1">{nextFixture.home === team ? 'Away' : 'Home'}</div>
-                                                    <div className="font-bold text-zinc-300 text-sm leading-tight truncate">{opponent}</div>
-                                                </>
-                                            );
-                                        })()}
+
+                                    <div className="flex flex-col items-center w-5/12 text-center gap-2">
+                                        <img src={teamLogos[nextFixture.away]} alt={nextFixture.away} className="w-10 h-10 object-contain" />
+                                        <div className="font-bold text-white text-sm leading-tight">{nextFixture.away}</div>
+                                        <div className="text-[10px] text-zinc-500 uppercase">Away</div>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center text-xs font-medium text-zinc-400 px-1">
                                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {nextFixture.league}</span>
-                                    <span>{nextFixture.date}</span>
+                                    <span>{new Date(nextFixture.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                                 </div>
                             </div>
                         ) : (
@@ -128,7 +128,7 @@ const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selec
                             <History className="w-4 h-4" /> Match History
                         </h3>
 
-                        <div className="space-y-3">
+                        <div className="space-y-3 h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                             {history.length > 0 ? (
                                 history.map((match, idx) => (
                                     <HistoryItem
