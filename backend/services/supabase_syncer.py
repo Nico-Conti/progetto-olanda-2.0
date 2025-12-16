@@ -112,13 +112,30 @@ def build_stats_payload(local_match):
         if "away" in possession: payload["away_possession"] = parse_percentage(possession["away"])
 
     # 3. Gemini Analysis
+    # 3. Gemini Analysis
     gemini_analysis = local_match.get("gemini_analysis")
     if gemini_analysis and isinstance(gemini_analysis, dict):
+        # Old fields (backward compatibility)
         detailed = gemini_analysis.get("detailed_summary")
         tldr = gemini_analysis.get("tldr") or gemini_analysis.get("tlr")
-        
         if detailed: payload["detailed comment corner"] = detailed
         if tldr: payload["tl dr corner"] = tldr
+
+        # New fields (Detailed Analysis)
+        # Mapping: JSON key -> DB column
+        mapping = {
+            "match_summary": "summary_match",
+            "detailed_corners_analysis": "detail_corner",
+            "detailed_goals_analysis": "detail_goal",
+            "detailed_shots_analysis": "detail_shots",
+            "detailed_fouls_analysis": "detail_fouls",
+            "detailed_cards_analysis": "detail_cards"
+        }
+
+        for json_k, db_k in mapping.items():
+            val = gemini_analysis.get(json_k)
+            if val:
+                payload[db_k] = val
         
     # 4. URL
     if local_match.get("url"):

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Import services
 # Note: We need to ensure the services directory is in the python path or imported correctly.
 # Since main.py is in backend/, and services is in backend/services/, this relative import works.
-from backend.services.gemini_service import analyze_match_comments
+from backend.services.gemini_analyzer import analyze_match_comments
 from supabase import create_client, Client
 
 load_dotenv()
@@ -30,7 +30,8 @@ app.add_middleware(
 
 class MatchData(BaseModel):
     comments: List[Dict[str, Any]]
-    corners_data: Optional[Dict[str, str]] = None
+    stats_data: Optional[Dict[str, Any]] = None
+    teams: Optional[Dict[str, str]] = None
 
 @app.get("/")
 def read_root():
@@ -74,7 +75,7 @@ def analyze_match(data: MatchData):
     Analyzes match comments using Gemini.
     """
     try:
-        result = analyze_match_comments(data.comments, data.corners_data)
+        result = analyze_match_comments(data.comments, data.stats_data, data.teams)
         if "error" in result:
              raise HTTPException(status_code=500, detail=result["error"])
         return result

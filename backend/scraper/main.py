@@ -81,9 +81,10 @@ def main():
                 # Skip analysis for Serie B if comments are missing, or if explicitly skipped
                 if not args.skip_analysis and not is_serieb:
                     print("    -> Requesting Gemini analysis...")
-                    corners = details.get('calci_d_angolo', {})
+                    print("    -> Requesting Gemini analysis...")
+                    stats = details.get('stats', {})
                     teams = details.get('squadre', {})
-                    analysis = analyze_match_comments(details.get('commenti', []), corners_data=corners, teams=teams)
+                    analysis = analyze_match_comments(details.get('commenti', []), stats_data=stats, teams=teams)
                     del details['commenti'] 
                     details['gemini_analysis'] = analysis
                     print("    -> Analysis complete.")

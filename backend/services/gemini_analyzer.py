@@ -15,13 +15,13 @@ def configure_gemini():
     genai.configure(api_key=api_key)
     return True
 
-def analyze_match_comments(comments_list, corners_data=None, teams=None):
+def analyze_match_comments(comments_list, stats_data=None, teams=None):
     """
     Sends match comments to Gemini for analysis.
     
     Args:
         comments_list (list): List of dictionaries with 'time', 'type', 'text'.
-        corners_data (dict, optional): {'home': 'X', 'away': 'Y'}
+        stats_data (dict, optional): Full dictionary of stats (corners, fouls, shots, xg, etc.)
         teams (dict, optional): {'home': 'Team A', 'away': 'Team B'}
         
     Returns:
@@ -50,16 +50,26 @@ def analyze_match_comments(comments_list, corners_data=None, teams=None):
 
     # Add Official Stats to Prompt
     stats_section = ""
-    if corners_data:
+    if stats_data:
         home_team_name = teams.get('home', 'Casa') if teams else 'Casa'
         away_team_name = teams.get('away', 'Ospite') if teams else 'Ospite'
         
         stats_section = (
             f"\nDATI UFFICIALI:\n"
-            f"Squadra di Casa: {home_team_name} (Angoli: {corners_data.get('home', 'N/A')})\n"
-            f"Squadra Ospite: {away_team_name} (Angoli: {corners_data.get('away', 'N/A')})\n"
-            f"IMPORTANTE: Associa CORRETTAMENTE i commenti alle squadre. {home_team_name} è in casa, {away_team_name} è fuori casa.\n"
+            f"Squadra di Casa: {home_team_name}\n"
+            f"Squadra Ospite: {away_team_name}\n"
+            f"--------------------------------------------------\n"
         )
+        
+        # Iterate over all available stats provided by stats_data
+        # Expecting stats_data to be like: {'corners': {'home': '5', 'away': '2'}, 'xg': ...}
+        for key, vals in stats_data.items():
+            if isinstance(vals, dict) and 'home' in vals and 'away' in vals:
+                label = key.replace('_', ' ').capitalize()
+                stats_section += f"{label}: Casa {vals['home']} - Ospiti {vals['away']}\n"
+                
+        stats_section += f"--------------------------------------------------\n"
+        stats_section += f"IMPORTANTE: {home_team_name} è la squadra di casa, {away_team_name} è la squadra ospite.\n"
 
     # Add Goals Section
     goals_section = ""
@@ -67,17 +77,15 @@ def analyze_match_comments(comments_list, corners_data=None, teams=None):
         goals_section = "\nGOL SEGNATI (Usa questi per capire l'evoluzione del punteggio):\n" + "\n".join(goals_list) + "\n"
 
     system_prompt = (
-        "Sei un analista di calcio che aiuta un utente a fare pronostici sulle scommesse. Analizza la cronaca della partita. "
-        "Restituisci un oggetto JSON con esattamente due chiavi:\n"
-        "1. 'detailed_summary': Un'analisi dettagliata (fino a 500 parole) che copre ENTRAMBE le squadre. Spiega l'andamento della partita e l'ORIGINE dei calci d'angolo: "
-        "analizza i momenti in cui avvengono piu angoli o meno dato il contesto o risultato (pressione costante, svantaggio, contropiede, momento statico della partita). "
-        "Distingui chiaramente tra le due squadre (es. 'Squadra A ha spinto molto nel secondo tempo... mentre Squadra B solo in contropiede'). "
-        "Spiega se i numeri sono influenzati dal punteggio (es. tanti angoli perché perdevano 0-1 o 0-2). Cita il RISULTATO PARZIALE quando descrivi i cluster di angoli se deducibile. "
-        "IMPORTANTE: Usa i DATI UFFICIALI forniti per il conteggio totale, non provare a contarli dalla cronaca.\n"
-        "Scrivi in ITALIANO.\n"
-        "2. 'tldr': Un riassunto conciso (max 80 parole) che spiega brevemente il FLUSSO della partita (chi ha dominato, risultato se deducibile) "
-        "e la natura degli angoli per ENTRAMBE le squadre (es. 'Casa ha dominato vincendo, tanti angoli da assedio; Ospiti solo in contropiede'). "
-        "QUESTO CAMPO È OBBLIGATORIO. Se non sei sicuro, riassumi brevemente l'analisi dettagliata. Scrivi in ITALIANO.\n"
+        "Sei un analista di calcio professionista. Il tuo compito è dare una chiara visione della partita agli scommettitori.\n"
+        "Analizza i dati ufficiali e la cronaca della partita per produrre un JSON con le seguenti chiavi specifiche:\n\n"
+        "1. 'match_summary' (Stringa): Un riassunto narrativo generale della partita. Chi ha vinto? 2. 'detailed_corners_analysis' (Stringa): Analisi su CALCI D'ANGOLO.\n"
+        "3. 'detailed_goals_analysis' (Stringa): Analisi su GOL e xG (Expected Goals). Chi ha meritato i gol? Efficacia?\n"
+        "4. 'detailed_shots_analysis' (Stringa): Analisi su TIRI e Tiri in Porta.\n"
+        "5. 'detailed_fouls_analysis' (Stringa): Analisi sui FALLI commessi. Chi ha spezzettato il gioco?\n"
+        "6. 'detailed_cards_analysis' (Stringa): Analisi sui CARTELLINI (Gialli/Rossi). Discipline.\n\n"
+        "Per OGNI analisi dettagliata, devi CITARE ESPLICITAMENTE i numeri relativi a quella feature.\n"
+        "Usa lo stile di un report post-partita. Scrivi in ITALIANO."
     )
 
     full_prompt = f"{system_prompt}\n{stats_section}\n{goals_section}\n{formatted_comments}"
@@ -91,21 +99,21 @@ def analyze_match_comments(comments_list, corners_data=None, teams=None):
 
     for attempt in range(max_retries):
         try:
-            model = genai.GenerativeModel('gemini-2.5-flash')
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
             response = model.generate_content(full_prompt, generation_config=generation_config)
             
             # Parse JSON string to dict
             result = json.loads(response.text)
             
             # Fallback for missing tldr
-            if "detailed_summary" in result and ("tldr" not in result or not result["tldr"]):
-                detailed = result["detailed_summary"]
-                # Create a simple fallback summary from the first few sentences
-                sentences = detailed.split('.')
-                fallback_tldr = ". ".join(sentences[:2]) + "."
-                if len(fallback_tldr) > 200:
-                    fallback_tldr = fallback_tldr[:197] + "..."
-                result["tldr"] = fallback_tldr
+            # Fallback for missing keys (robustness) - ensure all keys exist
+            expected_keys = [
+                "match_summary", "detailed_corners_analysis", "detailed_goals_analysis", 
+                "detailed_shots_analysis", "detailed_fouls_analysis", "detailed_cards_analysis"
+            ]
+            for k in expected_keys:
+                if k not in result:
+                    result[k] = "Dati non disponibili per questa analisi."
                 
             return result
             

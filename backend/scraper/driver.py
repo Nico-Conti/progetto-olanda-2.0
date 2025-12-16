@@ -7,6 +7,7 @@ def make_driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--log-level=3") 
+    options.page_load_strategy = 'eager' # Don't wait for all resources (ads, etc.)
     # options.add_argument("--headless") # Uncomment for headless mode
 
     driver = uc.Chrome(options=options) # Auto-detect version

@@ -51,16 +51,30 @@ def scrape_stats(driver):
     }
     
     try:
-        # 1. Click the 'Statistiche' button
-        stats_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[text()='Statistiche'] | //a[contains(@href, '#match-summary/match-statistics')]"))
-        )
-        driver.execute_script("arguments[0].scrollIntoView(true);", stats_btn)
-        time.sleep(1)
-        driver.execute_script("arguments[0].click();", stats_btn)
+        # 1. Click the 'Statistiche' button with Retry
+        clicked = False
+        attempts = 0
+        while not clicked and attempts < 3:
+            try:
+                stats_btn = WebDriverWait(driver, 15).until( # Increased to 15s
+                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Statistiche'] | //a[contains(@href, '#match-summary/match-statistics')]"))
+                )
+                driver.execute_script("arguments[0].scrollIntoView(true);", stats_btn)
+                time.sleep(1) # Specific wait to ensure stability after scroll
+                driver.execute_script("arguments[0].click();", stats_btn)
+                clicked = True
+            except Exception as e:
+                print(f"    -> Retry {attempts+1} clicking stats: {e}")
+                attempts += 1
+                time.sleep(2)
+        
+        if not clicked:
+             print("    -> ⚠️ Could not click 'Statistiche' button after retries.")
+             return stats_data # Return empty/zeros if we can't click
+
 
         # 2. Wait for a specific stats element to load to ensure DOM update
-        WebDriverWait(driver, 5).until(
+        WebDriverWait(driver, 15).until( # Increased to 15s
             EC.presence_of_element_located((By.CLASS_NAME, "wcl-row_2oCpS"))
         )
         
@@ -109,8 +123,9 @@ def scrape_stats(driver):
                     }
                 
     except Exception as e:
-        # print(f"    -> ⚠️ Failed to scrape stats: {e}")
-        pass
+        print(f"    -> ⚠️ Failed to scrape stats: {e}")
+        # pass # Do not silence unexpected errors completely during debug
+
         
     return stats_data
 
@@ -126,7 +141,7 @@ def scrape_comments(driver):
                 EC.element_to_be_clickable((By.XPATH, "//button[text()='Commento'] | //a[contains(@href, '#match-summary/live-commentary')]"))
             )
             driver.execute_script("arguments[0].scrollIntoView(true);", comm_btn)
-            time.sleep(1)
+            # time.sleep(0.5) 
             driver.execute_script("arguments[0].click();", comm_btn)
         except Exception as e:
             # print(f"    -> ⚠️ Failed to click comment tab: {e}")
@@ -141,7 +156,7 @@ def scrape_comments(driver):
              # print(f"    -> ⚠️ Commentary container not found: {e}")
              return []
         
-        time.sleep(1)
+        # time.sleep(1) # Removed sleep, wait above is enough
         
         # 3. Parse content
         soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -191,7 +206,7 @@ def scrape_match_details(driver, product_url, skip_comments=False):
         driver.get(product_url)
 
         # 1. Wait for Main Page Load
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CLASS_NAME, "duelParticipant"))
         )
 
@@ -201,7 +216,7 @@ def scrape_match_details(driver, product_url, skip_comments=False):
                 EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[id="onetrust-accept-btn-handler"]'))
             )
             cookies.click()
-            time.sleep(1) 
+            # time.sleep(1) # Removed 
         except:
             pass
         # ---------------------------------------
