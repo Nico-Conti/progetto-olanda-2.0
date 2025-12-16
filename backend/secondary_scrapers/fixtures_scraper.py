@@ -345,7 +345,8 @@ def scrape_fixtures():
         {"name": "La Liga", "key": "laliga", "url": "https://www.diretta.it/calcio/spagna/laliga/calendario/"},
         {"name": "Eredivisie", "key": "eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/calendario/"},
         {"name": "Serie B", "key": "serieb", "url": "https://www.diretta.it/calcio/italia/serie-b/calendario/"},
-        {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/calendario/"}
+        {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/calendario/"},
+        {"name": "Bundesliga", "key": "bundesliga", "url": "https://www.diretta.it/calcio/germania/bundesliga/calendario/"}
     ]
     
     target_leagues = leagues
