@@ -29,7 +29,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     useEffect(() => {
         if (preSelectedMatch) {
             setSelectedMatch(preSelectedMatch);
-            setSelectedAnalysisMatch(preSelectedMatch);
+            // Do not auto-select analysis match. Let user click on specific matches to see details.
+            setSelectedAnalysisMatch(null);
         }
     }, [preSelectedMatch]);
 
@@ -137,6 +138,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                         } else {
                             setSelectedMatch(null);
                         }
+                        setSelectedAnalysisMatch(null);
                     }}
                     className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-2"
                 >
@@ -360,6 +362,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             onClick={(e) => {
                                 if (e.target.closest('select') || e.target.closest('button')) return;
                                 setSelectedMatch(match);
+                                setSelectedAnalysisMatch(null);
                             }}
                             className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-95 transition-transform"
                         >
@@ -475,10 +478,19 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                         // Prevent navigation if clicking on the dropdown
                                         if (e.target.closest('select')) return;
                                         setSelectedMatch(match);
+                                        setSelectedAnalysisMatch(null);
                                     }}
                                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
                                 >
-                                    <td className="px-5 py-4 whitespace-nowrap font-medium text-zinc-400">{match.date}</td>
+                                    <td className="px-5 py-4 whitespace-nowrap font-medium text-zinc-400">
+                                        {(() => {
+                                            if (!match.date) return 'TBD';
+                                            const d = new Date(match.date);
+                                            return !isNaN(d.getTime())
+                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                                : match.date;
+                                        })()}
+                                    </td>
                                     <td className="px-5 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2 w-[120px] justify-end">
@@ -503,6 +515,15 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction.expHome.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction.expAway.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction.total.toFixed(1)}</td>
+                                    <td className="px-4 py-4 text-zinc-400 font-medium">
+                                        {(() => {
+                                            if (!match.date) return 'TBD';
+                                            const d = new Date(match.date);
+                                            return !isNaN(d.getTime())
+                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                                : match.date;
+                                        })()}
+                                    </td>
                                     <td className="px-3 py-4 text-center">
                                         <div className="relative inline-block">
                                             <select

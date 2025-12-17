@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy, Menu, X } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Trophy, Menu, X, Globe } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -15,6 +15,7 @@ import ToggleSwitch from './components/ui/ToggleSwitch';
 import BetSlipModal from './components/BetSlipModal';
 import Header from './components/Header';
 import TeamDetails from './components/TeamDetails';
+import LeagueTable from './components/LeagueTable';
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
@@ -22,6 +23,7 @@ export default function App() {
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
+  const [previousTab, setPreviousTab] = useState('trends');
 
   // Animation State
   const [isAnimationEnabled, setIsAnimationEnabled] = useState(true);
@@ -104,6 +106,7 @@ export default function App() {
   };
 
   const handleTeamClick = (team) => {
+    setPreviousTab(activeTab);
     setSelectedTeam(team);
     handleTabChange('team-details');
   };
@@ -271,6 +274,7 @@ export default function App() {
                 >
                   Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                 </h1>
+
                 <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                   <div className={`w-2 h-2 rounded-full ${isBackendOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
                   <span className={`text-[10px] font-bold uppercase tracking-wider ${isBackendOnline ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -303,6 +307,17 @@ export default function App() {
                   <Calculator className="w-5 h-5" />
                 </button>
 
+                {/* Standings Tab */}
+                <button
+                  onClick={() => handleTabChange('standings')}
+                  className={`p-2 rounded-lg border transition-all ${activeTab === 'standings'
+                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
+                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
+                    }`}
+                >
+                  <Trophy className="w-5 h-5" />
+                </button>
+
                 {/* Statistic Selector */}
                 <StatisticSelector
                   value={selectedStatistic}
@@ -329,55 +344,71 @@ export default function App() {
               </div>
 
               {/* Desktop Nav */}
-              <div className="hidden md:flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-3">
 
                 <StatisticSelector
                   value={selectedStatistic}
                   onChange={(e) => setSelectedStatistic(e.target.value)}
-                  className="w-[180px]"
+                  className="w-[150px]"
                 />
-                <div className="flex bg-zinc-900/80 p-1 rounded-lg border border-white/5">
 
+                {/* Main Navigation Pill */}
+                <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5 shadow-lg shadow-black/20">
                   <button
                     onClick={() => handleTabChange('trends')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
-                      ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
                   >
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="hidden md:inline">Trends</span>
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Trends
                   </button>
                   <button
                     onClick={() => handleTabChange('predictor')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
-                      ? 'bg-zinc-800 text-white shadow-sm border border-white/5'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
                   >
-                    <Calculator className="w-4 h-4" />
-                    <span className="hidden md:inline">Predictor</span>
+                    <Calculator className="w-3.5 h-3.5" />
+                    Predictor
                   </button>
                   <button
-                    onClick={() => handleViewChange('landing')}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    onClick={() => handleTabChange('standings')}
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'standings'
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                      }`}
                   >
-                    <Trophy className="w-4 h-4" />
-                    <span className="hidden md:inline">Change League</span>
+                    <Trophy className="w-3.5 h-3.5" />
+                    Standings
                   </button>
+                </div>
+
+                {/* Secondary Actions */}
+                <div className="flex items-center gap-2 pl-2 border-l border-white/5">
+                  <button
+                    onClick={() => handleViewChange('landing')}
+                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    title="Change League"
+                  >
+                    <Globe className="w-5 h-5" />
+                  </button>
+
                   <button
                     onClick={() => {
                       const audio = new Audio('/sounds/malepisello.mp3');
                       audio.playbackRate = Math.random() * (1.5 - 0.5) + 0.5;
                       audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
                     }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                     title="Play Sound"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -392,30 +423,31 @@ export default function App() {
                     </svg>
                   </button>
 
+                  {/* Bet Slip Button */}
+                  <button
+                    onClick={() => setIsBetSlipOpen(true)}
+                    className="relative p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
+                    title="Bet Slip"
+                  >
+                    <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center shadow-[0_0_8px_rgba(16,185,129,0.6)]">
+                      {bets.length}
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                  </button>
+
+                  <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+                  <ToggleSwitch
+                    isOn={isAnimationEnabled}
+                    onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
+                  />
                 </div>
-
-                {/* Bet Slip Button */}
-                <button
-                  onClick={() => setIsBetSlipOpen(true)}
-                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition-all group ml-4"
-                >
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                    {bets.length}
-                  </div>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                </button>
-
-                {/* Animation Toggle */}
-                <ToggleSwitch
-                  isOn={isAnimationEnabled}
-                  onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
-                />
               </div>
             </div>
 
@@ -425,18 +457,24 @@ export default function App() {
                 <div className="p-4 space-y-4">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase">View</label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <button
                         onClick={() => { handleTabChange('trends'); setIsMobileMenuOpen(false); }}
-                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'trends' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'trends' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
                       >
                         <TrendingUp className="w-4 h-4" /> Trends
                       </button>
                       <button
                         onClick={() => { handleTabChange('predictor'); setIsMobileMenuOpen(false); }}
-                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'predictor' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'predictor' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
                       >
                         <Calculator className="w-4 h-4" /> Predictor
+                      </button>
+                      <button
+                        onClick={() => { handleTabChange('standings'); setIsMobileMenuOpen(false); }}
+                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'standings' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
+                      >
+                        <Trophy className="w-4 h-4" /> Standings
                       </button>
                     </div>
                   </div>
@@ -455,7 +493,7 @@ export default function App() {
                       onClick={() => { handleViewChange('landing'); setIsMobileMenuOpen(false); }}
                       className="p-3 bg-zinc-900 rounded-lg border border-white/10 text-zinc-300 text-sm font-bold flex items-center justify-center gap-2"
                     >
-                      <Trophy className="w-4 h-4" /> Change League
+                      <Globe className="w-4 h-4" /> Change League
                     </button>
                     <div className="flex items-center justify-between bg-zinc-900 p-2 px-3 rounded-lg border border-white/10">
                       <span className="text-xs font-bold text-zinc-400">Animations</span>
@@ -489,7 +527,7 @@ export default function App() {
                   teamLogo={teamLogos[selectedTeam]}
                   stats={stats[selectedTeam]}
                   fixtures={filteredFixtures}
-                  onBack={() => handleTabChange('trends')}
+                  onBack={() => handleTabChange(previousTab)}
                   teamLogos={teamLogos}
                   selectedStatistic={selectedStatistic}
                   onMatchClick={(match) => {
@@ -526,6 +564,17 @@ export default function App() {
                     }
                   }}
                   backButtonLabel={backLabel}
+                />
+              </div>
+            )}
+
+            {activeTab === 'standings' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4">
+                <LeagueTable
+                  matchData={filteredMatchData}
+                  teamLogos={teamLogos}
+                  leagueLogo={leagues.find(l => l.name === selectedLeague)?.logo_url || null}
+                  onTeamClick={handleTeamClick}
                 />
               </div>
             )}
