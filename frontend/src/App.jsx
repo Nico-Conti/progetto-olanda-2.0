@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy, Menu, X, Globe } from 'lucide-react';
+import { Activity, TrendingUp, Calculator, Trophy, Menu, X, Home } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -42,15 +42,15 @@ export default function App() {
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const addToBet = (game, option, value, stat) => {
+  const addToBet = (game, option, value, stat, team = 'total') => {
     setBets(prev => {
-      const existingIndex = prev.findIndex(b => b.game === game);
+      const existingIndex = prev.findIndex(b => b.game === game && b.stat === stat && b.team === team);
       if (existingIndex >= 0) {
         const newBets = [...prev];
-        newBets[existingIndex] = { game, option, value, stat };
+        newBets[existingIndex] = { game, option, value, stat, team };
         return newBets;
       }
-      return [...prev, { game, option, value, stat }];
+      return [...prev, { game, option, value, stat, team }];
     });
   };
 
@@ -356,7 +356,7 @@ export default function App() {
                 <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5 shadow-lg shadow-black/20">
                   <button
                     onClick={() => handleTabChange('trends')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
@@ -366,7 +366,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => handleTabChange('predictor')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
@@ -376,7 +376,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => handleTabChange('standings')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'standings'
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'standings'
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
@@ -393,7 +393,7 @@ export default function App() {
                     className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                     title="Change League"
                   >
-                    <Globe className="w-5 h-5" />
+                    <Home className="w-5 h-5" />
                   </button>
 
                   <button
@@ -493,7 +493,7 @@ export default function App() {
                       onClick={() => { handleViewChange('landing'); setIsMobileMenuOpen(false); }}
                       className="p-3 bg-zinc-900 rounded-lg border border-white/10 text-zinc-300 text-sm font-bold flex items-center justify-center gap-2"
                     >
-                      <Globe className="w-4 h-4" /> Change League
+                      <Home className="w-4 h-4" /> Change League
                     </button>
                     <div className="flex items-center justify-between bg-zinc-900 p-2 px-3 rounded-lg border border-white/10">
                       <span className="text-xs font-bold text-zinc-400">Animations</span>

@@ -14,6 +14,7 @@ const ResultsList = ({
     bets,
     addToBet,
     removeFromBet,
+    analysisMode,
     selectedStatistic,
     operator,
     threshold,
@@ -141,16 +142,17 @@ const ResultsList = ({
                             </div>
                             <button
                                 onClick={() => {
+                                    const teamParam = analysisMode === 'individual' ? 'individual' : 'total';
                                     const opt = operator === 'over' ? 'O' : 'U';
-                                    const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === opt && b.value === threshold);
+                                    const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === teamParam);
 
                                     if (isAdded) {
                                         removeFromBet(team.team);
                                     } else {
-                                        addToBet(team.team, opt, threshold, selectedStatistic);
+                                        addToBet(team.team, opt, threshold, selectedStatistic, analysisMode === 'individual' ? 'individual' : 'total');
                                     }
                                 }}
-                                className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
+                                className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === (analysisMode === 'individual' ? 'individual' : 'total'))
                                     ? 'bg-red-500/20 text-red-500 border border-red-500/50'
                                     : 'bg-white/5 text-zinc-400'
                                     }`}
@@ -254,16 +256,17 @@ const ResultsList = ({
                                 <td className="px-6 py-4 text-center">
                                     <button
                                         onClick={() => {
+                                            const teamParam = analysisMode === 'individual' ? 'individual' : 'total';
                                             const opt = operator === 'over' ? 'O' : 'U';
-                                            const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === opt && b.value === threshold);
+                                            const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === teamParam);
 
                                             if (isAdded) {
                                                 removeFromBet(team.team);
                                             } else {
-                                                addToBet(team.team, opt, threshold, selectedStatistic);
+                                                addToBet(team.team, opt, threshold, selectedStatistic, analysisMode === 'individual' ? 'individual' : 'total');
                                             }
                                         }}
-                                        className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold)
+                                        className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === (analysisMode === 'individual' ? 'individual' : 'total'))
                                             ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                                             : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
                                             }`}

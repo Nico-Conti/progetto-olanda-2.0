@@ -86,7 +86,7 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear }) => {
                                         <div className="game font-bold text-white text-sm">{bet.game}</div>
                                         <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
                                             <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold text-zinc-300 stat-label">
-                                                {bet.stat?.replace('_', ' ') || 'Stat'}
+                                                {bet.team !== 'total' ? `${bet.team} ` : ''}{bet.stat?.replace(/_/g, ' ') || 'Stat'}
                                             </span>
                                             <span className="selection text-emerald-400 font-mono font-bold text-sm">
                                                 {bet.option === 'O' ? 'Over' : 'Under'} {bet.value}

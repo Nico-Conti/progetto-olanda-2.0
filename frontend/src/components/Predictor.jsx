@@ -462,15 +462,15 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <BetBuilderCell
                                         game={`${match.home} vs ${match.away}`}
+                                        home={match.home}
+                                        away={match.away}
+                                        teamLogos={teamLogos}
                                         stat={match.selectedStat}
+                                        prediction={match.prediction}
                                         onAdd={addToBet}
-                                        existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}`)}
+                                        existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
                                     />
                                 </div>
-
-                                <button className="p-2 bg-zinc-800 rounded-lg text-zinc-400">
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
                             </div>
                         </div>
                     )) : (
@@ -570,14 +570,16 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                         <BetBuilderCell
                                             game={`${match.home} vs ${match.away}`}
+                                            home={match.home}
+                                            away={match.away}
+                                            teamLogos={teamLogos}
                                             stat={match.selectedStat}
+                                            prediction={match.prediction}
                                             onAdd={addToBet}
-                                            existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}`)}
+                                            existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
                                         />
                                     </td>
-                                    <td className="px-3 py-4 text-right">
-                                        <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors inline-block" />
-                                    </td>
+
                                 </tr>
                             )) : (
                                 <tr>

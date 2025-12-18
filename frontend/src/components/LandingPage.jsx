@@ -213,8 +213,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
             {/* Footer */}
             <div
-                className="py-8 text-center text-zinc-600 text-xs font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
-                style={{ animationDelay: `${(availableLeagues.length + 3) * 100}ms`, animationFillMode: 'backwards' }}
+                className="py-8 text-center text-zinc-600 text-m font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
+                style={{ 'font-family': 'Silkscreen', animationDelay: `${(availableLeagues.length + 3) * 100}ms`, animationFillMode: 'backwards' }}
             >
                 Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky.
             </div>

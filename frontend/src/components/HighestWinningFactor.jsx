@@ -198,6 +198,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                             bets={bets}
                             addToBet={addToBet}
                             removeFromBet={removeFromBet}
+                            analysisMode={analysisMode}
                             selectedStatistic={selectedStatistic}
                             operator={operator}
                             threshold={threshold}
