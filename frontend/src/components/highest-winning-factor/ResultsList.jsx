@@ -142,22 +142,42 @@ const ResultsList = ({
                             </div>
                             <button
                                 onClick={() => {
-                                    const teamParam = analysisMode === 'individual' ? 'individual' : 'total';
+                                    const nextMatch = team.nextMatch;
+                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                    const teamParam = analysisMode === 'individual'
+                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                        : 'total';
                                     const opt = operator === 'over' ? 'O' : 'U';
-                                    const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === teamParam);
+
+                                    const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
 
                                     if (isAdded) {
-                                        removeFromBet(team.team);
+                                        removeFromBet(gameName);
                                     } else {
-                                        addToBet(team.team, opt, threshold, selectedStatistic, analysisMode === 'individual' ? 'individual' : 'total');
+                                        addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
                                     }
                                 }}
-                                className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === (analysisMode === 'individual' ? 'individual' : 'total'))
+                                className={`p-2 rounded-lg transition-all ${(() => {
+                                    const nextMatch = team.nextMatch;
+                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                    const teamParam = analysisMode === 'individual'
+                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                        : 'total';
+                                    return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
+                                })()
                                     ? 'bg-red-500/20 text-red-500 border border-red-500/50'
                                     : 'bg-white/5 text-zinc-400'
                                     }`}
                             >
-                                {bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? (
+                                {(() => {
+                                    const nextMatch = team.nextMatch;
+                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                    const teamParam = analysisMode === 'individual'
+                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                        : 'total';
+                                    const opt = operator === 'over' ? 'O' : 'U';
+                                    return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
+                                })() ? (
                                     <X className="w-4 h-4" />
                                 ) : (
                                     <Plus className="w-4 h-4" />
@@ -256,22 +276,42 @@ const ResultsList = ({
                                 <td className="px-6 py-4 text-center">
                                     <button
                                         onClick={() => {
-                                            const teamParam = analysisMode === 'individual' ? 'individual' : 'total';
+                                            const nextMatch = team.nextMatch;
+                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                            const teamParam = analysisMode === 'individual'
+                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                : 'total';
                                             const opt = operator === 'over' ? 'O' : 'U';
-                                            const isAdded = bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === teamParam);
+
+                                            const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
 
                                             if (isAdded) {
-                                                removeFromBet(team.team);
+                                                removeFromBet(gameName);
                                             } else {
-                                                addToBet(team.team, opt, threshold, selectedStatistic, analysisMode === 'individual' ? 'individual' : 'total');
+                                                addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
                                             }
                                         }}
-                                        className={`p-2 rounded-lg transition-all ${bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.team === (analysisMode === 'individual' ? 'individual' : 'total'))
+                                        className={`p-2 rounded-lg transition-all ${(() => {
+                                            const nextMatch = team.nextMatch;
+                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                            const teamParam = analysisMode === 'individual'
+                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                : 'total';
+                                            return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
+                                        })()
                                             ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                                             : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
                                             }`}
                                     >
-                                        {bets?.some(b => b.game === team.team && b.stat === selectedStatistic && b.option === (operator === 'over' ? 'O' : 'U') && b.value === threshold) ? (
+                                        {(() => {
+                                            const nextMatch = team.nextMatch;
+                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                            const teamParam = analysisMode === 'individual'
+                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                : 'total';
+                                            const opt = operator === 'over' ? 'O' : 'U';
+                                            return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
+                                        })() ? (
                                             <X className="w-4 h-4" />
                                         ) : (
                                             <Plus className="w-4 h-4 transition-transform" />

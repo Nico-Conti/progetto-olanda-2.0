@@ -113,11 +113,31 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
         });
 
         // Sort by Win Rate descending, then by Win Count descending
-        return results.sort((a, b) => {
+        const sorted = results.sort((a, b) => {
             if (b.winRate !== a.winRate) return b.winRate - a.winRate;
             return b.winCount - a.winCount;
         });
-    }, [matchData, selectedStatistic, operator, threshold, nGames, selectedLeague, analysisMode]);
+
+        // Add nextMatch info for each team
+        return sorted.map(res => {
+            let nextMatch = null;
+            if (fixturesData) {
+                const teamFixtures = fixturesData.filter(f => f.home === res.team || f.away === res.team);
+                const unplayed = teamFixtures.filter(f => {
+                    return !matchData.some(m =>
+                        ((m.squadre.home === f.home && m.squadre.away === f.away) ||
+                            (m.squadre.home === f.away && m.squadre.away === f.home)) &&
+                        (m.giornata === f.matchday)
+                    );
+                }).sort((a, b) => (a.matchday || 0) - (b.matchday || 0));
+
+                if (unplayed.length > 0) {
+                    nextMatch = unplayed[0];
+                }
+            }
+            return { ...res, nextMatch };
+        });
+    }, [matchData, fixturesData, selectedStatistic, operator, threshold, nGames, selectedLeague, analysisMode]);
 
     // Calculate max games played by any team to set the limit for "Season"
     const maxGames = useMemo(() => {

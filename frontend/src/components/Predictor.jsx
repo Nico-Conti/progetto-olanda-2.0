@@ -44,6 +44,25 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         return stats;
     }, [matchData]);
 
+    // League Averages for Hot Match condition
+    const leagueAverages = useMemo(() => {
+        const averages = {};
+        STAT_OPTIONS.forEach(opt => {
+            const statistic = opt.value;
+            let totalVal = 0;
+            let count = 0;
+            matchData.forEach(m => {
+                const statObj = m.stats?.[statistic];
+                if (statObj) {
+                    totalVal += Number(statObj.home) + Number(statObj.away);
+                    count++;
+                }
+            });
+            averages[statistic] = count > 0 ? totalVal / count : 0;
+        });
+        return averages;
+    }, [matchData]);
+
     // Independent Statistic State
     const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
 
@@ -403,6 +422,13 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 })()}
                             </div>
 
+                            {/* Hot Match Indicator */}
+                            {match.selectedStat !== 'possession' && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
+                                <div className="absolute top-0 left-0 bg-red-500/20 text-red-500 p-1.5 rounded-br-lg animate-pulse border-r border-b border-red-500/20 z-10">
+                                    <Flame className="w-3.5 h-3.5 fill-current" />
+                                </div>
+                            )}
+
                             {/* Teams */}
                             <div className="flex items-center justify-between mt-2 mb-4">
                                 <div className="flex flex-col items-center w-1/3 text-center">
@@ -415,11 +441,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     <div className="text-2xl font-black text-white tracking-tighter bg-white/5 px-3 py-1 rounded-lg border border-white/5">
                                         {match.prediction.total.toFixed(1)}
                                     </div>
-                                    {match.prediction.total > 11.5 && match.selectedStat === 'corners' && (
-                                        <div className="mt-1 flex items-center gap-1 text-[10px] text-red-400 font-bold uppercase animate-pulse">
-                                            <Flame className="w-3 h-3 text-red-500" /> Hot
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="flex flex-col items-center w-1/3 text-center">
@@ -485,14 +506,13 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>
-                                <th className="px-5 py-3 font-bold tracking-wider">Date</th>
-                                <th className="px-5 py-3 font-bold tracking-wider">Matchup</th>
+                                <th className="pl-5 pr-2 py-3 font-bold tracking-wider text-center w-[80px]">Date</th>
+                                <th className="pl-2 pr-5 py-3 font-bold tracking-wider text-center">Matchup</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500">Home Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500">Away Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white">Total Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider">Stat</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider">Bet Builder</th>
-                                <th className="px-3 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">
@@ -508,7 +528,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     }}
                                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
                                 >
-                                    <td className="px-5 py-4 whitespace-nowrap font-medium text-zinc-400">
+                                    <td className="pl-5 pr-0 py-4 whitespace-nowrap font-medium text-zinc-400 text-center w-[80px]">
                                         {(() => {
                                             if (!match.date) return 'TBD';
                                             const d = new Date(match.date);
@@ -517,39 +537,40 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                                 : match.date;
                                         })()}
                                     </td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-2 w-[120px] justify-end">
-                                                <span className={`font-bold ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
-                                                <img src={teamLogos[match.home]} alt={match.home} className="w-6 h-6 object-contain" />
+                                    <td className="pl-0 pr-5 py-4 relative text-center">
+                                        <div className="flex items-center gap-3 justify-center">
+                                            <div className="flex items-center gap-2 w-[150px] justify-end">
+                                                <span
+                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}
+                                                    title={match.home}
+                                                >
+                                                    {match.home}
+                                                </span>
+                                                <img src={teamLogos[match.home]} alt={match.home} className="w-6 h-6 flex-shrink-0 object-contain" />
                                             </div>
-                                            <div className="flex flex-col items-center">
+                                            <div className="flex flex-col items-center flex-shrink-0">
                                                 <span className="text-zinc-600 font-bold text-xs">VS</span>
-
                                             </div>
-                                            <div className="flex items-center gap-2 w-[120px]">
-                                                <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 object-contain" />
-                                                <span className={`font-bold ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
+                                            <div className="flex items-center gap-2 w-[150px]">
+                                                <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 flex-shrink-0 object-contain" />
+                                                <span
+                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}
+                                                    title={match.away}
+                                                >
+                                                    {match.away}
+                                                </span>
                                             </div>
-                                            {match.prediction.total > 11.5 && match.selectedStat === 'corners' && (
-                                                <div className="mt-1 inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 text-red-500 animate-pulse">
-                                                    <Flame className="w-3 h-3 fill-current" />
-                                                </div>
-                                            )}
                                         </div>
+                                        {/* Hot Indicator */}
+                                        {match.selectedStat !== 'possession' && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
+                                            <div className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full animate-pulse border border-red-500/20" title="Hot Match (15% Above Avg)">
+                                                <Flame className="w-3.5 h-3.5 fill-current" />
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction.expHome.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction.expAway.toFixed(2)}</td>
                                     <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction.total.toFixed(1)}</td>
-                                    <td className="px-4 py-4 text-zinc-400 font-medium">
-                                        {(() => {
-                                            if (!match.date) return 'TBD';
-                                            const d = new Date(match.date);
-                                            return !isNaN(d.getTime())
-                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                                : match.date;
-                                        })()}
-                                    </td>
                                     <td className="px-3 py-4 text-center">
                                         <div className="relative inline-block">
                                             <select
@@ -591,10 +612,10 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div >
 
             {/* Custom Matchup Selector */}
-            <div className="glass-panel p-6 rounded-xl border border-white/10 mt-8">
+            < div className="glass-panel p-6 rounded-xl border border-white/10 mt-8" >
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-emerald-400" />
@@ -608,15 +629,17 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     </button>
                 </div>
 
-                {showCustomPrediction && (
-                    <div className="flex justify-end mb-4">
-                        <StatisticSelector
-                            value={localStatistic}
-                            onChange={(e) => setLocalStatistic(e.target.value)}
-                            className="w-[140px]"
-                        />
-                    </div>
-                )}
+                {
+                    showCustomPrediction && (
+                        <div className="flex justify-end mb-4">
+                            <StatisticSelector
+                                value={localStatistic}
+                                onChange={(e) => setLocalStatistic(e.target.value)}
+                                className="w-[140px]"
+                            />
+                        </div>
+                    )
+                }
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
@@ -647,52 +670,54 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     </div>
                 </div>
 
-                {showCustomPrediction && customPrediction && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                        {/* Prediction Hero (Reused) */}
-                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                {
+                    showCustomPrediction && customPrediction && (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            {/* Prediction Hero (Reused) */}
+                            <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} />
 
-                        {/* Detailed History (Reused) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                                <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                                    <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <img src={teamLogos[customHome]} alt={customHome} className="w-6 h-6 object-contain" />
-                                        {customHome}
-                                    </h4>
-                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
+                            {/* Detailed History (Reused) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
+                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
+                                        <h4 className="font-bold text-white flex items-center gap-3 text-lg">
+                                            <img src={teamLogos[customHome]} alt={customHome} className="w-6 h-6 object-contain" />
+                                            {customHome}
+                                        </h4>
+                                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
+                                    </div>
+                                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {customPrediction.homeMatches.map(m => (
+                                            <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {customPrediction.homeMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                                    ))}
+
+                                <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
+                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
+                                        <h4 className="font-bold text-white flex items-center gap-3 text-lg">
+                                            <img src={teamLogos[customAway]} alt={customAway} className="w-6 h-6 object-contain" />
+                                            {customAway}
+                                        </h4>
+                                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
+                                    </div>
+                                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {customPrediction.awayMatches.map(m => (
+                                            <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-
-                            <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                                <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                                    <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                        <img src={teamLogos[customAway]} alt={customAway} className="w-6 h-6 object-contain" />
-                                        {customAway}
-                                    </h4>
-                                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
-                                </div>
-                                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {customPrediction.awayMatches.map(m => (
-                                        <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                                    ))}
-                                </div>
-                            </div>
+                            <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
                         </div>
-                        <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
 
 
             {/* Detailed Analysis Modal/Section */}
 
-        </div>
+        </div >
     );
 };
 
