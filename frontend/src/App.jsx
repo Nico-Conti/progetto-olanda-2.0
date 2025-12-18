@@ -575,6 +575,7 @@ export default function App() {
                   teamLogos={teamLogos}
                   leagueLogo={leagues.find(l => l.name === selectedLeague)?.logo_url || null}
                   onTeamClick={handleTeamClick}
+                  selectedStatistic={selectedStatistic}
                 />
               </div>
             )}

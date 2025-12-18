@@ -24,13 +24,13 @@ export const processData = (matches, statistic = 'corners') => {
         teamStats[homeTeam].home_for.push(cHome);
         teamStats[homeTeam].home_ag.push(cAway);
         teamStats[homeTeam].home_totals.push(total);
-        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
+        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
 
         // Away Team Stats
         teamStats[awayTeam].away_for.push(cAway);
         teamStats[awayTeam].away_ag.push(cHome);
         teamStats[awayTeam].away_totals.push(total);
-        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary });
+        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
     });
 
     return teamStats;

@@ -80,7 +80,8 @@ export const useMatchData = () => {
                     giornata: match.giornata || 0,
                     league: match.league, // Include league for filtering
                     tldr: match["tl dr corner"] || match.tldr || "",
-                    detailed_summary: match["detailed comment corner"] || match.detailed_summary || ""
+                    detailed_summary: match["detailed comment corner"] || match.detailed_summary || "",
+                    date: match.match_date
                 }));
 
                 setMatchData(formattedData);
