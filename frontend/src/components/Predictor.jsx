@@ -24,6 +24,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+    const [useAdjustedMode, setUseAdjustedMode] = useState(false);
 
     // Sync preSelectedMatch
     useEffect(() => {
@@ -75,8 +76,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, localStats, nGames);
-    }, [customHome, customAway, localStats, nGames, showCustomPrediction]);
+        return calculatePrediction(customHome, customAway, localStats, nGames, useAdjustedMode);
+    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useAdjustedMode]);
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
@@ -95,12 +96,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             const stat = matchStatistics[matchId] || selectedStatistic;
             const statsToUse = allProcessedStats[stat] || globalStats;
 
-            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames);
+            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, useAdjustedMode);
             return { ...match, prediction: pred, selectedStat: stat };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useAdjustedMode]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -125,7 +126,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
         // Use LOCAL stats here
-        const detailPred = calculatePrediction(home, away, localStats, nGames);
+        const detailPred = calculatePrediction(home, away, localStats, nGames, useAdjustedMode);
 
         if (!detailPred) return <div>Error loading match details</div>;
 
@@ -163,6 +164,19 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 onChange={(e) => setLocalStatistic(e.target.value)}
                                 className="w-full sm:w-[140px]"
                             />
+                        </div>
+
+                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
+
+                        {/* Adjusted Mode Toggle */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Adjusted:</span>
+                            <button
+                                onClick={() => setUseAdjustedMode(!useAdjustedMode)}
+                                className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                            >
+                                <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
                         </div>
 
                         <div className="hidden sm:block w-px h-4 bg-white/10"></div>
@@ -293,6 +307,18 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             </select>
                             <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 rotate-90 pointer-events-none" />
                         </div>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Adj. Mode:</span>
+                        <button
+                            onClick={() => setUseAdjustedMode(!useAdjustedMode)}
+                            className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                        >
+                            <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
                     </div>
 
                     <div className="w-px h-8 bg-white/10 hidden md:block"></div>
