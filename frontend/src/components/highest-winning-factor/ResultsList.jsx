@@ -20,6 +20,7 @@ const ResultsList = ({
     threshold,
     onTeamClick
 }) => {
+    const [expandedTeam, setExpandedTeam] = React.useState(null);
 
     const displayLimitOptions = [5, 10, 15, 20].map(n => ({ value: n, label: n.toString() }));
 
@@ -123,159 +124,28 @@ const ResultsList = ({
                 {rankedTeams.slice(0, displayLimit).map((team, index) => (
                     <div
                         key={team.team}
-                        className="bg-zinc-900/40 border border-white/5 rounded-xl p-4 flex flex-col gap-3"
+                        className="flex flex-col gap-2"
                     >
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-3">
-                                <span className="font-mono text-zinc-600 font-bold">#{index + 1}</span>
-                                <div
-                                    className="flex items-center gap-2 cursor-pointer"
-                                    onClick={() => onTeamClick && onTeamClick(team.team)}
-                                >
-                                    <img
-                                        src={teamLogos[team.team]}
-                                        alt={team.team}
-                                        className="w-8 h-8 object-contain"
-                                    />
-                                    <span className="font-bold text-white text-lg">{team.team}</span>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    const nextMatch = team.nextMatch;
-                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                    const teamParam = analysisMode === 'individual'
-                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                        : 'total';
-                                    const opt = operator === 'over' ? 'O' : 'U';
-
-                                    const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-
-                                    if (isAdded) {
-                                        removeFromBet(gameName);
-                                    } else {
-                                        addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
-                                    }
-                                }}
-                                className={`p-2 rounded-lg transition-all ${(() => {
-                                    const nextMatch = team.nextMatch;
-                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                    const teamParam = analysisMode === 'individual'
-                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                        : 'total';
-                                    return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-                                })()
-                                    ? 'bg-red-500/20 text-red-500 border border-red-500/50'
-                                    : 'bg-white/5 text-zinc-400'
-                                    }`}
-                            >
-                                {(() => {
-                                    const nextMatch = team.nextMatch;
-                                    const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                    const teamParam = analysisMode === 'individual'
-                                        ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                        : 'total';
-                                    const opt = operator === 'over' ? 'O' : 'U';
-                                    return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
-                                })() ? (
-                                    <X className="w-4 h-4" />
-                                ) : (
-                                    <Plus className="w-4 h-4" />
-                                )}
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
-                                <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Record</span>
-                                <span className="font-mono text-white font-bold">{team.winCount} / {team.totalGames}</span>
-                            </div>
-                            <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
-                                <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Win Rate</span>
-                                <span className={`font-black ${team.winRate >= 80 ? 'text-emerald-500' :
-                                    team.winRate >= 60 ? 'text-emerald-400' :
-                                        team.winRate >= 40 ? 'text-yellow-500' :
-                                            'text-red-500'
-                                    }`}>
-                                    {team.winRate.toFixed(0)}%
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-                {rankedTeams.length === 0 && (
-                    <div className="text-center py-8 text-zinc-500">
-                        No data available.
-                    </div>
-                )}
-            </div>
-
-            <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
-                        <tr>
-                            <th className="px-6 py-4 text-center w-16">Rank</th>
-                            <th className="px-6 py-4">Team</th>
-                            <th className="px-6 py-4 text-center">Record</th>
-                            <th className="px-6 py-4 text-center">Win Rate</th>
-                            <th className="px-6 py-4 text-center">Add to Slip</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {rankedTeams.slice(0, displayLimit).map((team, index) => (
-                            <tr key={team.team} className="hover:bg-white/[0.02] transition-colors group">
-                                <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
-                                    #{index + 1}
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div
-                                        className="flex items-center gap-3 cursor-pointer"
-                                        onClick={() => onTeamClick && onTeamClick(team.team)}
-                                    >
+                        <div
+                            className={`bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5'}`}
+                            onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                    <span className="font-mono text-zinc-600 font-bold">#{index + 1}</span>
+                                    <div className="flex items-center gap-2">
                                         <img
                                             src={teamLogos[team.team]}
                                             alt={team.team}
                                             className="w-8 h-8 object-contain"
                                         />
-                                        <span className="font-bold text-white text-lg group-hover:text-purple-400 transition-colors">
-                                            {team.team}
-                                        </span>
+                                        <span className="font-bold text-white text-lg">{team.team}</span>
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className="font-mono font-bold text-zinc-300 bg-zinc-900 px-3 py-1 rounded-md border border-white/5">
-                                        {team.winCount} / {team.totalGames}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${team.winRate >= 80 ? 'bg-emerald-500' :
-                                                    team.winRate >= 60 ? 'bg-emerald-400' :
-                                                        team.winRate >= 40 ? 'bg-yellow-500' :
-                                                            'bg-red-500'
-                                                    }`}
-                                                style={{ width: `${team.winRate}%` }}
-                                            ></div>
-                                        </div>
-                                        <div className="flex flex-col items-center">
-                                            <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
-                                                team.winRate >= 60 ? 'text-emerald-400' :
-                                                    team.winRate >= 40 ? 'text-yellow-500' :
-                                                        'text-red-500'
-                                                }`}>
-                                                {team.winRate.toFixed(0)}%
-                                            </span>
-                                            <span className="text-xs font-mono text-zinc-500 font-bold">
-                                                @{team.winRate > 0 ? (100 / team.winRate).toFixed(2) : '-'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-center">
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             const nextMatch = team.nextMatch;
                                             const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
                                             const teamParam = analysisMode === 'individual'
@@ -299,8 +169,8 @@ const ResultsList = ({
                                                 : 'total';
                                             return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
                                         })()
-                                            ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-                                            : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
+                                            ? 'bg-red-500/20 text-red-500 border border-red-500/50'
+                                            : 'bg-white/5 text-zinc-400'
                                             }`}
                                     >
                                         {(() => {
@@ -314,11 +184,213 @@ const ResultsList = ({
                                         })() ? (
                                             <X className="w-4 h-4" />
                                         ) : (
-                                            <Plus className="w-4 h-4 transition-transform" />
+                                            <Plus className="w-4 h-4" />
                                         )}
                                     </button>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
+                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Record</span>
+                                    <span className="font-mono text-white font-bold">{team.winCount} / {team.totalGames}</span>
+                                </div>
+                                <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
+                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Win Rate</span>
+                                    <span className={`font-black ${team.winRate >= 80 ? 'text-emerald-500' :
+                                        team.winRate >= 60 ? 'text-emerald-400' :
+                                            team.winRate >= 40 ? 'text-yellow-500' :
+                                                'text-red-500'
+                                        }`}>
+                                        {team.winRate.toFixed(0)}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Match History (Mobile) */}
+                        {expandedTeam === team.team && (
+                            <div className="bg-zinc-950/50 border border-white/5 rounded-xl p-3 space-y-2 animate-in slide-in-from-top-2">
+                                <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Recent Match History</h4>
+                                {team.matches.map((match, mIdx) => {
+                                    const value = analysisMode === 'total' ? match.total : match.statFor;
+                                    const success = operator === 'over' ? value > threshold : value < threshold;
+                                    return (
+                                        <div key={mIdx} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/40 border border-white/5">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `MD ${match.giornata}`}</span>
+                                                <span className="text-xs font-bold text-white">vs {match.opponent}</span>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-md font-mono font-bold text-sm ${success ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-500/50 border border-red-500/10'}`}>
+                                                {value.toFixed(1)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => onTeamClick && onTeamClick(team.team)}
+                                    className="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                >
+                                    See next fixture details
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {rankedTeams.length === 0 && (
+                    <div className="text-center py-8 text-zinc-500">
+                        No data available.
+                    </div>
+                )}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left">
+                    <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
+                        <tr>
+                            <th className="px-6 py-4 text-center w-16">Rank</th>
+                            <th className="px-6 py-4">Team</th>
+                            <th className="px-6 py-4 text-center">Record</th>
+                            <th className="px-6 py-4 text-center">Win Rate</th>
+                            <th className="px-6 py-4 text-center">Add to Slip</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {rankedTeams.slice(0, displayLimit).map((team, index) => (
+                            <React.Fragment key={team.team}>
+                                <tr
+                                    className={`hover:bg-white/[0.04] transition-colors group cursor-pointer ${expandedTeam === team.team ? 'bg-emerald-500/[0.03]' : ''}`}
+                                    onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
+                                >
+                                    <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
+                                        #{index + 1}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <img
+                                                src={teamLogos[team.team]}
+                                                alt={team.team}
+                                                className="w-8 h-8 object-contain"
+                                            />
+                                            <span className="font-bold text-white text-lg group-hover:text-purple-400 transition-colors">
+                                                {team.team}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="font-mono font-bold text-zinc-300 bg-zinc-900 px-3 py-1 rounded-md border border-white/5">
+                                            {team.winCount} / {team.totalGames}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${team.winRate >= 80 ? 'bg-emerald-500' :
+                                                        team.winRate >= 60 ? 'bg-emerald-400' :
+                                                            team.winRate >= 40 ? 'bg-yellow-500' :
+                                                                'bg-red-500'
+                                                        }`}
+                                                    style={{ width: `${team.winRate}%` }}
+                                                ></div>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
+                                                    team.winRate >= 60 ? 'text-emerald-400' :
+                                                        team.winRate >= 40 ? 'text-yellow-500' :
+                                                            'text-red-500'
+                                                    }`}>
+                                                    {team.winRate.toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const nextMatch = team.nextMatch;
+                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                                const teamParam = analysisMode === 'individual'
+                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                    : 'total';
+                                                const opt = operator === 'over' ? 'O' : 'U';
+
+                                                const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
+
+                                                if (isAdded) {
+                                                    removeFromBet(gameName);
+                                                } else {
+                                                    addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
+                                                }
+                                            }}
+                                            className={`p-2 rounded-lg transition-all ${(() => {
+                                                const nextMatch = team.nextMatch;
+                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                                const teamParam = analysisMode === 'individual'
+                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                    : 'total';
+                                                return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
+                                            })()
+                                                ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
+                                                : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
+                                                }`}
+                                        >
+                                            {(() => {
+                                                const nextMatch = team.nextMatch;
+                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
+                                                const teamParam = analysisMode === 'individual'
+                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
+                                                    : 'total';
+                                                const opt = operator === 'over' ? 'O' : 'U';
+                                                return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
+                                            })() ? (
+                                                <X className="w-4 h-4" />
+                                            ) : (
+                                                <Plus className="w-4 h-4 transition-transform" />
+                                            )}
+                                        </button>
+                                    </td>
+                                </tr>
+                                {expandedTeam === team.team && (
+                                    <tr>
+                                        <td colSpan="5" className="px-6 py-4 bg-zinc-950/30 border-y border-white/5">
+                                            <div className="flex flex-col gap-3 py-2 animate-in slide-in-from-top-2">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Past {team.totalGames} Games Match History</h4>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onTeamClick && onTeamClick(team.team); }}
+                                                        className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-tighter border-b border-emerald-400/50 pb-0.5 transition-all"
+                                                    >
+                                                        See next fixture details
+                                                    </button>
+                                                </div>
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                                                    {team.matches.map((match, mIdx) => {
+                                                        const value = analysisMode === 'total' ? match.total : match.statFor;
+                                                        const success = operator === 'over' ? value > threshold : value < threshold;
+                                                        return (
+                                                            <div key={mIdx} className="bg-zinc-900/60 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
+                                                                <div className="flex items-center justify-between border-b border-white/5 pb-1">
+                                                                    <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `MD ${match.giornata}`}</span>
+                                                                    <span className={`w-2 h-2 rounded-full ${success ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`}></span>
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-black text-zinc-600 uppercase">vs Opponent</span>
+                                                                    <span className="text-xs font-bold text-white truncate" title={match.opponent}>{match.opponent}</span>
+                                                                </div>
+                                                                <div className={`mt-1 text-center py-1.5 rounded-lg font-mono font-black text-lg ${success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-zinc-500'}`}>
+                                                                    {value.toFixed(1)}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
                         ))}
 
                         {rankedTeams.length === 0 && (
