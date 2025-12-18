@@ -6,9 +6,9 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
 
     return (
-        <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <div className="min-h-screen flex flex-col relative overflow-hidden pointer-events-none">
             {/* Animation Toggle */}
-            <div className="absolute top-6 right-6 z-50">
+            <div className="absolute top-6 right-6 z-50 pointer-events-auto">
                 <ToggleSwitch
                     isOn={isAnimationEnabled}
                     onToggle={onToggleAnimation}
@@ -20,8 +20,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
 
-            <div className="flex-grow flex flex-col items-center justify-center p-4 w-full relative z-10">
-                <div className="max-w-4xl w-full text-center space-y-12">
+            <div className="flex-grow flex flex-col items-center justify-center p-4 w-full relative z-10 pointer-events-none">
+                <div className="max-w-4xl w-full text-center space-y-12 pointer-events-none">
 
                     {/* Header */}
                     <div className="space-y-4 animate-waterfall">
@@ -38,7 +38,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                     </div>
 
                     {/* League Selection - Horizontal Scroll with Controls */}
-                    <div className="w-full max-w-5xl mx-auto relative group/scroll px-4 md:px-0">
+                    <div className="w-full max-w-5xl mx-auto relative group/scroll px-4 md:px-0 pointer-events-auto">
                         <div className="flex items-center gap-4">
 
                             {/* Left Scroll Button */}
@@ -130,7 +130,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-10 animate-waterfall"
+                        className="w-full max-w-xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-10 animate-waterfall pointer-events-auto"
                         style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms` }}
                     >
                         <button
@@ -221,7 +221,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
             {/* League Selection Modal */}
             {isLeagueModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-auto">
                     <div className="bg-zinc-900 border border-white/10 rounded-3xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
                         <div className="p-6 border-b border-white/10 flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-white">Select League</h2>
