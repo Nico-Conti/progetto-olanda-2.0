@@ -25,6 +25,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
     const [useAdjustedMode, setUseAdjustedMode] = useState(false);
+    const [useGeneralStats, setUseGeneralStats] = useState(false);
 
     // Sync preSelectedMatch
     useEffect(() => {
@@ -95,8 +96,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, localStats, nGames, useAdjustedMode);
-    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useAdjustedMode]);
+        return calculatePrediction(customHome, customAway, localStats, nGames, useAdjustedMode, useGeneralStats);
+    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useAdjustedMode, useGeneralStats]);
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
@@ -115,12 +116,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             const stat = matchStatistics[matchId] || selectedStatistic;
             const statsToUse = allProcessedStats[stat] || globalStats;
 
-            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, useAdjustedMode);
+            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, useAdjustedMode, useGeneralStats);
             return { ...match, prediction: pred, selectedStat: stat };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useAdjustedMode]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useAdjustedMode, useGeneralStats]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -145,7 +146,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
         // Use LOCAL stats here
-        const detailPred = calculatePrediction(home, away, localStats, nGames, useAdjustedMode);
+        const detailPred = calculatePrediction(home, away, localStats, nGames, useAdjustedMode, useGeneralStats);
 
         if (!detailPred) return <div>Error loading match details</div>;
 
@@ -195,6 +196,19 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
                             >
                                 <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
+
+                        {/* General Trend Toggle */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Gen. Trend:</span>
+                            <button
+                                onClick={() => setUseGeneralStats(!useGeneralStats)}
+                                className={`relative w-10 h-5 rounded-full transition-colors ${useGeneralStats ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                            >
+                                <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
                             </button>
                         </div>
 
@@ -337,6 +351,18 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
                         >
                             <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Gen. Trend:</span>
+                        <button
+                            onClick={() => setUseGeneralStats(!useGeneralStats)}
+                            className={`relative w-10 h-5 rounded-full transition-colors ${useGeneralStats ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                        >
+                            <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                     </div>
 

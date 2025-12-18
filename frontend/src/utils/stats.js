@@ -138,11 +138,15 @@ export const getOpponentAdjustedStats = (matches, stats, context, leagueAvgs) =>
     });
 };
 
-export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMode = false) => {
+export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMode = false, useGeneralStats = false) => {
     if (!stats[home] || !stats[away]) return null;
 
     const getRelevant = (team, loc) => {
-        let matches = stats[team].all_matches.filter(m => m.location === loc);
+        // If useGeneralStats is true, we take ALL matches regardless of location
+        let matches = useGeneralStats
+            ? stats[team].all_matches
+            : stats[team].all_matches.filter(m => m.location === loc);
+
         matches.sort((a, b) => b.giornata - a.giornata);
 
         // Handle sample size: 'all', number, or default to 5 if invalid/empty
