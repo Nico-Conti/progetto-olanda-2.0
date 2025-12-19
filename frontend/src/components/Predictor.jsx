@@ -9,6 +9,7 @@ import StatisticSelector from './StatisticSelector';
 import BetBuilderCell from './BetBuilderCell';
 
 const STAT_OPTIONS = [
+    { value: 'main', label: 'Main' },
     { value: 'corners', label: 'Corners' },
     { value: 'goals', label: 'Goals' },
     { value: 'shots', label: 'Shots' },
@@ -19,7 +20,7 @@ const STAT_OPTIONS = [
     { value: 'possession', label: 'Possession' },
 ];
 
-const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
+const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
@@ -40,7 +41,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const allProcessedStats = useMemo(() => {
         const stats = {};
         STAT_OPTIONS.forEach(opt => {
-            stats[opt.value] = processData(matchData, opt.value);
+            const statKey = opt.value === 'main' ? 'goals' : opt.value;
+            stats[opt.value] = processData(matchData, statKey);
         });
         return stats;
     }, [matchData]);
@@ -515,6 +517,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                         stat={match.selectedStat}
                                         prediction={match.prediction}
                                         onAdd={addToBet}
+                                        onRemove={removeFromBet}
+                                        bets={bets}
                                         existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
                                     />
                                 </div>
@@ -623,6 +627,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                             stat={match.selectedStat}
                                             prediction={match.prediction}
                                             onAdd={addToBet}
+                                            onRemove={removeFromBet}
+                                            bets={bets}
                                             existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
                                         />
                                     </td>

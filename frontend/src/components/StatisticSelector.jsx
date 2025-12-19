@@ -6,6 +6,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
     const dropdownRef = useRef(null);
 
     const options = [
+        { value: 'main', label: 'Main' },
         { value: 'corners', label: 'Corners' },
         { value: 'goals', label: 'Goals' },
         { value: 'shots', label: 'Shots' },

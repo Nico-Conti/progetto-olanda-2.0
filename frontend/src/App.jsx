@@ -54,8 +54,13 @@ export default function App() {
     });
   };
 
-  const removeFromBet = (game) => {
-    setBets(prev => prev.filter(b => b.game !== game));
+  const removeFromBet = (game, stat = null, team = null) => {
+    setBets(prev => prev.filter(b => {
+      if (stat && team) {
+        return !(b.game === game && b.stat === stat && b.team === team);
+      }
+      return b.game !== game;
+    }));
   };
 
   const clearBets = () => {
@@ -552,6 +557,7 @@ export default function App() {
                   matchStatistics={matchStatistics}
                   setMatchStatistics={setMatchStatistics}
                   addToBet={addToBet}
+                  removeFromBet={removeFromBet}
                   bets={bets}
                   preSelectedMatch={preSelectedMatch}
                   onExitPreview={() => {

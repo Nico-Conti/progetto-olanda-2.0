@@ -156,7 +156,7 @@ const ResultsList = ({
                                             const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
 
                                             if (isAdded) {
-                                                removeFromBet(gameName);
+                                                removeFromBet(gameName, selectedStatistic, teamParam);
                                             } else {
                                                 addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
                                             }
@@ -319,7 +319,7 @@ const ResultsList = ({
                                                 const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
 
                                                 if (isAdded) {
-                                                    removeFromBet(gameName);
+                                                    removeFromBet(gameName, selectedStatistic, teamParam);
                                                 } else {
                                                     addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
                                                 }

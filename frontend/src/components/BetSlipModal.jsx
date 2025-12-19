@@ -86,15 +86,15 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear }) => {
                                         <div className="game font-bold text-white text-sm">{bet.game}</div>
                                         <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
                                             <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold text-zinc-300 stat-label">
-                                                {bet.team !== 'total' ? `${bet.team} ` : ''}{bet.stat?.replace(/_/g, ' ') || 'Stat'}
+                                                {bet.stat === 'main' ? 'Match Result' : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat')}
                                             </span>
                                             <span className="selection text-emerald-400 font-mono font-bold text-sm">
-                                                {bet.option === 'O' ? 'Over' : 'Under'} {bet.value}
+                                                {bet.stat === 'main' ? bet.value : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`}
                                             </span>
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => onRemove(bet.game)}
+                                        onClick={() => onRemove(bet.game, bet.stat, bet.team)}
                                         className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 no-print"
                                         title="Remove"
                                     >
