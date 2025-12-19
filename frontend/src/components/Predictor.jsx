@@ -25,7 +25,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
-    const [useAdjustedMode, setUseAdjustedMode] = useState(false);
+
     const [useGeneralStats, setUseGeneralStats] = useState(false);
 
     // Sync preSelectedMatch
@@ -98,8 +98,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, localStats, nGames, useAdjustedMode, useGeneralStats);
-    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useAdjustedMode, useGeneralStats]);
+        return calculatePrediction(customHome, customAway, localStats, nGames, false, useGeneralStats);
+    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useGeneralStats]);
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
@@ -118,12 +118,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             const stat = matchStatistics[matchId] || selectedStatistic;
             const statsToUse = allProcessedStats[stat] || globalStats;
 
-            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, useAdjustedMode, useGeneralStats);
+            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, false, useGeneralStats);
             return { ...match, prediction: pred, selectedStat: stat };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useAdjustedMode, useGeneralStats]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useGeneralStats]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -148,7 +148,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
         // Use LOCAL stats here
-        const detailPred = calculatePrediction(home, away, localStats, nGames, useAdjustedMode, useGeneralStats);
+        const detailPred = calculatePrediction(home, away, localStats, nGames, false, useGeneralStats);
 
         if (!detailPred) return <div>Error loading match details</div>;
 
@@ -190,18 +190,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
                         <div className="hidden sm:block w-px h-4 bg-white/10"></div>
 
-                        {/* Adjusted Mode Toggle */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Adjusted:</span>
-                            <button
-                                onClick={() => setUseAdjustedMode(!useAdjustedMode)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
-                            >
-                                <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
 
-                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
 
                         {/* General Trend Toggle */}
                         <div className="flex items-center gap-2">
@@ -272,7 +261,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </div>
 
                 {/* Prediction Hero */}
-                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
 
                 {/* Stats Analysis Breakdown */}
                 <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} selectedStatistic={localStatistic} />
@@ -346,17 +335,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
                     <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Adj. Mode:</span>
-                        <button
-                            onClick={() => setUseAdjustedMode(!useAdjustedMode)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${useAdjustedMode ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
-                        >
-                            <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useAdjustedMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                    </div>
 
-                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Gen. Trend:</span>
@@ -706,7 +685,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     showCustomPrediction && customPrediction && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                             {/* Prediction Hero (Reused) */}
-                            <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                            <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
 
                             {/* Detailed History (Reused) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

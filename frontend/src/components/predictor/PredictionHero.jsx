@@ -1,8 +1,13 @@
 import React from 'react';
 import { Flame, Info } from 'lucide-react';
 
-const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic }) => {
+const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, leagueAverage }) => {
     if (!prediction) return null;
+
+    // Use dynamic threshold if leagueAverage is provided, otherwise fallback to reasonable default or keep existing behavior
+    // List view used: match.prediction.total > (leagueAverages[match.selectedStat] * 1.15)
+    // If leagueAverage is undefined (e.g. initial load), we should probably not show the flame or default to old behavior.
+    const isHotMatch = leagueAverage ? prediction.total > (leagueAverage * 1.15) : prediction.total > 11.5;
 
     return (
         <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40  z-[-1]">
@@ -27,10 +32,10 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic }
                     </div>
 
                     <div className="flex flex-col items-center shrink-0 mx-2">
-                        <div className={`text-5xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${prediction.total > 11.5 ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
+                        <div className={`text-5xl md:text-9xl font-black tracking-tighter drop-shadow-2xl ${isHotMatch ? 'text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-orange-500' : 'text-white'}`}>
                             {prediction.total.toFixed(1)}
                         </div>
-                        <div className={`font-mono text-sm md:text-lg font-bold mt-[-5px] md:mt-[-10px] ${prediction.total > 11.5 ? 'text-orange-500/60' : 'text-zinc-500'}`}>
+                        <div className={`font-mono text-sm md:text-lg font-bold mt-[-5px] md:mt-[-10px] ${isHotMatch ? 'text-orange-500/60' : 'text-zinc-500'}`}>
                             ±{prediction.totalStd.toFixed(2)}
                         </div>
                     </div>
@@ -49,10 +54,10 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic }
                     </div>
                 </div>
 
-                {prediction.total > 11.5 ? (
+                {isHotMatch ? (
                     <div className="inline-flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-full border border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(248,113,113,0.2)]">
                         <Flame className="w-4 h-4 fill-current" />
-                        <span className="font-bold text-sm uppercase tracking-wide">High Over Trend</span>
+                        <span className="font-bold text-sm uppercase tracking-wide">High Over Trend ({leagueAverage ? `>${(leagueAverage * 1.15).toFixed(1)}` : 'Hot'})</span>
                     </div>
                 ) : (
                     <div className="inline-flex items-center gap-2 bg-zinc-800/50 text-zinc-400 px-4 py-2 rounded-full border border-white/5">
