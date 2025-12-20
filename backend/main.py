@@ -37,27 +37,57 @@ class MatchData(BaseModel):
 def read_root():
     return {"status": "ok", "message": "Progetto Olanda Backend is running"}
 
+def fetch_all_data(table_name, order_col=None, desc=False):
+    all_rows = []
+    chunk_size = 1000
+    current_offset = 0
+    
+    while True:
+        query = supabase.table(table_name).select("*")
+        if order_col:
+            query = query.order(order_col, desc=desc)
+        
+        # Using limit doesn't offset, range is cleaner here: range includes end index
+        result = query.range(current_offset, current_offset + chunk_size - 1).execute()
+        
+        rows = result.data
+        if not rows:
+            break
+            
+        all_rows.extend(rows)
+        
+        if len(rows) < chunk_size:
+            break
+            
+        current_offset += chunk_size
+        
+        # Safety break to avoid infinite loops if something is weird
+        if current_offset > 50000:
+            break
+            
+    return all_rows
+
 @app.get("/teams")
 def get_teams():
     try:
-        response = supabase.table("squads").select("*").execute()
-        return response.data
+        data = fetch_all_data("squads")
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/matches")
 def get_matches():
     try:
-        response = supabase.table("matches").select("*").execute()
-        return response.data
+        data = fetch_all_data("matches")
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/fixtures")
 def get_fixtures():
     try:
-        response = supabase.table("fixtures").select("*").order("match_date", desc=False).execute()
-        return response.data
+        data = fetch_all_data("fixtures", "match_date", desc=False)
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
