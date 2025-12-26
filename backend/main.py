@@ -17,7 +17,19 @@ url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
-app = FastAPI(title="Progetto Olanda 2.0 Backend")
+from contextlib import asynccontextmanager
+from backend.scheduler import start_scheduler
+
+# Lifespan context manager for startup tasks
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the scheduler on app startup
+    print("⏰ Starting Scheduler...")
+    start_scheduler()
+    yield
+    # Shutdown logic if needed (scheduler shuts down with process)
+
+app = FastAPI(title="Progetto Olanda 2.0 Backend", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
