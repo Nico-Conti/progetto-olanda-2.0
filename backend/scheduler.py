@@ -1,47 +1,87 @@
+from datetime import datetime
 import logging
-import sys
-from unittest.mock import patch
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from backend.scraper.main import main as scraper_main
+from apscheduler.triggers.cron import CronTrigger
+import time
+import subprocess
+import sys
+import os
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def run_scraper_job():
     """
-    Job that runs the scraper.
-    Configured to run Eredivisie, Last Round Only, and Skip Analysis by default 
-    to be lightweight for the automated schedule.
+    Runs the scraper as a subprocess to ensure clean memory usage.
+    Iterates through all supported leagues.
     """
-    logger.info("🚀 Scheduler starting scraper job...")
+    logger.info("🚀 Starting Scheduled Scraper Job...")
     
-    # Simulate command line arguments
-    # We use "scraper" as the first arg (program name), then the rest
-    test_args = ["scraper", "eredivisie", "--last-round", "--skip-analysis"]
+    leagues = ["eredivisie", "laliga", "serieb", "seriea", "bundesliga", "ligue1", "premier"]
     
-    with patch.object(sys, 'argv', test_args):
+    for league in leagues:
+        logger.info(f"🔄 Starting scrape for league: {league.upper()}...")
+        
+        # Command to run: python3 -u -m backend.scraper.main <league> --last-round --skip-analysis
+        cmd = [
+            sys.executable, "-u", "-m", "backend.scraper.main",
+            league,
+            "--last-round",
+            "--skip-analysis"
+        ]
+        
         try:
-            scraper_main()
-            logger.info("✅ Scheduler job finished successfully.")
+            # Run subprocess and stream output line by line
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, # Merge stderr into stdout
+                text=True,
+                bufsize=1 # Line buffered
+            )
+
+            # Iterate over output as it appears
+            for line in process.stdout:
+                line = line.strip()
+                if line:
+                    logger.info(f"[Scraper-{league}] {line}")
+            
+            # Wait for finish
+            return_code = process.wait()
+            
+            if return_code == 0:
+                logger.info(f"✅ Scraper finished successfully for {league}.")
+            else:
+                logger.error(f"❌ Scraper Job Failed for {league}! Exit Code: {return_code}")
+
         except Exception as e:
-            logger.error(f"❌ Scheduler job failed: {e}", exc_info=True)
+            logger.error(f"❌ Unexpected error in scheduler job for {league}: {e}")
+        
+        # Small pause between leagues
+        time.sleep(5)
 
 def start_scheduler():
-    """
-    Starts the background scheduler.
-    """
     scheduler = BackgroundScheduler()
     
-    # Run every 6 hours
-    trigger = IntervalTrigger(hours=6)
-    
+    # Run every day at 00:00 AM (Midnight)
+    # Covers games from all days.
+    # Timezone: Defaults to server time (UTC on Render)
     scheduler.add_job(
         run_scraper_job,
-        trigger=trigger,
-        id="scraper_job",
-        name="Scrape Eredivisie Last Round",
+        trigger=CronTrigger(day_of_week='mon,tue,wed,thu,fri,sat,sun', hour=0, minute=0),
+        id='scraper_weekly_update',
         replace_existing=True
     )
     
     scheduler.start()
-    logger.info("⏰ Scheduler started. Job 'scraper_job' set to run every 6 hours.")
+    logger.info("📅 Scheduler started. Next run: Sun/Mon/Tue at 00:00 AM.")
+    
+    try:
+        # Keep main thread alive if run directly
+        while True:
+            time.sleep(2)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
+
+if __name__ == "__main__":
+    start_scheduler()
