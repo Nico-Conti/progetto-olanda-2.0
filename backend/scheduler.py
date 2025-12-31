@@ -74,14 +74,14 @@ def start_scheduler():
     )
     
     scheduler.start()
-    logger.info("📅 Scheduler started. Next run: Sun/Mon/Tue at 00:00 AM.")
+    logger.info("📅 Scheduler started. Next run: Daily at 00:00 AM.")
     
+
+if __name__ == "__main__":
+    start_scheduler()
     try:
         # Keep main thread alive if run directly
         while True:
             time.sleep(2)
     except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-
-if __name__ == "__main__":
-    start_scheduler()
+        pass
