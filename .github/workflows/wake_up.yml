@@ -1,0 +1,30 @@
+name: Wake Up Backend
+
+on:
+  schedule:
+    # Wake up just before the midnight scraper (23:55 and 23:59 UTC)
+    - cron: '55,59 23 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  wake_up:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Wake Up Script
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: python backend/wake_up.py
