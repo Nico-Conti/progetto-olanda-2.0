@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown } from 'lucide-react';
+import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, RefreshCw } from 'lucide-react';
 import { processData, calculatePrediction } from '../utils/stats';
+import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
@@ -20,11 +21,13 @@ const STAT_OPTIONS = [
     { value: 'possession', label: 'Possession' },
 ];
 
-const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
+const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel, onRefresh }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState({ message: '', progress: 0 });
 
     const [useGeneralStats, setUseGeneralStats] = useState(false);
 
@@ -105,9 +108,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         if (!fixtures || !globalStats) return [];
 
         // Filter fixtures that haven't been played yet
-        // A match is considered played if the home team has a recorded match against the away team at home
         const unplayed = fixtures.filter(f => {
-            if (!globalStats[f.home]) return true; // If we don't have stats for home team, assume unplayed or invalid
+            // Priority Check: Use explicit status from DB if available
+            if (f.status === 'PLAYED') return false;
+
+            // Fallback: If status is unknown/missing, check if stats exist
+            if (!globalStats[f.home]) return true;
             const played = globalStats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
             return !played;
         });
@@ -127,8 +133,42 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
-        const days = [...new Set(upcomingMatches.map(m => m.matchday))];
-        return days.sort((a, b) => a - b);
+        // Group matches by matchday
+        const matchdayGroups = {};
+        upcomingMatches.forEach(m => {
+            if (!matchdayGroups[m.matchday]) {
+                matchdayGroups[m.matchday] = [];
+            }
+            matchdayGroups[m.matchday].push(m);
+        });
+
+        const days = Object.keys(matchdayGroups).map(Number);
+
+        // Sort by the earliest match date in each matchday
+        return days.sort((a, b) => {
+            const matchesA = matchdayGroups[a];
+            const matchesB = matchdayGroups[b];
+
+            // Find earliest date for A
+            // Use timestamps for robust comparison (handle TBD or invalid dates carefully)
+            const getMinDate = (matches) => {
+                const dates = matches
+                    .map(m => m.date ? new Date(m.date).getTime() : Infinity) // Treat TBD (null date) as far future
+                    .filter(t => !isNaN(t));
+                return dates.length > 0 ? Math.min(...dates) : Infinity;
+            };
+
+            const minDateA = getMinDate(matchesA);
+            const minDateB = getMinDate(matchesB);
+
+            // If dates are different, sort by date
+            if (minDateA !== minDateB) {
+                return minDateA - minDateB;
+            }
+
+            // Fallback to ID if dates are same (or both TBD)
+            return a - b;
+        });
     }, [upcomingMatches]);
 
     // Set default selected matchday
@@ -143,6 +183,50 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         if (!selectedMatchday) return [];
         return upcomingMatches.filter(m => m.matchday === selectedMatchday);
     }, [upcomingMatches, selectedMatchday]);
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/manual-scrape`, { method: 'POST' });
+            if (res.ok) {
+                console.log("Sync started successfully");
+
+                // Start polling
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const statusRes = await fetch(`${API_BASE_URL}/scraper-status`);
+                        if (statusRes.ok) {
+                            const status = await statusRes.json();
+                            setSyncStatus(status);
+
+                            if (!status.is_running && status.progress === 100) {
+                                clearInterval(pollInterval);
+                                setIsSyncing(false);
+                                setSyncStatus({ message: 'Sync Complete!', progress: 100 });
+
+                                // Auto-refresh data
+                                if (onRefresh) {
+                                    setTimeout(() => {
+                                        onRefresh();
+                                        setSyncStatus({ message: '', progress: 0 }); // Clear status after refresh
+                                    }, 1000);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Poll error", e);
+                    }
+                }, 2000);
+
+            } else {
+                console.error("Sync failed");
+                setIsSyncing(false);
+            }
+        } catch (e) {
+            console.error("Sync error", e);
+            setIsSyncing(false);
+        }
+    };
 
     if (selectedMatch) {
         const { home, away, prediction } = selectedMatch;
@@ -316,6 +400,51 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
+                    {/* Sync Button */}
+                    <button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/20 ${isSyncing ? 'bg-emerald-500/10 text-emerald-400 cursor-not-allowed' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 hover:border-emerald-500/50'}`}
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                        {isSyncing ? 'Syncing...' : 'Sync All'}
+                    </button>
+
+                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+
+                    {/* Sync Status Bar (Visible only when syncing) */}
+                    {isSyncing && (
+                        <div className="flex flex-col gap-2 w-[220px]">
+                            {/* Matches Progress (Top) */}
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase">
+                                    <span className="truncate max-w-[150px]">{syncStatus.message || 'Initializing...'}</span>
+                                    <span>{syncStatus.progress}%</span>
+                                </div>
+                                <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 transition-all duration-300 ease-out"
+                                        style={{ width: `${syncStatus.progress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            {/* Overall Progress (Bottom) */}
+                            <div className="flex flex-col gap-0.5">
+                                <div className="flex justify-between items-center text-[9px] font-bold text-zinc-500 uppercase">
+                                    <span>Total Progress</span>
+                                    <span>{syncStatus.overall_progress || 0}%</span>
+                                </div>
+                                <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                                        style={{ width: `${syncStatus.overall_progress || 0}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Matchday Selector */}
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-zinc-400 uppercase">Matchday:</span>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -19,7 +19,8 @@ key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 from contextlib import asynccontextmanager
-from backend.scheduler import start_scheduler
+from backend.scheduler import start_scheduler, run_scraper_job
+from backend.status import get_status
 
 # Lifespan context manager for startup tasks
 @asynccontextmanager
@@ -118,6 +119,20 @@ def keep_alive():
     Lightweight endpoint to wake up the server.
     """
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
+@app.get("/scraper-status")
+def scraper_status():
+    """Returns the current status of the scraper job."""
+    return get_status()
+
+@app.post("/manual-scrape")
+def manual_scrape(background_tasks: BackgroundTasks, league: Optional[str] = None):
+    """
+    Manually triggers the scraper job in the background.
+    Useful for catching up on missing or rescheduled matches.
+    """
+    background_tasks.add_task(run_scraper_job, league)
+    return {"status": "ok", "message": f"Scraper job started in background for {league if league else 'all leagues'}."}
 
 @app.post("/analyze")
 def analyze_match(data: MatchData):

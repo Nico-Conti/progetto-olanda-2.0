@@ -110,20 +110,20 @@ def main():
 
                 all_games_full_data.append(details)
 
-        # Save to JSON
-        output_file = f"{league_name}_matches.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(all_games_full_data, f, indent=4, ensure_ascii=False)
-        
-        print(f"\n✅ Saved {len(all_games_full_data)} matches to {output_file}")
-        
+        if not args.skip_sync and all_games_full_data:
+            print("\n--- STEP 3: Syncing to Supabase (In-Memory) ---")
+            sync_matches_to_supabase(data_list=all_games_full_data)
+        else:
+            if args.skip_sync and all_games_full_data:
+                output_file = f"{league_name}_matches.json"
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump(all_games_full_data, f, indent=4, ensure_ascii=False)
+                print(f"\n✅ Saved {len(all_games_full_data)} matches to {output_file} (Sync skipped)")
+            elif not all_games_full_data:
+                print("No matches to sync.")
+                
     finally:
         driver.quit()
-
-    # --- SYNC TO SUPABASE ---
-    if not args.skip_sync and all_games_full_data:
-        print("\n--- STEP 3: Syncing to Supabase ---")
-        sync_matches_to_supabase(output_file)
 
 if __name__ == "__main__":
     main()

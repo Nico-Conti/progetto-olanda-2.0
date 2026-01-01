@@ -143,9 +143,9 @@ def build_stats_payload(local_match):
 
     return payload
 
-def sync_matches_to_supabase(json_path="matches_data.json"):
+def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
     """
-    Reads a local JSON file and syncs match data to Supabase.
+    Reads a local JSON file OR uses a provided list and syncs match data to Supabase.
     """
     load_dotenv()
     
@@ -163,20 +163,26 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
         "Prefer": "return=minimal"
     }
 
-    # 1. Load Local JSON Data
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            local_matches = json.load(f)
-        print(f"✅ Loaded {len(local_matches)} matches from {json_path}")
-    except FileNotFoundError:
-        print(f"❌ Error: File {json_path} not found.")
-        return
+    # 1. Load Data (from List or JSON)
+    local_matches = []
+    
+    if data_list is not None:
+        local_matches = data_list
+        print(f"✅ Using in-memory data ({len(local_matches)} matches)")
+    else:
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                local_matches = json.load(f)
+            print(f"✅ Loaded {len(local_matches)} matches from {json_path}")
+        except FileNotFoundError:
+            print(f"❌ Error: File {json_path} not found.")
+            return
 
     # 2. Fetch All Matches from Supabase
     print("⏳ Fetching matches from Supabase...")
     try:
         # Fetch all records (limit 1000 should be enough for now, or paginate if needed)
-        resp = requests.get(f"{url}/rest/v1/matches?select=*&limit=5000", headers=headers)
+        resp = requests.get(f"{url}/rest/v1/matches?select=*&limit=10000", headers=headers)
         resp.raise_for_status()
         db_matches = resp.json()
         print(f"✅ Fetched {len(db_matches)} matches from DB")
@@ -258,15 +264,36 @@ def sync_matches_to_supabase(json_path="matches_data.json"):
                 skipped_count += 1
                 continue
             
-            # Infer league from filename if possible, or default
-            # json_path is like "laliga_matches.json"
-            league = "eredivisie" # Default
-            if "laliga" in json_path.lower():
+            # Infer league from payload/filename
+            league = "Eredivisie" # Default to Title Case
+            
+            # 1. Try to get from JSON
+            raw_league = local_match.get("league", "")
+            
+            # Map of raw keys/slugs to Title Case
+            league_map = {
+                "seriea": "Serie A",
+                "serieb": "Serie B",
+                "laliga": "La Liga",
+                "eredivisie": "Eredivisie",
+                "bundesliga": "Bundesliga",
+                "ligue1": "Ligue 1",
+                "premier": "Premier League"
+            }
+            
+            # Check JSON field first
+            if raw_league and raw_league.lower() in league_map:
+                league = league_map[raw_league.lower()]
+            
+            # Fallback to filename check if JSON didn't give a known league
+            elif "laliga" in json_path.lower():
                 league = "La Liga"
             elif "serieb" in json_path.lower():
                 league = "Serie B"
-            elif "eredivisie" in json_path.lower():
-                league = "Eredivisie"
+            elif "seriea" in json_path.lower():
+                league = "Serie A"
+            elif "bundesliga" in json_path.lower():
+                league = "Bundesliga"
             elif "ligue1" in json_path.lower():
                 league = "Ligue 1"
             elif "premier" in json_path.lower():
@@ -314,7 +341,7 @@ def fetch_existing_urls():
     print("⏳ Fetching existing URLs from Supabase...")
     try:
         # Fetch only the 'url' column to be efficient
-        resp = requests.get(f"{url}/rest/v1/matches?select=url&limit=2000", headers=headers)
+        resp = requests.get(f"{url}/rest/v1/matches?select=url&limit=10000", headers=headers)
         resp.raise_for_status()
         data = resp.json()
         

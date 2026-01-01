@@ -21,7 +21,7 @@ export default function App() {
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [view, setView] = useState('landing'); // 'landing', 'dashboard', 'hot-matches'
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
-  const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
+  const { matchData, fixturesData, teamLogos, leagues, loading, refetch } = useMatchData();
   const isBackendOnline = useBackendHealth();
   const [previousTab, setPreviousTab] = useState('trends');
 
@@ -570,6 +570,7 @@ export default function App() {
                     }
                   }}
                   backButtonLabel={backLabel}
+                  onRefresh={refetch}
                 />
               </div>
             )}

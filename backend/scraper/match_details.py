@@ -223,6 +223,22 @@ def scrape_match_details(driver, product_url, skip_comments=False):
         
         # 2. Get Basic Info (Teams)
         initial_soup = BeautifulSoup(driver.page_source, "html.parser")
+        
+        # --- SAFEGUARD: CHECK STATUS ---
+        # Prevent scraping "Scheduled" or "Postponed" games as 0-0 results
+        status_elem = initial_soup.select_one('div.detailScore__status')
+        if status_elem:
+            status_text = status_elem.text.strip().upper()
+            # Allow "FINALE", "DOPO RIG.", "DOPO TEMPI SUPPL." etc.
+            if "FINALE" not in status_text and "TERMINATO" not in status_text:
+                print(f"  -> ⚠️ Skipping match: Status is '{status_text}' (Not Finished)")
+                return None
+        else:
+            # If we can't find status, it's suspicious. Defaults are unsafe.
+             print("  -> ⚠️ Skipping match: No status found (Safe guard)")
+             return None
+        # -------------------------------
+
         final_data['squadre'] = scrape_basic_info(initial_soup)
 
         # 3. Get Stats (Corners, Fouls, etc.)

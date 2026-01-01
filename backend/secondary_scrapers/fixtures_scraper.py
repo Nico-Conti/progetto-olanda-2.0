@@ -59,8 +59,8 @@ def parse_date(date_str, time_str):
         print(f"Error parsing date {date_str} {time_str}: {e}")
         return None
 
-def scrape_league(driver, supabase, league_name, url):
-    print(f"Connecting to {url}...")
+def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
+    print(f"Connecting to {url} ({scrape_type})...")
     driver.get(url)
     print("  -> Page loaded, waiting for content...")
     time.sleep(5) # Extra wait for initial load
@@ -169,7 +169,10 @@ def scrape_league(driver, supabase, league_name, url):
                         home_team = None
                         away_team = None
                         match_date = None
+                        match_date = None
                         status = "SCHEDULED"
+                        if scrape_type == "results":
+                             status = "PLAYED" # Default for results page
                         
                         # Case 1: Date + Teams (len >= 3)
                         if len(parts) >= 3:
@@ -177,7 +180,40 @@ def scrape_league(driver, supabase, league_name, url):
                             if "." in parts[0] and ":" in parts[0]:
                                 raw_time = parts[0]
                                 home_team = parts[1]
-                                away_team = parts[2]
+                                # Check if part 2/3 are scores (Results page often has: Date | Home | 2 | 1 | Away)
+                                # or Date | Home | 2 | - | 1 | Away
+                                # If we are in results, we expect scores between Home and Away.
+                                # But we just need Home and Away names.
+                                
+                                # Heuristic for Results:
+                                # Parts: ['29.11. 15:00', 'HomeTeam', '2', '1', 'AwayTeam', ...]
+                                # If parts[2] is digit -> It's a score.
+                                if len(parts) >= 5 and parts[2].isdigit() and parts[3].isdigit():
+                                     home_team = parts[1]
+                                     away_team = parts[4]
+                                elif len(parts) >= 5 and parts[2].isdigit() and parts[3] == "-" and parts[4].isdigit():
+                                     # 2 - 1 format? Rare in split('|') unless separators are weird.
+                                     home_team = parts[1]
+                                     away_team = parts[5] 
+                                else:
+                                     # Standard Fixture or simple result
+                                     # Assume Part 2 is Away Team IF not digit
+                                     if not parts[2][0].isdigit():
+                                         away_team = parts[2]
+                                     else:
+                                         # Likely a result row we didn't catch perfectly, 
+                                         # or Home | Score | ... | Away
+                                         # Let's verify specific "risultati" struct
+                                         # Usually: Date, Home, ScoreH, ScoreA, Away
+                                         if scrape_type == "results":
+                                              # Try looking for the next non-digit, non-dash string
+                                              for p_idx in range(2, len(parts)):
+                                                   if not parts[p_idx].isdigit() and parts[p_idx] not in ["-", "Rig."]:
+                                                        away_team = parts[p_idx]
+                                                        break
+                                         else:
+                                              away_team = parts[2] # Fallback
+                                
                             # Check if the last part is time (New format observed in logs)
                             elif "." in parts[-1] and ":" in parts[-1]:
                                 home_team = parts[0]
@@ -342,13 +378,13 @@ def scrape_fixtures():
         return
 
     leagues = [
-        {"name": "La Liga", "key": "laliga", "url": "https://www.diretta.it/calcio/spagna/laliga/calendario/"},
-        {"name": "Eredivisie", "key": "eredivisie", "url": "https://www.diretta.it/calcio/olanda/eredivisie/calendario/"},
-        {"name": "Serie B", "key": "serieb", "url": "https://www.diretta.it/calcio/italia/serie-b/calendario/"},
-        {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/calendario/"},
-        {"name": "Bundesliga", "key": "bundesliga", "url": "https://www.diretta.it/calcio/germania/bundesliga/calendario/"},
-        {"name": "Ligue 1", "key": "ligue1", "url": "https://www.diretta.it/calcio/francia/ligue-1/calendario/"},
-        {"name": "Premier League", "key": "premier", "url": "https://www.diretta.it/calcio/inghilterra/premier-league/calendario/"}
+        {"name": "La Liga", "key": "laliga", "base_url": "https://www.diretta.it/calcio/spagna/laliga/"},
+        {"name": "Eredivisie", "key": "eredivisie", "base_url": "https://www.diretta.it/calcio/olanda/eredivisie/"},
+        {"name": "Serie B", "key": "serieb", "base_url": "https://www.diretta.it/calcio/italia/serie-b/"},
+        {"name": "Serie A", "key": "seriea", "base_url": "https://www.diretta.it/calcio/italia/serie-a/"},
+        {"name": "Bundesliga", "key": "bundesliga", "base_url": "https://www.diretta.it/calcio/germania/bundesliga/"},
+        {"name": "Ligue 1", "key": "ligue1", "base_url": "https://www.diretta.it/calcio/francia/ligue-1/"},
+        {"name": "Premier League", "key": "premier", "base_url": "https://www.diretta.it/calcio/inghilterra/premier-league/"}
     ]
     
     target_leagues = leagues
@@ -362,16 +398,24 @@ def scrape_fixtures():
         print(f"\n--- Scraping {league['name']} ---")
         driver = make_driver()
         if not driver:
-            print("Failed to initialize driver. Skipping.")
-            continue
-            
+             print("Failed to initialize driver. Skipping.")
+             continue
+
+        # 1. Scrape Results (History)
         try:
-            scrape_league(driver, supabase, league['name'], league['url'])
+             results_url = league['base_url'] + "risultati/"
+             scrape_league(driver, supabase, league['name'], results_url, scrape_type="results")
         except Exception as e:
-            print(f"Critical error scraping {league['name']}: {e}")
-        finally:
-            if driver:
-                driver.quit()
+             print(f"Error scraping RESULTS for {league['name']}: {e}")
+
+        # 2. Scrape Fixtures (Future)
+        try:
+             fixtures_url = league['base_url'] + "calendario/"
+             scrape_league(driver, supabase, league['name'], fixtures_url, scrape_type="fixtures")
+        except Exception as e:
+             print(f"Error scraping FIXTURES for {league['name']}: {e}")
+
+        driver.quit()
                 
     # Check next fixtures
     get_next_fixtures(supabase)
