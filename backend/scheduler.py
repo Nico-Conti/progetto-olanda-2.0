@@ -70,7 +70,8 @@ def start_scheduler():
         run_scraper_job,
         trigger=CronTrigger(day_of_week='mon,tue,wed,thu,fri,sat,sun', hour=0, minute=0),
         id='scraper_weekly_update',
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=3600 # Allow job to run if server wakes up up to 1 hour late
     )
     
     scheduler.start()

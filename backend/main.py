@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 import os
 from dotenv import load_dotenv
 
@@ -110,6 +111,13 @@ def get_leagues():
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/keep-alive")
+def keep_alive():
+    """
+    Lightweight endpoint to wake up the server.
+    """
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 @app.post("/analyze")
 def analyze_match(data: MatchData):
