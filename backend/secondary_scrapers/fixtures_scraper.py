@@ -53,6 +53,8 @@ def parse_date(date_str, time_str):
         year = current_year
         if month < now.month and (now.month - month) > 6:
              year += 1
+        elif month > now.month and (month - now.month) > 6:
+             year -= 1
         
         return datetime.datetime(year, month, day, hour, minute)
     except Exception as e:
@@ -276,18 +278,61 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
             try:
                 print("  -> Fetching existing fixtures from DB for comparison...")
                 # Fetch ID as well to allow update by ID
-                # We fetch ALL fixtures to ensure we catch duplicates even if league is NULL
-                # This might be heavy but necessary if league is not populated
-                existing_db_fixtures = supabase.table("fixtures").select("id, home_team, away_team, match_date, league").execute()
+                # We need to fetch ALL fixtures. Since Supabase/PostgREST might cap limits, we use pagination.
                 
-                # Map "home_away" -> {id, match_date, league}
-                existing_map = {f"{f['home_team']}_{f['away_team']}": f for f in existing_db_fixtures.data}
+                all_existing = []
+                offset = 0
+                fetch_batch = 1000
+                print("  -> Fetching all existing fixtures (Pagination enabled)...")
+                
+                while True:
+                    # Using range() in supabase-py if possible, or raw execution logic
+                    # supabase-py .range(start, end) is 0-indexed inclusive? checking docs standard
+                    # usually .range(0, 999) -> 1000 items
+                    
+                    batch_res = supabase.table("fixtures").select("id, home_team, away_team, match_date, league, giornata").range(offset, offset + fetch_batch - 1).execute()
+                    batch_data = batch_res.data
+                    
+                    if not batch_data:
+                        break
+                        
+                    all_existing.extend(batch_data)
+                    # print(f"    -> Fetched {len(batch_data)} rows (Total: {len(all_existing)})")
+                    
+                    if len(batch_data) < fetch_batch:
+                        break
+                        
+                    offset += fetch_batch
+
+                # Helper for normalization
+                def normalize_team(name):
+                    return name.lower().strip().replace(" ", "_")
+
+                # Map "home_away_giornata" -> {id, match_date, league}
+                existing_map = {}
+                for f in all_existing:
+                    h = normalize_team(f['home_team'])
+                    a = normalize_team(f['away_team'])
+                    # Giornata might be None or int
+                    g = str(f.get('giornata', 0)) 
+                    key = f"{h}_{a}_{g}"
+                    existing_map[key] = f
+                
+                print(f"  -> Loaded {len(all_existing)} existing fixtures for comparison.")
+                
+                to_insert = []
+                updates_count = 0
                 
                 to_insert = []
                 updates_count = 0
                 
                 for f in fixtures:
-                    key = f"{f['home_team']}_{f['away_team']}"
+                    # Normalize current fixture for lookup
+                    h_curr = normalize_team(f['home_team'])
+                    a_curr = normalize_team(f['away_team'])
+                    g_curr = str(f.get('giornata', 0))
+                    
+                    key = f"{h_curr}_{a_curr}_{g_curr}"
                     existing_record = existing_map.get(key)
                     
                     if not existing_record:
@@ -300,22 +345,35 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                         existing_league = existing_record.get('league')
                         
                         # Check if date changed OR league needs update (was NULL)
-                        date_changed = f['match_date'] != existing_date
+                        # Handle None comparison safely
+                        date_changed = False
+                        if f['match_date'] and existing_date:
+                            date_changed = f['match_date'] != existing_date
+                        elif f['match_date'] and not existing_date:
+                            date_changed = True
+                        # If both are None, no change. If new is None, usually we don't overwrite with None unless it's postponed, 
+                        # but 'status' handles that. matching on date string is usually safe.
+
                         league_needs_update = existing_league != league_name
                         
                         if date_changed or league_needs_update:
+                            update_payload = {}
                             if date_changed:
                                 print(f"    -> Date changed for {f['home_team']} vs {f['away_team']}: {existing_date} -> {f['match_date']}")
+                                update_payload['match_date'] = f['match_date']
+                                update_payload['status'] = f['status'] # Update status too if date changed (e.g. Postponed -> Date)
+                                
                             if league_needs_update:
                                 # print(f"    -> Updating league for {f['home_team']} vs {f['away_team']}")
-                                pass
+                                update_payload['league'] = league_name
                                 
                             # Update this single record by ID
-                            try:
-                                supabase.table("fixtures").update(f).eq("id", match_id).execute()
-                                updates_count += 1
-                            except Exception as update_e:
-                                print(f"    -> Error updating match {match_id}: {update_e}")
+                            if update_payload:
+                                try:
+                                    supabase.table("fixtures").update(update_payload).eq("id", match_id).execute()
+                                    updates_count += 1
+                                except Exception as update_e:
+                                    print(f"    -> Error updating match {match_id}: {update_e}")
                 
                 # Batch Insert
                 if to_insert:
