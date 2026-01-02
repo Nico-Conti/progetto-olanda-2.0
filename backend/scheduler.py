@@ -141,20 +141,49 @@ def run_scraper_job(target_league=None):
 def start_scheduler():
     scheduler = BackgroundScheduler()
     
-    # Run every day at 00:00 AM (Midnight)
-    # Covers games from all days.
-    # Timezone: Defaults to server time (UTC on Render)
+    # Run every day at 00:00 AM UTC (Midnight)
     scheduler.add_job(
         run_scraper_job,
         trigger=CronTrigger(day_of_week='mon,tue,wed,thu,fri,sat,sun', hour=0, minute=0),
         id='scraper_weekly_update',
         replace_existing=True,
-        misfire_grace_time=3600 # Allow job to run if server wakes up up to 1 hour late
+        misfire_grace_time=3600 
     )
     
     scheduler.start()
-    logger.info("📅 Scheduler started. Next run: Daily at 00:00 AM.")
+    logger.info("📅 Scheduler started. Next run: Daily at 00:00 AM UTC.")
+
+    # Catch-up Logic:
+    # If the server wakes up LATE (e.g. 00:00:14 UTC), the 00:00 job might be missed 
+    # (depending on how exact the scheduler logic/misfire is, but we want to be safe).
+    # We check if we are in the "catch-up window" (00:00:01 to 00:30:00 UTC).
+    now = datetime.now() # Server time is UTC on Render
+    current_hour = now.hour
+    current_minute = now.minute
     
+    # Check if we are between 00:00 and 00:30
+    if current_hour == 0 and current_minute <= 30:
+        # If it's exactly 00:00:00-05 we might let the normal job fire? 
+        # But actually, APScheduler with misfire_grace_time might handle it if we start *very* close.
+        # However, to be absolutely sure:
+        logger.warning(f"⚠️ Server startup check ({now.strftime('%H:%M:%S')}). Checking if catch-up is needed...")
+        
+        # We assume if we are restarting in this window, we want to run.
+        # But we don't want to double run if the schedule *just* fired.
+        # Since 'replace_existing=True' is used, duplicate jobs aren't an issue, 
+        # but duplicate EXECUTIONS are.
+        # Given the stateless nature, if we restart at 00:14, the cron won't fire (it missed 00:00).
+        # So we trigger the catch-up.
+        logger.info("🚀 Triggering immediate catch-up run in 30 seconds...")
+        
+        scheduler.add_job(
+            run_scraper_job,
+            trigger='date',
+            run_date=datetime.now().replace(microsecond=0).timestamp() + 30, # Run in 30s
+            id='catch_up_job'
+        )
+    else:
+        logger.info("✅ Server outside of scheduled window. Waiting for next run.")
 
 if __name__ == "__main__":
     start_scheduler()

@@ -2,8 +2,8 @@ name: Wake Up Backend
 
 on:
   schedule:
-    # Wake up just before the midnight scraper (23:55 and 23:59 UTC)
-    - cron: '55,59 23 * * *'
+    # Wake up just before the midnight scraper (23:57 UTC)
+    - cron: '57 23 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
