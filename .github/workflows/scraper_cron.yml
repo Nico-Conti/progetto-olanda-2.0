@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         # We can run these in parallel or sequence. Parallel is faster.
-        league: [eredivisie, laliga, serieb, bundesliga, ligue1, premier]
+        league: [eredivisie, laliga, serieb, seriea, bundesliga, ligue1, premier]
 
     steps:
     - name: Checkout code
@@ -45,12 +45,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10' 
+        python-version: '3.11' 
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
     
     - name: Run Scraper for ${{ matrix.league }}
       env:
@@ -95,4 +95,4 @@ jobs:
         fi
 
         echo "Running scraper for $ARGS"
-        python backend/scraper/main.py $ARGS
+        python -m backend.scraper.main $ARGS
