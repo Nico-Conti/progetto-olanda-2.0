@@ -51,7 +51,7 @@ def main():
         print("--- STEP 0: Checking Existing Matches ---")
         existing_urls = set()
         if not args.skip_sync and not args.force_rescrape:
-            existing_urls = fetch_existing_urls()
+            existing_urls = fetch_existing_urls(league_slug=league_name)
         
         print("\n--- STEP 1: Fetching Match List ---")
         if args.match_urls:

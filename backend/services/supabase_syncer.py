@@ -143,6 +143,43 @@ def build_stats_payload(local_match):
 
     return payload
 
+def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, filters=""):
+    """
+    Fetches ALL records from a Supabase table using pagination (offset/limit).
+    Can optionaly accept a query string 'filters' (e.g. "&league=eq.Serie A")
+    """
+    all_data = []
+    offset = 0
+    print(f"⏳ Fetching all records from '{table}' (Batch size: {batch_size}, Filters: '{filters}')...")
+    
+    while True:
+        try:
+            # Construct URL with limit and offset
+            req_url = f"{base_url}/rest/v1/{table}?select={select}&limit={batch_size}&offset={offset}{filters}"
+            resp = requests.get(req_url, headers=headers)
+            resp.raise_for_status()
+            
+            data = resp.json()
+            if not data:
+                break
+            
+            all_data.extend(data)
+            # Optional: print progress for large datasets
+            if offset % 20000 == 0 and offset > 0:
+                print(f"   ... loaded {len(all_data)} records so far")
+
+            if len(data) < batch_size:
+                break
+            
+            offset += batch_size
+            
+        except Exception as e:
+            print(f"❌ Error fetching batch at offset {offset}: {e}")
+            # If a batch fails, we probably should stop or retry. For now, stopping to avoid endless loops.
+            break
+
+    return all_data
+
 def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
     """
     Reads a local JSON file OR uses a provided list and syncs match data to Supabase.
@@ -179,13 +216,9 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
             return
 
     # 2. Fetch All Matches from Supabase
-    print("⏳ Fetching matches from Supabase...")
     try:
-        # Fetch all records (limit 1000 should be enough for now, or paginate if needed)
-        resp = requests.get(f"{url}/rest/v1/matches?select=*&limit=10000", headers=headers)
-        resp.raise_for_status()
-        db_matches = resp.json()
-        print(f"✅ Fetched {len(db_matches)} matches from DB")
+        db_matches = fetch_all_records(url, "matches", headers, select="*")
+        print(f"✅ Fetched {len(db_matches)} matches from DB (Total)")
     except Exception as e:
         print(f"❌ Error fetching from Supabase: {e}")
         return
@@ -338,12 +371,94 @@ def fetch_existing_urls():
         "Prefer": "return=minimal"
     }
 
+def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, filters=""):
+    """
+    Fetches ALL records from a Supabase table using pagination (offset/limit).
+    Can optionaly accept a query string 'filters' (e.g. "&league=eq.Serie A")
+    """
+    all_data = []
+    offset = 0
+    print(f"⏳ Fetching all records from '{table}' (Batch size: {batch_size}, Filters: '{filters}')...")
+    
+    while True:
+        try:
+            # Construct URL with limit and offset
+            req_url = f"{base_url}/rest/v1/{table}?select={select}&limit={batch_size}&offset={offset}{filters}"
+            resp = requests.get(req_url, headers=headers)
+            resp.raise_for_status()
+            
+            data = resp.json()
+            if not data:
+                break
+            
+            all_data.extend(data)
+            # Optional: print progress for large datasets
+            if offset % 20000 == 0 and offset > 0:
+                print(f"   ... loaded {len(all_data)} records so far")
+
+            if len(data) < batch_size:
+                break
+            
+            offset += batch_size
+            
+        except Exception as e:
+            print(f"❌ Error fetching batch at offset {offset}: {e}")
+            # If a batch fails, we probably should stop or retry. For now, stopping to avoid endless loops.
+            break
+
+    return all_data
+
+# ... (sync_matches_to_supabase removed from snippet for brevity of tool call as it wasn't modified in plan, 
+#      but we need to be careful with line numbers. The replace block targets lines 339-355 which is fetch_existing_urls)
+# Wait, I need to update fetch_all_records signature as well which is lines 145+.
+# This tool call only supports contiguous edits. I'll split this into two calls or use multi_replace.
+# Using multi_replace is safer for non-contiguous edits in the same file.
+
+def fetch_existing_urls(league_slug=None):
+    """
+    Fetches all match URLs currently in Supabase.
+    If league_slug is provided (e.g. 'seriea'), it filters by that league.
+    Returns a set of URLs.
+    """
+    load_dotenv()
+    
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+
+    if not url or not key:
+        print("❌ Error: Missing SUPABASE_URL or SUPABASE_KEY in .env")
+        return set()
+
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+
+    # Map slug to DB League Name
+    filters = ""
+    if league_slug:
+        league_map = {
+            "seriea": "Serie A",
+            "serieb": "Serie B",
+            "laliga": "La Liga",
+            "eredivisie": "Eredivisie",
+            "bundesliga": "Bundesliga",
+            "ligue1": "Ligue 1",
+            "premier": "Premier League"
+        }
+        db_league = league_map.get(league_slug.lower())
+        if db_league:
+            # URL encode the space if needed, but requests usually handles it.
+            # Supabase postgrest format: &col=eq.val
+            filters = f"&league=eq.{db_league}"
+            print(f"🔍 Filtering by League: {db_league}")
+
     print("⏳ Fetching existing URLs from Supabase...")
     try:
-        # Fetch only the 'url' column to be efficient
-        resp = requests.get(f"{url}/rest/v1/matches?select=url&limit=10000", headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
+        # Use pagination via helper
+        data = fetch_all_records(url, "matches", headers, select="url", filters=filters)
         
         # Extract URLs, filtering out None/Empty
         existing_urls = {item['url'] for item in data if item.get('url')}
