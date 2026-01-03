@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown } from 'lucide-react';
 import { processData, calculatePrediction } from '../utils/stats';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
@@ -26,8 +26,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncStatus, setSyncStatus] = useState({ message: '', progress: 0 });
 
     const [useGeneralStats, setUseGeneralStats] = useState(false);
 
@@ -184,50 +182,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         return upcomingMatches.filter(m => m.matchday === selectedMatchday);
     }, [upcomingMatches, selectedMatchday]);
 
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/manual-scrape`, { method: 'POST' });
-            if (res.ok) {
-                console.log("Sync started successfully");
-
-                // Start polling
-                const pollInterval = setInterval(async () => {
-                    try {
-                        const statusRes = await fetch(`${API_BASE_URL}/scraper-status`);
-                        if (statusRes.ok) {
-                            const status = await statusRes.json();
-                            setSyncStatus(status);
-
-                            if (!status.is_running && status.progress === 100) {
-                                clearInterval(pollInterval);
-                                setIsSyncing(false);
-                                setSyncStatus({ message: 'Sync Complete!', progress: 100 });
-
-                                // Auto-refresh data
-                                if (onRefresh) {
-                                    setTimeout(() => {
-                                        onRefresh();
-                                        setSyncStatus({ message: '', progress: 0 }); // Clear status after refresh
-                                    }, 1000);
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Poll error", e);
-                    }
-                }, 2000);
-
-            } else {
-                console.error("Sync failed");
-                setIsSyncing(false);
-            }
-        } catch (e) {
-            console.error("Sync error", e);
-            setIsSyncing(false);
-        }
-    };
-
     if (selectedMatch) {
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
@@ -256,7 +210,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </button>
 
                 {/* Configuration (Sample Size Only) */}
-                {/* Configuration (Sample Size Only) */}
                 <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 self-start md:self-auto">
                         <Calculator className="w-5 h-5 text-emerald-400" />
@@ -273,8 +226,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                         </div>
 
                         <div className="hidden sm:block w-px h-4 bg-white/10"></div>
-
-
 
                         {/* General Trend Toggle */}
                         <div className="flex items-center gap-2">
@@ -400,51 +351,6 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
-                    {/* Sync Button */}
-                    <button
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/20 ${isSyncing ? 'bg-emerald-500/10 text-emerald-400 cursor-not-allowed' : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 hover:border-emerald-500/50'}`}
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                        {isSyncing ? 'Syncing...' : 'Sync All'}
-                    </button>
-
-                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
-
-                    {/* Sync Status Bar (Visible only when syncing) */}
-                    {isSyncing && (
-                        <div className="flex flex-col gap-2 w-[220px]">
-                            {/* Matches Progress (Top) */}
-                            <div className="flex flex-col gap-0.5">
-                                <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase">
-                                    <span className="truncate max-w-[150px]">{syncStatus.message || 'Initializing...'}</span>
-                                    <span>{syncStatus.progress}%</span>
-                                </div>
-                                <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-emerald-500 transition-all duration-300 ease-out"
-                                        style={{ width: `${syncStatus.progress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-
-                            {/* Overall Progress (Bottom) */}
-                            <div className="flex flex-col gap-0.5">
-                                <div className="flex justify-between items-center text-[9px] font-bold text-zinc-500 uppercase">
-                                    <span>Total Progress</span>
-                                    <span>{syncStatus.overall_progress || 0}%</span>
-                                </div>
-                                <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
-                                        style={{ width: `${syncStatus.overall_progress || 0}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Matchday Selector */}
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-zinc-400 uppercase">Matchday:</span>
@@ -530,8 +436,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </div >
+            </div >
 
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
                 {/* Mobile View (Cards) */}

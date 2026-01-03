@@ -61,7 +61,7 @@ def fetch_match_urls(driver, url, last_round_only=False):
 
     # Limit scrolling if we only want the last round
     scroll_loops = 2 if last_round_only else 7
-    fully_scroll(driver, pause=0.8, max_loops=scroll_loops)
+    fully_scroll(driver, pause=1.5, max_loops=scroll_loops)
     
     if not last_round_only:
         check_more_matches(driver)

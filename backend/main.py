@@ -19,17 +19,11 @@ key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 from contextlib import asynccontextmanager
-from backend.scheduler import start_scheduler, run_scraper_job
-from backend.status import get_status
-
-# Lifespan context manager for startup tasks
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start the scheduler on app startup
-    print("⏰ Starting Scheduler...")
-    start_scheduler()
+    # Startup logic can go here if needed
     yield
-    # Shutdown logic if needed (scheduler shuts down with process)
+    # Shutdown logic if needed
 
 app = FastAPI(title="Progetto Olanda 2.0 Backend", lifespan=lifespan)
 
@@ -119,20 +113,6 @@ def keep_alive():
     Lightweight endpoint to wake up the server.
     """
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
-
-@app.get("/scraper-status")
-def scraper_status():
-    """Returns the current status of the scraper job."""
-    return get_status()
-
-@app.post("/manual-scrape")
-def manual_scrape(background_tasks: BackgroundTasks, league: Optional[str] = None):
-    """
-    Manually triggers the scraper job in the background.
-    Useful for catching up on missing or rescheduled matches.
-    """
-    background_tasks.add_task(run_scraper_job, league)
-    return {"status": "ok", "message": f"Scraper job started in background for {league if league else 'all leagues'}."}
 
 @app.post("/analyze")
 def analyze_match(data: MatchData):
