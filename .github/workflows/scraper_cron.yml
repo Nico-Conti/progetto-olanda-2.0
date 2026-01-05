@@ -3,7 +3,7 @@ name: Scraper Cron Job
 on:
   schedule:
     # 11:00 UTC = 12:00 CET (Winter) / 13:00 CEST (Summer)
-    - cron: '0 11 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
       league:
