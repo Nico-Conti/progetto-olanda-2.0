@@ -12,24 +12,38 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
         if (!fixtures) return {};
         const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
         const map = {};
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
 
         leagues.forEach(league => {
             const leagueFixtures = fixtures.filter(f => f.league === league);
-            // Find unplayed matches for this league
-            // We need to check against stats to see if played, but for "upcoming matchday" 
-            // we can often just look at dates or assume the scraper sets matchday correctly.
-            // Let's use the same "unplayed" logic as before to be safe.
 
-            const unplayedInLeague = leagueFixtures.filter(f => {
-                if (!stats || !stats[f.home]) return true;
-                const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-                return !played;
+            // Find unplayed matches for this league that are NOT in the past
+            const candidates = leagueFixtures.filter(f => {
+                // 1. Basic unplayed check (not in scraped stats)
+                if (stats && stats[f.home]) {
+                    const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
+                    if (played) return false;
+                }
+
+                // 2. Date check: must be today or future (allow 24h grace)
+                if (f.date) {
+                    const matchDate = new Date(f.date);
+                    if (matchDate < oneDayAgo) return false;
+                }
+
+                return true;
             });
 
-            if (unplayedInLeague.length > 0) {
-                // Sort by matchday and take the first one
-                const sorted = unplayedInLeague.sort((a, b) => a.matchday - b.matchday);
-                map[league] = sorted[0].matchday;
+            if (candidates.length > 0) {
+                // Sort by DATE (closest in time) to find the upcoming matchday
+                // Use Infinity for TBD to push them to the end
+                const sortedByTime = candidates.sort((a, b) => {
+                    const dateA = a.date ? new Date(a.date).getTime() : Infinity;
+                    const dateB = b.date ? new Date(b.date).getTime() : Infinity;
+                    return dateA - dateB;
+                });
+                map[league] = sortedByTime[0].matchday;
             }
         });
         return map;

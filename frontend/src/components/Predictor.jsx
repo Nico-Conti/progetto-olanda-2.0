@@ -105,12 +105,21 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
 
-        // Filter fixtures that haven't been played yet
+        // Filter fixtures that haven't been played yet and are not in the past
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+
         const unplayed = fixtures.filter(f => {
-            // Priority Check: Use explicit status from DB if available
+            // 1. Date check (ignore matches more than 24h old)
+            if (f.date) {
+                const matchDate = new Date(f.date);
+                if (matchDate < oneDayAgo) return false;
+            }
+
+            // 2. Priority Check: Use explicit status from DB if available
             if (f.status === 'PLAYED') return false;
 
-            // Fallback: If status is unknown/missing, check if stats exist
+            // 3. Fallback: If status is unknown/missing, check if stats exist
             if (!globalStats[f.home]) return true;
             const played = globalStats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
             return !played;
