@@ -30,6 +30,6 @@ Open the app in your browser. If you see a green **"Backend Online"** badge in t
 ## Features Ready to Test
 - **League Trends**: Check out the "Trends" tab to see how teams are performing (Season vs Last 3/5/10 games).
 - **Predictor**: Go to the "Predictor" tab to see AI-powered match predictions.
-- **Scraper**: You can manually run the scraper to fetch new data (see `backend/scraper.py`).
+- **Scraper**: You can manually run the scraper to fetch new data (see `backend/scraper/main.py`).
 
 Enjoy! 🚀
