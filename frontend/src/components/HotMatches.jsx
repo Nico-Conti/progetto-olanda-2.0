@@ -7,6 +7,32 @@ import Header from './Header';
 const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
     const [nGames, setNGames] = useState(5);
     const [displayCount, setDisplayCount] = useState(9);
+    const [selectedLeagues, setSelectedLeagues] = useState(['All']);
+    const [isLeagueDropdownOpen, setIsLeagueDropdownOpen] = useState(false);
+
+    // 0. Get available leagues for filter
+    const availableLeagues = useMemo(() => {
+        if (!fixtures) return [];
+        const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
+        return leagues.sort();
+    }, [fixtures]);
+
+    const handleLeagueToggle = (league) => {
+        if (league === 'All') {
+            setSelectedLeagues(['All']);
+        } else {
+            setSelectedLeagues(prev => {
+                const filtered = prev.filter(l => l !== 'All');
+                if (filtered.includes(league)) {
+                    const result = filtered.filter(l => l !== league);
+                    return result.length === 0 ? ['All'] : result;
+                } else {
+                    return [...filtered, league];
+                }
+            });
+        }
+    };
+
     // 1. Identify upcoming matchday for each league
     const upcomingMatchdays = useMemo(() => {
         if (!fixtures) return {};
@@ -55,6 +81,11 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
         // Filter for unplayed matches that are in the upcoming matchday for their league
         const candidates = fixtures.filter(f => {
             if (!f.league) return false;
+
+            // Apply Multi-League Filter
+            const isAllSelected = selectedLeagues.includes('All');
+            if (!isAllSelected && !selectedLeagues.includes(f.league)) return false;
+
             const targetMatchday = upcomingMatchdays[f.league];
             if (f.matchday !== targetMatchday) return false;
 
@@ -69,11 +100,23 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
             return { ...match, prediction: pred };
         }).filter(m => m.prediction !== null);
 
-        // Sort by Total Expected Corners (Descending)
+        // Sort by Total Expected corners/goals/etc (Descending)
         const sorted = predictions.sort((a, b) => b.prediction.total - a.prediction.total);
 
         return sorted.slice(0, displayCount);
-    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount]);
+    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (!isLeagueDropdownOpen) return;
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.league-filter-container')) {
+                setIsLeagueDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isLeagueDropdownOpen]);
 
     const appTitle = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -118,6 +161,56 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                         </div>
 
                         <div className="flex flex-wrap md:flex-nowrap items-center justify-center md:justify-end gap-y-4 gap-x-6 md:mr-12">
+                            {/* League Multi-Filter */}
+                            <div className="flex items-center gap-3 league-filter-container relative">
+                                <span className="text-xs font-bold text-zinc-400 uppercase">Leagues:</span>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsLeagueDropdownOpen(!isLeagueDropdownOpen)}
+                                        className="bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-10 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 font-bold min-w-[140px] text-left flex items-center justify-between"
+                                    >
+                                        <span className="truncate">
+                                            {selectedLeagues.includes('All')
+                                                ? 'All Leagues'
+                                                : `${selectedLeagues.length} Selected`}
+                                        </span>
+                                        <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${isLeagueDropdownOpen ? '-rotate-90' : 'rotate-90'}`} />
+                                    </button>
+
+                                    {isLeagueDropdownOpen && (
+                                        <div className="absolute top-full mt-2 right-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                                                <button
+                                                    onClick={() => handleLeagueToggle('All')}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedLeagues.includes('All')
+                                                        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/20'
+                                                        : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                                >
+                                                    All Leagues
+                                                </button>
+                                                <div className="h-px bg-white/5 my-1" />
+                                                {availableLeagues.map(league => (
+                                                    <label
+                                                        key={league}
+                                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedLeagues.includes(league)
+                                                            ? 'bg-zinc-800 text-white'
+                                                            : 'text-zinc-500 hover:bg-white/5'}`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-orange-500/20 focus:ring-offset-0"
+                                                            checked={selectedLeagues.includes(league)}
+                                                            onChange={() => handleLeagueToggle(league)}
+                                                        />
+                                                        <span className="text-xs font-bold uppercase tracking-wide">{league}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Display Count Selector */}
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-zinc-400 uppercase">View:</span>
