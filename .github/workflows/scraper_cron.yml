@@ -30,13 +30,8 @@ on:
         default: true
 
 jobs:
-  scrape-leagues:
+  scrape-league:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # We can run these in parallel or sequence. Parallel is faster.
-        league: [eredivisie, laliga, serieb, seriea, bundesliga, ligue1, premier]
 
     steps:
     - name: Checkout code
@@ -52,47 +47,64 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
     
-    - name: Run Scraper for ${{ matrix.league }}
+    - name: Run Scraper for All Leagues
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # If needed
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        # Construct arguments
-        ARGS="${{ matrix.league }}"
+        # Define defaults
+        LEAGUES="eredivisie laliga serieb seriea bundesliga ligue1 premier"
         
-        # --- Handle Inputs ---
+        # Build arguments based on inputs/events
+        COMMON_ARGS=""
         
-        # Force Rescrape
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.rescrape }}" == "true" ]; then
-          ARGS="$ARGS --force-rescrape"
-        fi
-        
-        # Scope (Last Round vs All)
-        # Default for cron schedule is Last Round.
-        # For manual: check input.
+        # Scope processing
         if [ "${{ github.event_name }}" == "schedule" ]; then
-             # Cron always runs last round only
-             ARGS="$ARGS --last-round"
+             COMMON_ARGS="$COMMON_ARGS --last-round"
         elif [ "${{ github.event.inputs.scope }}" == "Last Round" ]; then
-             ARGS="$ARGS --last-round"
-        fi
-        
-        # Skip Analysis
-        # Default for cron is Skip Analysis.
-        # For manual: check input.
-        if [ "${{ github.event_name }}" == "schedule" ]; then
-             ARGS="$ARGS --skip-analysis"
-        elif [ "${{ github.event.inputs.skip_analysis }}" == "true" ]; then
-             ARGS="$ARGS --skip-analysis"
-        fi
-        
-        # Specific League Filter (Manual Only)
-        INPUT_LEAGUE="${{ github.event.inputs.league }}"
-        if [ -n "$INPUT_LEAGUE" ] && [ "$INPUT_LEAGUE" != "${{ matrix.league }}" ]; then
-          echo "Skipping ${{ matrix.league }} because $INPUT_LEAGUE was requested."
-          exit 0
+             COMMON_ARGS="$COMMON_ARGS --last-round"
         fi
 
-        echo "Running scraper for $ARGS"
-        python -m backend.scraper.main $ARGS
+        # Skip Analysis processing
+        if [ "${{ github.event_name }}" == "schedule" ]; then
+             COMMON_ARGS="$COMMON_ARGS --skip-analysis"
+        elif [ "${{ github.event.inputs.skip_analysis }}" == "true" ]; then
+             COMMON_ARGS="$COMMON_ARGS --skip-analysis"
+        fi
+
+        # Rescrape processing
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.rescrape }}" == "true" ]; then
+          COMMON_ARGS="$COMMON_ARGS --force-rescrape"
+        fi
+
+        # Filter specific league if input provided
+        INPUT_LEAGUE="${{ github.event.inputs.league }}"
+        if [ -n "$INPUT_LEAGUE" ]; then
+          LEAGUES="$INPUT_LEAGUE"
+        fi
+
+        echo "Leagues to process: $LEAGUES"
+        echo "Common Args: $COMMON_ARGS"
+
+        # Loop through leagues
+        FAILURES=0
+        for LEAGUE in $LEAGUES; do
+          echo "=========================================="
+          echo "Running scraper for [$LEAGUE]"
+          echo "=========================================="
+          
+          # Run the scraper, capture exit code but don't exit script immediately
+          if ! python -m backend.scraper.main $LEAGUE $COMMON_ARGS; then
+            echo "::error::Scraper failed for $LEAGUE"
+            FAILURES=$((FAILURES+1))
+          else
+            echo "✅ Finished $LEAGUE"
+          fi
+        done
+
+        if [ $FAILURES -ne 0 ]; then
+          echo "::error::Job finished with $FAILURES failed leagues."
+          exit 1
+        fi
+        echo "All leagues processed successfully."
