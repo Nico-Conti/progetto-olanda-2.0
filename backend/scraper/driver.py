@@ -1,5 +1,23 @@
 import time
+import subprocess
+import re
 import undetected_chromedriver as uc
+
+def get_chrome_major_version():
+    try:
+        output = subprocess.check_output(['google-chrome', '--version'], stderr=subprocess.STDOUT).decode('utf-8')
+        version = re.search(r'(\d+)\.', output).group(1)
+        return int(version)
+    except Exception as e:
+        print(f"Warning: Could not detect Chrome version via 'google-chrome --version': {e}")
+        # Try 'chrome' as fallback
+        try:
+            output = subprocess.check_output(['chrome', '--version'], stderr=subprocess.STDOUT).decode('utf-8')
+            version = re.search(r'(\d+)\.', output).group(1)
+            return int(version)
+        except Exception as e2:
+            print(f"Warning: Could not detect Chrome version via 'chrome --version': {e2}")
+            return None
 
 def make_driver():
     options = uc.ChromeOptions()
@@ -16,7 +34,14 @@ def make_driver():
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-dev-shm-usage")
 
-    driver = uc.Chrome(options=options)
+    chrome_version = get_chrome_major_version()
+    if chrome_version:
+        print(f"  -> Detected Chrome version {chrome_version}. Passing to undetected-chromedriver.")
+        driver = uc.Chrome(options=options, version_main=chrome_version)
+    else:
+        print("  -> Could not detect Chrome version. Using default.")
+        driver = uc.Chrome(options=options)
+    
     return driver
 
 def fully_scroll(driver, pause=0, max_loops=8):
