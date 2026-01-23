@@ -3,18 +3,65 @@ import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff } from 'lucide-r
 import { calculatePrediction } from '../utils/stats';
 import StatisticSelector from './StatisticSelector';
 import Header from './Header';
+const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[140px]', className = '' }) => (
+    <div className={`dropdown-container relative ${className}`}>
+        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">{label}</span>
+        <div className="relative">
+            <button
+                onClick={onToggle}
+                className={`bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold text-left flex items-center justify-between ${width}`}
+            >
+                <span className="truncate">{value}</span>
+                <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${active ? '-rotate-90' : 'rotate-90'}`} />
+            </button>
+            {active && (
+                <div className="absolute top-full mt-2 left-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl min-w-[200px] animate-in fade-in zoom-in-95 duration-200 z-50">
+                    {children}
+                </div>
+            )}
+        </div>
+    </div>
+);
 
 const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
     const [nGames, setNGames] = useState(5);
     const [displayCount, setDisplayCount] = useState(9);
     const [selectedLeagues, setSelectedLeagues] = useState(['All']);
-    const [isLeagueDropdownOpen, setIsLeagueDropdownOpen] = useState(false);
+
+    const [activeDropdown, setActiveDropdown] = useState(null); // 'league', 'date', 'view', 'sample', 'trend', 'calc'
+
+    const [selectedDate, setSelectedDate] = useState(null); // null = 'Upcoming' (default behavior)
+    const [forceMean, setForceMean] = useState(false);
+    const [useGeneralStats, setUseGeneralStats] = useState(false);
 
     // 0. Get available leagues for filter
     const availableLeagues = useMemo(() => {
         if (!fixtures) return [];
         const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
         return leagues.sort();
+    }, [fixtures]);
+
+    // 0.5 Get available dates from fixtures (e.g. from today onwards)
+    const availableDates = useMemo(() => {
+        if (!fixtures) return [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const dates = new Set();
+        fixtures.forEach(f => {
+            if (!f.date) return;
+            const d = new Date(f.date);
+            d.setHours(0, 0, 0, 0);
+            if (d >= today) {
+                dates.add(d.toISOString());
+            }
+        });
+
+        // Convert to array, sort, and take next 14 days
+        return Array.from(dates)
+            .map(d => new Date(d))
+            .sort((a, b) => a - b)
+            .slice(0, 14);
     }, [fixtures]);
 
     const handleLeagueToggle = (league) => {
@@ -86,17 +133,39 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
             const isAllSelected = selectedLeagues.includes('All');
             if (!isAllSelected && !selectedLeagues.includes(f.league)) return false;
 
+            // Unplayed Check
+            if (stats && stats[f.home]) {
+                const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
+                if (played) return false;
+            }
+
+            // Today Only Logic
+            // Date Filter Logic
+            if (selectedDate) {
+                if (!f.date) return false;
+                const d = new Date(f.date);
+                return d.toDateString() === selectedDate.toDateString();
+            }
+
+            // Default: Upcoming Matchday Logic
             const targetMatchday = upcomingMatchdays[f.league];
             if (f.matchday !== targetMatchday) return false;
 
-            if (!stats[f.home]) return true;
-            const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-            return !played;
+            return true;
         });
 
         // Calculate predictions
         const predictions = candidates.map(match => {
-            const pred = calculatePrediction(match.home, match.away, stats, nGames);
+            const pred = calculatePrediction(
+                match.home,
+                match.away,
+                stats,
+                nGames,
+                false,
+                useGeneralStats,
+                selectedStatistic,
+                forceMean ? 'mean' : 'median'
+            );
             return { ...match, prediction: pred };
         }).filter(m => m.prediction !== null);
 
@@ -104,19 +173,19 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
         const sorted = predictions.sort((a, b) => b.prediction.total - a.prediction.total);
 
         return sorted.slice(0, displayCount);
-    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues]);
+    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues, selectedDate, useGeneralStats, forceMean]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
-        if (!isLeagueDropdownOpen) return;
+        if (!activeDropdown) return;
         const handleClickOutside = (e) => {
-            if (!e.target.closest('.league-filter-container')) {
-                setIsLeagueDropdownOpen(false);
+            if (!e.target.closest('.dropdown-container')) {
+                setActiveDropdown(null);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isLeagueDropdownOpen]);
+    }, [activeDropdown]);
 
     const appTitle = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -151,103 +220,204 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
                 <div className="space-y-6 relative">
 
-                    <div className="glass-panel p-5 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20">
-                        <div>
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col xl:flex-row justify-between items-center gap-4 relative z-50">
+                        <div className="flex items-center gap-3 min-w-max w-full xl:w-auto justify-center xl:justify-start border-b xl:border-b-0 border-white/5 pb-4 xl:pb-0">
+                            <div className="p-2 bg-zinc-900 rounded-lg border border-white/10">
                                 <Flame className="w-5 h-5 text-orange-500" />
-                                Hot Matches
-                            </h2>
-                            <p className="text-zinc-400 text-sm mt-1">Highest predicted total {selectedStatistic.replace('_', ' ')} for the upcoming matchday across all leagues</p>
+                            </div>
+                            <div>
+                                <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
+                                    Hot <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">Matches</span>
+                                </h2>
+                                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide mt-0.5">
+                                    Top {selectedStatistic.replace('_', ' ')} picks
+                                </p>
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap md:flex-nowrap items-center justify-center md:justify-end gap-y-4 gap-x-6 md:mr-12">
+                        <div className="flex flex-wrap items-center justify-between gap-3 w-full flex-1">
                             {/* League Multi-Filter */}
-                            <div className="flex items-center gap-3 league-filter-container relative">
-                                <span className="text-xs font-bold text-zinc-400 uppercase">Leagues:</span>
-                                <div className="relative">
+                            <Dropdown
+                                label="Leagues"
+                                active={activeDropdown === 'league'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'league' ? null : 'league')}
+                                value={selectedLeagues.includes('All') ? 'All Leagues' : `${selectedLeagues.length} Selected`}
+                                width="w-full"
+                                className="flex-[2] min-w-[200px]"
+                            >
+                                <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     <button
-                                        onClick={() => setIsLeagueDropdownOpen(!isLeagueDropdownOpen)}
-                                        className="bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-10 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 font-bold min-w-[140px] text-left flex items-center justify-between"
+                                        onClick={() => handleLeagueToggle('All')}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedLeagues.includes('All')
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
                                     >
-                                        <span className="truncate">
-                                            {selectedLeagues.includes('All')
-                                                ? 'All Leagues'
-                                                : `${selectedLeagues.length} Selected`}
-                                        </span>
-                                        <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${isLeagueDropdownOpen ? '-rotate-90' : 'rotate-90'}`} />
+                                        All Leagues
                                     </button>
-
-                                    {isLeagueDropdownOpen && (
-                                        <div className="absolute top-full mt-2 right-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
-                                                <button
-                                                    onClick={() => handleLeagueToggle('All')}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedLeagues.includes('All')
-                                                        ? 'bg-orange-500/20 text-orange-400 border border-orange-500/20'
-                                                        : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
-                                                >
-                                                    All Leagues
-                                                </button>
-                                                <div className="h-px bg-white/5 my-1" />
-                                                {availableLeagues.map(league => (
-                                                    <label
-                                                        key={league}
-                                                        className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedLeagues.includes(league)
-                                                            ? 'bg-zinc-800 text-white'
-                                                            : 'text-zinc-500 hover:bg-white/5'}`}
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-orange-500 focus:ring-orange-500/20 focus:ring-offset-0"
-                                                            checked={selectedLeagues.includes(league)}
-                                                            onChange={() => handleLeagueToggle(league)}
-                                                        />
-                                                        <span className="text-xs font-bold uppercase tracking-wide">{league}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+                                    <div className="h-px bg-white/5 my-1" />
+                                    {availableLeagues.map(league => (
+                                        <label
+                                            key={league}
+                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedLeagues.includes(league)
+                                                ? 'bg-zinc-800 text-white'
+                                                : 'text-zinc-500 hover:bg-white/5'}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/20 focus:ring-offset-0"
+                                                checked={selectedLeagues.includes(league)}
+                                                onChange={() => handleLeagueToggle(league)}
+                                            />
+                                            <span className="text-xs font-bold uppercase tracking-wide">{league}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                            </div>
+                            </Dropdown>
 
-                            {/* Display Count Selector */}
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-zinc-400 uppercase">View:</span>
-                                <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
-                                    {[3, 6, 9, 12, 15].map((n) => (
+                            {/* Date Selector */}
+                            <Dropdown
+                                label="Date"
+                                active={activeDropdown === 'date'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}
+                                value={selectedDate ? (selectedDate.toDateString() === new Date().toDateString() ? 'Today' : selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : 'Upcoming'}
+                                width="w-full"
+                                className="flex-[1.5] min-w-[140px]"
+                            >
+                                <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                                    <button
+                                        onClick={() => { setSelectedDate(null); setActiveDropdown(null); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedDate === null
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                    >
+                                        Upcoming Matches
+                                    </button>
+                                    <div className="h-px bg-white/5 my-1" />
+                                    {availableDates.map(date => {
+                                        const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                                        const isToday = date.toDateString() === new Date().toDateString();
+                                        const label = isToday ? 'Today' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+                                        return (
+                                            <button
+                                                key={date.toISOString()}
+                                                onClick={() => { setSelectedDate(date); setActiveDropdown(null); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${isSelected
+                                                    ? 'bg-zinc-800 text-white'
+                                                    : 'text-zinc-500 hover:bg-white/5'}`}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </Dropdown>
+
+                            {/* View Count */}
+                            <Dropdown
+                                label="View"
+                                active={activeDropdown === 'view'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'view' ? null : 'view')}
+                                value={displayCount}
+                                width="w-full"
+                                className="flex-1 min-w-[80px]"
+                            >
+                                <div className="space-y-1">
+                                    {[3, 6, 9, 12, 15].map(n => (
                                         <button
                                             key={n}
-                                            onClick={() => setDisplayCount(n)}
-                                            className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${displayCount === n
-                                                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-sm'
-                                                : 'text-zinc-500 hover:text-zinc-300'
-                                                }`}
+                                            onClick={() => { setDisplayCount(n); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${displayCount === n
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n}
+                                            {n} Matches
                                         </button>
                                     ))}
                                 </div>
-                            </div>
+                            </Dropdown>
 
-                            {/* Sample Size Selector */}
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-zinc-400 uppercase">Sample:</span>
-                                <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
-                                    {[3, 5, 10, 'all'].map((n) => (
+                            {/* Sample Size */}
+                            <Dropdown
+                                label="Sample"
+                                active={activeDropdown === 'sample'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
+                                value={nGames === 'all' ? 'Season' : `Last ${nGames}`}
+                                width="w-full"
+                                className="flex-1 min-w-[100px]"
+                            >
+                                <div className="space-y-1">
+                                    {[3, 5, 10, 'all'].map(n => (
                                         <button
                                             key={n}
-                                            onClick={() => setNGames(n)}
-                                            className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${nGames === n
-                                                ? 'bg-zinc-700 text-white shadow-sm'
-                                                : 'text-zinc-500 hover:text-zinc-300'
-                                                }`}
+                                            onClick={() => { setNGames(n); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${nGames === n
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n === 'all' ? 'Season' : `Last ${n}`}
+                                            {n === 'all' ? 'Whole Season' : `Last ${n} Games`}
                                         </button>
                                     ))}
                                 </div>
-                            </div>
+                            </Dropdown>
+
+                            {/* Trend */}
+                            <Dropdown
+                                label="Trend"
+                                active={activeDropdown === 'trend'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
+                                value={useGeneralStats ? 'General' : 'Specific'}
+                                width="w-full"
+                                className="flex-1 min-w-[100px]"
+                            >
+                                <div className="space-y-1">
+                                    <button
+                                        onClick={() => { setUseGeneralStats(false); setActiveDropdown(null); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!useGeneralStats
+                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                            : 'text-zinc-400 hover:bg-white/5'}`}
+                                    >
+                                        Specific (Home/Away)
+                                    </button>
+                                    <button
+                                        onClick={() => { setUseGeneralStats(true); setActiveDropdown(null); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${useGeneralStats
+                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                            : 'text-zinc-400 hover:bg-white/5'}`}
+                                    >
+                                        General (All Matches)
+                                    </button>
+                                </div>
+                            </Dropdown>
+
+                            {/* Calc */}
+                            <Dropdown
+                                label="Calc"
+                                active={activeDropdown === 'calc'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}
+                                value={forceMean ? 'Mean' : 'Median'}
+                                width="w-full"
+                                className="flex-1 min-w-[100px]"
+                            >
+                                <div className="space-y-1">
+                                    <button
+                                        onClick={() => { setForceMean(false); setActiveDropdown(null); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!forceMean
+                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                            : 'text-zinc-400 hover:bg-white/5'}`}
+                                    >
+                                        Median (Default)
+                                    </button>
+                                    <button
+                                        onClick={() => { setForceMean(true); setActiveDropdown(null); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${forceMean
+                                            ? 'bg-emerald-500/20 text-emerald-400'
+                                            : 'text-zinc-400 hover:bg-white/5'}`}
+                                    >
+                                        Mean (Average)
+                                    </button>
+                                </div>
+                            </Dropdown>
                         </div>
                     </div>
 

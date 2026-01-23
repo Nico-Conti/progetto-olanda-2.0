@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown } from 'lucide-react';
-import { processData, calculatePrediction } from '../utils/stats';
+import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, TrendingUp, BarChart2 } from 'lucide-react';
+import { processData, calculatePrediction, VOLATILE_STATS } from '../utils/stats';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -8,6 +8,8 @@ import PredictionHero from './predictor/PredictionHero';
 import StatsAnalysis from './predictor/StatsAnalysis';
 import StatisticSelector from './StatisticSelector';
 import BetBuilderCell from './BetBuilderCell';
+import AccuracyReport from './AccuracyReport';
+import StatisticDistribution from './StatisticDistribution';
 
 const STAT_OPTIONS = [
     { value: 'main', label: 'Main' },
@@ -26,8 +28,11 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
+    const [showAccuracy, setShowAccuracy] = useState(false);
+    const [showDistribution, setShowDistribution] = useState(false);
 
     const [useGeneralStats, setUseGeneralStats] = useState(false);
+    const [forceMean, setForceMean] = useState(false);
 
     // Sync preSelectedMatch
     useEffect(() => {
@@ -99,8 +104,8 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, localStats, nGames, false, useGeneralStats);
-    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useGeneralStats]);
+        return calculatePrediction(customHome, customAway, localStats, nGames, false, useGeneralStats, localStatistic, forceMean ? 'mean' : null);
+    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useGeneralStats, localStatistic, forceMean]);
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
@@ -131,12 +136,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             const stat = matchStatistics[matchId] || selectedStatistic;
             const statsToUse = allProcessedStats[stat] || globalStats;
 
-            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, false, useGeneralStats);
+            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, false, useGeneralStats, stat, forceMean ? 'mean' : null);
             return { ...match, prediction: pred, selectedStat: stat };
         }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useGeneralStats]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useGeneralStats, forceMean]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -195,7 +200,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         const { home, away, prediction } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
         // Use LOCAL stats here
-        const detailPred = calculatePrediction(home, away, localStats, nGames, false, useGeneralStats);
+        const detailPred = calculatePrediction(home, away, localStats, nGames, false, useGeneralStats, localStatistic, forceMean ? 'mean' : null);
 
         if (!detailPred) return <div>Error loading match details</div>;
 
@@ -246,6 +251,21 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
                             </button>
                         </div>
+
+                        {VOLATILE_STATS.includes(localStatistic) && (
+                            <>
+                                <div className="hidden sm:block w-px h-4 bg-white/10"></div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Use Mean:</span>
+                                    <button
+                                        onClick={() => setForceMean(!forceMean)}
+                                        className={`relative w-10 h-5 rounded-full transition-colors ${forceMean ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                                    >
+                                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${forceMean ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
                         <div className="hidden sm:block w-px h-4 bg-white/10"></div>
 
@@ -360,6 +380,20 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
+                    <button
+                        onClick={() => setShowAccuracy(true)}
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-colors flex items-center gap-2"
+                    >
+                        <TrendingUp className="w-3.5 h-3.5" /> Backtest
+                    </button>
+
+                    <button
+                        onClick={() => setShowDistribution(true)}
+                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-colors flex items-center gap-2"
+                    >
+                        <BarChart2 className="w-3.5 h-3.5" /> Distribution
+                    </button>
+
                     {/* Matchday Selector */}
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-zinc-400 uppercase">Matchday:</span>
@@ -390,6 +424,21 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                     </div>
+
+                    {VOLATILE_STATS.includes(selectedStatistic) && (
+                        <>
+                            <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Use Mean:</span>
+                                <button
+                                    onClick={() => setForceMean(!forceMean)}
+                                    className={`relative w-10 h-5 rounded-full transition-colors ${forceMean ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                                >
+                                    <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${forceMean ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                     <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
@@ -772,6 +821,21 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
             {/* Detailed Analysis Modal/Section */}
 
+            {showAccuracy && (
+                <AccuracyReport
+                    matches={matchData}
+                    selectedStatistic={localStatistic}
+                    teamLogos={teamLogos}
+                    onClose={() => setShowAccuracy(false)}
+                />
+            )}
+
+            {showDistribution && (
+                <StatisticDistribution
+                    matches={matchData}
+                    onClose={() => setShowDistribution(false)}
+                />
+            )}
         </div >
     );
 };

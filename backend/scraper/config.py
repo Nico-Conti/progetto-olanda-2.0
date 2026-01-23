@@ -5,5 +5,6 @@ LEAGUE_URLS = {
     "seriea": "https://www.diretta.it/calcio/italia/serie-a/risultati/",
     "bundesliga": "https://www.diretta.it/calcio/germania/bundesliga/risultati/",
     "ligue1": "https://www.diretta.it/calcio/francia/ligue-1/risultati/",
-    "premier": "https://www.diretta.it/calcio/inghilterra/premier-league/risultati/"
+    "premier": "https://www.diretta.it/calcio/inghilterra/premier-league/risultati/",
+    "eerstedivisie": "https://www.diretta.it/calcio/olanda/eerste-divisie/risultati/"
 }

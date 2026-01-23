@@ -24,7 +24,7 @@ from .match_details import scrape_match_details
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape match data for Eredivisie, La Liga, or Serie B.")
-    parser.add_argument("league", nargs="?", default="eredivisie", choices=["eredivisie", "laliga", "serieb", "seriea", "bundesliga", "ligue1", "premier"], help="League to scrape")
+    parser.add_argument("league", nargs="?", default="eredivisie", choices=["eredivisie", "laliga", "serieb", "seriea", "bundesliga", "ligue1", "premier", "eerstedivisie"], help="League to scrape")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to scrape")
     parser.add_argument("--skip-analysis", action="store_true", help="Skip Gemini analysis")
     parser.add_argument("--skip-sync", action="store_true", help="Skip syncing to Supabase")
@@ -32,18 +32,20 @@ def main():
     parser.add_argument("--force-rescrape", action="store_true", help="Force rescraping of matches even if they exist in DB")
     parser.add_argument("--match-urls", nargs="+", help="List of specific match URLs to scrape (ignores league/limit settings)")
 
+    parser.add_argument("--batch-size", type=int, default=30, help="Restart browser and sync every N matches (default: 30)")
+
     args = parser.parse_args()
     
     league_name = args.league
     target_url = LEAGUE_URLS[league_name]
     
     # Serie B specific logic
-    is_serieb = league_name == "serieb"
+    is_serieb = league_name == "serieb" or league_name == "eerstedivisie"
     skip_comments = is_serieb
     
     print(f"--- Starting Scraper for {league_name.upper()} ---")
     if is_serieb:
-        print("    -> Serie B detected: Skipping comment scraping.")
+        print("    -> Serie B/Eerste detected: Skipping comment scraping.")
 
     driver = make_driver()
     
@@ -65,12 +67,32 @@ def main():
             print(f"\nFound {len(all_games_meta)} matches.")
         
         print("\n--- STEP 2: Scraping Details ---")
-        all_games_full_data = []
+        all_games_full_data = [] # Keep all for local JSON dump if needed
+        current_batch = []       # Batch for incremental sync
 
         for i, game in enumerate(all_games_meta): 
             if args.limit and len(all_games_full_data) >= args.limit:
                 break
             
+            # --- BATCH MANAGEMENT ---
+            # Restart driver every N matches to prevent timeouts/memory leaks
+            if i > 0 and i % args.batch_size == 0:
+                print(f"\n[Batch] Reached {i} matches processed.")
+                
+                # Sync current batch if not skipping
+                if not args.skip_sync and current_batch:
+                    print(f"    -> Syncing batch of {len(current_batch)} matches to Supabase...")
+                    sync_matches_to_supabase(data_list=current_batch)
+                    current_batch = [] # Clear batch after sync
+                
+                print("    -> Restarting browser to free resources...")
+                driver.quit()
+                import time
+                time.sleep(2)
+                driver = make_driver()
+                print("    -> Browser restarted.")
+            # ------------------------
+
             match_url = game['url']
             
             # If match_urls are provided, we force rescrape them (ignore existing_urls check for them)
@@ -94,7 +116,6 @@ def main():
                 # Skip analysis for Serie B if comments are missing, or if explicitly skipped
                 if not args.skip_analysis and not is_serieb:
                     print("    -> Requesting Gemini analysis...")
-                    print("    -> Requesting Gemini analysis...")
                     stats = details.get('stats', {})
                     teams = details.get('squadre', {})
                     analysis = analyze_match_comments(details.get('commenti', []), stats_data=stats, teams=teams)
@@ -109,18 +130,21 @@ def main():
                 # -----------------------
 
                 all_games_full_data.append(details)
+                current_batch.append(details)
 
-        if not args.skip_sync and all_games_full_data:
-            print("\n--- STEP 3: Syncing to Supabase (In-Memory) ---")
-            sync_matches_to_supabase(data_list=all_games_full_data)
-        else:
-            if args.skip_sync and all_games_full_data:
-                output_file = f"{league_name}_matches.json"
-                with open(output_file, "w", encoding="utf-8") as f:
-                    json.dump(all_games_full_data, f, indent=4, ensure_ascii=False)
-                print(f"\n✅ Saved {len(all_games_full_data)} matches to {output_file} (Sync skipped)")
-            elif not all_games_full_data:
-                print("No matches to sync.")
+        # Sync any remaining matches in the final batch
+        if not args.skip_sync and current_batch:
+            print(f"\n--- Syncing final batch of {len(current_batch)} matches ---")
+            sync_matches_to_supabase(data_list=current_batch)
+        
+        # Handle file dump if sync was skipped
+        if args.skip_sync and all_games_full_data:
+            output_file = f"{league_name}_matches.json"
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(all_games_full_data, f, indent=4, ensure_ascii=False)
+            print(f"\n✅ Saved {len(all_games_full_data)} matches to {output_file} (Sync skipped)")
+        elif not all_games_full_data and not current_batch:
+            print("No matches scraped.")
                 
     finally:
         driver.quit()

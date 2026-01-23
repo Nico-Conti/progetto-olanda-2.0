@@ -54,7 +54,7 @@ jobs:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
         # Define defaults
-        LEAGUES="eredivisie laliga serieb seriea bundesliga ligue1 premier"
+        LEAGUES="eredivisie laliga serieb seriea bundesliga ligue1 premier eerstedivisie"
         
         # Build arguments based on inputs/events
         COMMON_ARGS=""

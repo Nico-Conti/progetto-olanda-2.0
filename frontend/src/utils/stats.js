@@ -36,7 +36,16 @@ export const processData = (matches, statistic = 'corners') => {
     return teamStats;
 };
 
+export const getMedian = (list) => {
+    if (!list || list.length === 0) return 0;
+    const sorted = [...list].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
 export const getAvg = (list) => list.length > 0 ? list.reduce((a, b) => a + b, 0) / list.length : 0;
+
+export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards', 'offsides'];
 
 export const getTrendData = (list, nGames) => {
     if (!list || list.length === 0) return { season: 0, recent: 0, diff: 0 };
@@ -63,40 +72,28 @@ export const getStdDev = (list) => {
     return Math.sqrt(avgSquareDiff);
 };
 
-export const calculateLeagueAverages = (stats) => {
-    let totalHomeGoals = 0;
-    let totalAwayGoals = 0;
-    let totalHomeConceded = 0;
-    let totalAwayConceded = 0;
-    let totalHomeGames = 0;
-    let totalAwayGames = 0;
+export const calculateLeagueAverages = (stats, aggregator = getAvg) => {
+    const allHomeFor = [];
+    const allAwayFor = [];
+    const allHomeAg = [];
+    const allAwayAg = [];
 
     Object.values(stats).forEach(team => {
-        if (team.home_for) {
-            totalHomeGoals += team.home_for.reduce((a, b) => a + b, 0);
-            totalHomeGames += team.home_for.length;
-        }
-        if (team.home_ag) {
-            totalHomeConceded += team.home_ag.reduce((a, b) => a + b, 0);
-        }
-        if (team.away_for) {
-            totalAwayGoals += team.away_for.reduce((a, b) => a + b, 0);
-            totalAwayGames += team.away_for.length;
-        }
-        if (team.away_ag) {
-            totalAwayConceded += team.away_ag.reduce((a, b) => a + b, 0);
-        }
+        if (team.home_for) allHomeFor.push(...team.home_for);
+        if (team.away_for) allAwayFor.push(...team.away_for);
+        if (team.home_ag) allHomeAg.push(...team.home_ag);
+        if (team.away_ag) allAwayAg.push(...team.away_ag);
     });
 
     return {
-        avgHomeGoals: totalHomeGames > 0 ? totalHomeGoals / totalHomeGames : 0,
-        avgAwayGoals: totalAwayGames > 0 ? totalAwayGoals / totalAwayGames : 0,
-        avgHomeConceded: totalHomeGames > 0 ? totalHomeConceded / totalHomeGames : 0,
-        avgAwayConceded: totalAwayGames > 0 ? totalAwayConceded / totalAwayGames : 0
+        avgHomeGoals: aggregator(allHomeFor),
+        avgAwayGoals: aggregator(allAwayFor),
+        avgHomeConceded: aggregator(allHomeAg),
+        avgAwayConceded: aggregator(allAwayAg)
     };
 };
 
-export const getOpponentAdjustedStats = (matches, stats, context, leagueAvgs) => {
+export const getOpponentAdjustedStats = (matches, stats, context, leagueAvgs, aggregator = getAvg) => {
     if (!matches || matches.length === 0) return [];
 
     return matches.map(m => {
@@ -111,25 +108,25 @@ export const getOpponentAdjustedStats = (matches, stats, context, leagueAvgs) =>
             // Comparison: Opponent Away Conceded vs League Away Conceded
             value = m.statFor;
             numerator = leagueAvgs.avgAwayConceded;
-            denominator = getAvg(opponentStats.away_ag);
+            denominator = aggregator(opponentStats.away_ag);
         } else if (context === 'HomeDefense') {
             // We conceded m.statAg. Opponent was Away.
             // Comparison: Opponent Away Scored vs League Away Scored
             value = m.statAg;
             numerator = leagueAvgs.avgAwayGoals;
-            denominator = getAvg(opponentStats.away_for);
+            denominator = aggregator(opponentStats.away_for);
         } else if (context === 'AwayOffense') {
             // We scored m.statFor. Opponent was Home.
             // Comparison: Opponent Home Conceded vs League Home Conceded
             value = m.statFor;
             numerator = leagueAvgs.avgHomeConceded;
-            denominator = getAvg(opponentStats.home_ag);
+            denominator = aggregator(opponentStats.home_ag);
         } else if (context === 'AwayDefense') {
             // We conceded m.statAg. Opponent was Home.
             // Comparison: Opponent Home Scored vs League Home Scored
             value = m.statAg;
             numerator = leagueAvgs.avgHomeGoals;
-            denominator = getAvg(opponentStats.home_for);
+            denominator = aggregator(opponentStats.home_for);
         }
 
         if (!denominator || denominator === 0) return value; // Avoid division by zero
@@ -138,8 +135,16 @@ export const getOpponentAdjustedStats = (matches, stats, context, leagueAvgs) =>
     });
 };
 
-export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMode = false, useGeneralStats = false) => {
+export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMode = false, useGeneralStats = false, statType = 'goals', aggregatorOverride = null) => {
     if (!stats[home] || !stats[away]) return null;
+
+    // Determine aggregation method based on stat volatility or override
+    let aggregator;
+    if (aggregatorOverride) {
+        aggregator = aggregatorOverride === 'median' ? getMedian : getAvg;
+    } else {
+        aggregator = VOLATILE_STATS.includes(statType) ? getMedian : getAvg;
+    }
 
     const getRelevant = (team, loc) => {
         // If useGeneralStats is true, we take ALL matches regardless of location
@@ -164,21 +169,21 @@ export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMo
     let hForStd, hAgStd, aForStd, aAgStd;
 
     if (useAdjustedMode) {
-        const leagueAvgs = calculateLeagueAverages(stats);
+        const leagueAvgs = calculateLeagueAverages(stats, aggregator);
 
         // 1. Get Adjusted Lists (Normalized Ratings)
-        hForList = getOpponentAdjustedStats(homeMatches, stats, 'HomeOffense', leagueAvgs);
-        hAgList = getOpponentAdjustedStats(homeMatches, stats, 'HomeDefense', leagueAvgs);
-        aForList = getOpponentAdjustedStats(awayMatches, stats, 'AwayOffense', leagueAvgs);
-        aAgList = getOpponentAdjustedStats(awayMatches, stats, 'AwayDefense', leagueAvgs);
+        hForList = getOpponentAdjustedStats(homeMatches, stats, 'HomeOffense', leagueAvgs, aggregator);
+        hAgList = getOpponentAdjustedStats(homeMatches, stats, 'HomeDefense', leagueAvgs, aggregator);
+        aForList = getOpponentAdjustedStats(awayMatches, stats, 'AwayOffense', leagueAvgs, aggregator);
+        aAgList = getOpponentAdjustedStats(awayMatches, stats, 'AwayDefense', leagueAvgs, aggregator);
 
-        // 2. Calculate Averages of Ratings
-        hFor = getAvg(hForList);
-        hAg = getAvg(hAgList);
-        aFor = getAvg(aForList);
-        aAg = getAvg(aAgList);
+        // 2. Calculate Aggregates of Ratings
+        hFor = aggregator(hForList);
+        hAg = aggregator(hAgList);
+        aFor = aggregator(aForList);
+        aAg = aggregator(aAgList);
 
-        // 3. Std Dev of Ratings
+        // 3. Std Dev of Ratings (Always use standard deviation formula, which uses mean internally)
         hForStd = getStdDev(hForList);
         hAgStd = getStdDev(hAgList);
         aForStd = getStdDev(aForList);
@@ -191,10 +196,10 @@ export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMo
         aForList = awayMatches.map(m => m.statFor);
         aAgList = awayMatches.map(m => m.statAg);
 
-        hFor = getAvg(hForList);
-        hAg = getAvg(hAgList);
-        aFor = getAvg(aForList);
-        aAg = getAvg(aAgList);
+        hFor = aggregator(hForList);
+        hAg = aggregator(hAgList);
+        aFor = aggregator(aForList);
+        aAg = aggregator(aAgList);
 
         hForStd = getStdDev(hForList);
         hAgStd = getStdDev(hAgList);
@@ -217,17 +222,17 @@ export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMo
     if (useAdjustedMode) {
         // 4. Apply Upcoming Opponent Multipliers (Project)
         // Home Exp depends on Upcoming Away Team's Defense (Away Conceded)
-        const leagueAvgs = calculateLeagueAverages(stats);
+        const leagueAvgs = calculateLeagueAverages(stats, aggregator);
 
         // Upcoming Away Team Conceded Avg (when away)
-        const upcomingAwayConceded = getAvg(stats[away].away_ag);
+        const upcomingAwayConceded = aggregator(stats[away].away_ag);
         if (leagueAvgs.avgAwayConceded > 0) {
             const multiplier = upcomingAwayConceded / leagueAvgs.avgAwayConceded;
             expHome = expHome * multiplier;
         }
 
         // Upcoming Home Team Conceded Avg (when home)
-        const upcomingHomeConceded = getAvg(stats[home].home_ag);
+        const upcomingHomeConceded = aggregator(stats[home].home_ag);
         if (leagueAvgs.avgHomeConceded > 0) {
             const multiplier = upcomingHomeConceded / leagueAvgs.avgHomeConceded;
             expAway = expAway * multiplier;

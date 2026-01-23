@@ -150,7 +150,8 @@ def main():
         {"name": "Serie A", "key": "seriea", "url": "https://www.diretta.it/calcio/italia/serie-a/classifiche/"},
         {"name": "Bundesliga", "key": "bundesliga", "url": "https://www.diretta.it/calcio/germania/bundesliga/classifiche/"},
         {"name": "Ligue 1", "key": "ligue1", "url": "https://www.diretta.it/calcio/francia/ligue-1/classifiche/"},
-        {"name": "Premier League", "key": "premier", "url": "https://www.diretta.it/calcio/inghilterra/premier-league/classifiche/"}
+        {"name": "Premier League", "key": "premier", "url": "https://www.diretta.it/calcio/inghilterra/premier-league/classifiche/"},
+        {"name": "Eerste Divisie", "key": "eerstedivisie", "url": "https://www.diretta.it/calcio/olanda/eerste-divisie/classifiche/"}
     ]
     
     target_leagues = leagues

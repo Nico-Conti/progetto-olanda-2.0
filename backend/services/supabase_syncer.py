@@ -311,7 +311,8 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
                 "eredivisie": "Eredivisie",
                 "bundesliga": "Bundesliga",
                 "ligue1": "Ligue 1",
-                "premier": "Premier League"
+                "premier": "Premier League",
+                "eerstedivisie": "Eerste Divisie"
             }
             
             # Check JSON field first
