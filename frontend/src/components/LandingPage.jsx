@@ -1,8 +1,8 @@
 import React from 'react';
-import { Flame, Trophy, ArrowRight, Zap, X, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Flame, Trophy, ArrowRight, Zap, X, List, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import ToggleSwitch from './ui/ToggleSwitch';
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners, onOpenHighestWinningFactor }) => {
+const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners, onOpenHighestWinningFactor, onOpenSafestBets }) => {
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
 
     return (
@@ -130,7 +130,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-10 animate-waterfall pointer-events-auto"
+                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 animate-waterfall pointer-events-auto"
                         style={{ animationDelay: `${(availableLeagues.length + 2) * 100}ms` }}
                     >
                         <button
@@ -206,6 +206,29 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                                 </div>
                             </div>
                             <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-purple-400 transform group-hover:translate-x-1 transition-all relative z-10" />
+                        </button>
+
+                        <button
+                            onClick={onOpenSafestBets}
+                            className="group relative flex items-center justify-between p-6 bg-zinc-900/50 border border-white/10 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover-ice overflow-visible"
+                        >
+                            {/* Ice Effect */}
+                            <div className="absolute inset-x-0 -top-10 bottom-0 pointer-events-none overflow-visible">
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-cyan-500/20 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            </div>
+
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:border-cyan-500/50 transition-colors">
+                                    <Shield className="w-6 h-6 text-cyan-500 group-hover:text-cyan-400 transition-colors" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">
+                                        Safest Bets
+                                    </h3>
+                                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">Low Variance</span>
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-cyan-400 transform group-hover:translate-x-1 transition-all relative z-10" />
                         </button>
                     </div>
                 </div>

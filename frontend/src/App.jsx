@@ -5,6 +5,7 @@ import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
 import HighestWinningFactor from './components/HighestWinningFactor';
+import SafestBets from './components/SafestBets';
 import TransitionAnimation from './components/TransitionAnimation';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
@@ -195,6 +196,7 @@ export default function App() {
           onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
           onOpenTopCorners={() => handleViewChange('hot-matches')}
           onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}
+          onOpenSafestBets={() => handleViewChange('safest-bets')}
         />
       )}
 
@@ -245,6 +247,36 @@ export default function App() {
               setPreSelectedMatch(match);
               setBackView('hot-matches');
               setBackLabel('Back to Hot Matches');
+              if (isAnimationEnabled) {
+                setPendingLeague(match.league);
+                setPendingTab('predictor');
+                setPendingView('dashboard');
+                setIsAnimating(true);
+              } else {
+                setSelectedLeague(match.league);
+                setActiveTab('predictor');
+                setView('dashboard');
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {view === 'safest-bets' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4">
+          <SafestBets
+            stats={allStats}
+            fixtures={fixturesData}
+            teamLogos={teamLogos}
+            isAnimationEnabled={isAnimationEnabled}
+            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+            selectedStatistic={selectedStatistic}
+            onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
+            onBack={() => handleViewChange('landing')}
+            onMatchClick={(match) => {
+              setPreSelectedMatch(match);
+              setBackView('safest-bets');
+              setBackLabel('Back to Safest Bets');
               if (isAnimationEnabled) {
                 setPendingLeague(match.league);
                 setPendingTab('predictor');
