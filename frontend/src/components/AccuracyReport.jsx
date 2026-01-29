@@ -220,13 +220,13 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                         <div className="flex flex-col gap-2">
                             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sample Size</label>
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
-                                {[3, 5, 10].map(n => (
+                                {[3, 5, 'all'].map(n => (
                                     <button
                                         key={n}
                                         onClick={() => setNGames(n)}
                                         className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${nGames === n ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                     >
-                                        Last {n}
+                                        {n === 'all' ? 'Season' : `Last ${n}`}
                                     </button>
                                 ))}
                             </div>

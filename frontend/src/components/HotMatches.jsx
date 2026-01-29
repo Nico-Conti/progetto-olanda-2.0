@@ -23,16 +23,57 @@ const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[14
     </div>
 );
 
+const STORAGE_KEY = 'olanda_hotmatches_prefs';
+const DEFAULT_PREFS = {
+    nGames: 5,
+    displayCount: 9,
+    selectedLeagues: ['All'],
+    selectedDate: null,
+    forceMean: false,
+    useGeneralStats: false
+};
+
+const getStoredPrefs = () => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.selectedDate) {
+                parsed.selectedDate = new Date(parsed.selectedDate);
+            }
+            return { ...DEFAULT_PREFS, ...parsed };
+        }
+    } catch (e) {
+        console.error("Failed to load prefs", e);
+    }
+    return DEFAULT_PREFS;
+};
+
 const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
-    const [nGames, setNGames] = useState(5);
-    const [displayCount, setDisplayCount] = useState(9);
-    const [selectedLeagues, setSelectedLeagues] = useState(['All']);
+    const [initialPrefs] = useState(() => getStoredPrefs());
 
-    const [activeDropdown, setActiveDropdown] = useState(null); // 'league', 'date', 'view', 'sample', 'trend', 'calc'
+    const [nGames, setNGames] = useState(initialPrefs.nGames);
+    const [displayCount, setDisplayCount] = useState(initialPrefs.displayCount);
+    const [selectedLeagues, setSelectedLeagues] = useState(initialPrefs.selectedLeagues);
 
-    const [selectedDate, setSelectedDate] = useState(null); // null = 'Upcoming' (default behavior)
-    const [forceMean, setForceMean] = useState(false);
-    const [useGeneralStats, setUseGeneralStats] = useState(false);
+    const [activeDropdown, setActiveDropdown] = useState(null);
+
+    const [selectedDate, setSelectedDate] = useState(initialPrefs.selectedDate);
+    const [forceMean, setForceMean] = useState(initialPrefs.forceMean);
+    const [useGeneralStats, setUseGeneralStats] = useState(initialPrefs.useGeneralStats);
+
+    // Persist changes
+    useEffect(() => {
+        const prefsToSave = {
+            nGames,
+            displayCount,
+            selectedLeagues,
+            selectedDate,
+            forceMean,
+            useGeneralStats
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsToSave));
+    }, [nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats]);
 
     // 0. Get available leagues for filter
     const availableLeagues = useMemo(() => {
