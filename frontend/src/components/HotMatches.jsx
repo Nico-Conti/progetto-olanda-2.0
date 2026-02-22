@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff } from 'lucide-react';
+import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, Sparkles, BrainCircuit, X, Play } from 'lucide-react';
 import { calculatePrediction } from '../utils/stats';
+import { findBestStrategy } from '../utils/backtest';
 import StatisticSelector from './StatisticSelector';
 import Header from './Header';
+
 const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[140px]', className = '' }) => (
     <div className={`dropdown-container relative ${className}`}>
         <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">{label}</span>
@@ -22,6 +24,123 @@ const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[14
         </div>
     </div>
 );
+
+const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }) => {
+    const [softBuffer, setSoftBuffer] = useState('');
+    const [minPrediction, setMinPrediction] = useState('');
+    const [maxLineCap, setMaxLineCap] = useState('');
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="glass-panel w-full max-w-md rounded-xl border border-white/10 shadow-2xl bg-zinc-950 p-6 relative">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                <div className="mb-6">
+                    <h2 className="text-xl font-black text-white flex items-center gap-2">
+                        <BrainCircuit className="w-6 h-6 text-emerald-400" />
+                        Optimization Settings
+                    </h2>
+                    <p className="text-zinc-400 text-sm mt-1">
+                        Configure the betting parameters to maximize.
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Soft Buffer */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Soft Buffer (-)</label>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                step="0.5"
+                                value={softBuffer}
+                                placeholder="0"
+                                onChange={(e) => setSoftBuffer(e.target.value)}
+                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-bold">POINTS</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                            Subtracts this amount from the prediction to create a safer line.
+                        </p>
+                    </div>
+
+                    {/* Min Prediction */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Min Prediction</label>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                step="0.5"
+                                value={minPrediction}
+                                placeholder="0"
+                                onChange={(e) => setMinPrediction(e.target.value)}
+                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-bold">TOTAL</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                            Only bet if the prediction is at least this value.
+                        </p>
+                    </div>
+
+                    {/* Max Line Cap */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Max Line Cap (Optional)</label>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                step="0.5"
+                                value={maxLineCap}
+                                placeholder="None"
+                                onChange={(e) => setMaxLineCap(e.target.value)}
+                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold placeholder:text-zinc-600"
+                            />
+                            {maxLineCap !== '' && (
+                                <button
+                                    onClick={() => setMaxLineCap('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                            Caps the betting line at this value.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-white/5 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-sm rounded-lg transition-colors border border-white/5"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => onRun({
+                            softBuffer: softBuffer === '' ? 0 : Number(softBuffer),
+                            minPrediction: minPrediction === '' ? 0 : Number(minPrediction),
+                            maxLineCap: maxLineCap === '' ? null : Number(maxLineCap)
+                        })}
+                        className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-sm rounded-lg transition-colors shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
+                    >
+                        <Play className="w-4 h-4 fill-current" />
+                        Run Optimization
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const STORAGE_KEY = 'olanda_hotmatches_prefs';
 const DEFAULT_PREFS = {
@@ -49,7 +168,7 @@ const getStoredPrefs = () => {
     return DEFAULT_PREFS;
 };
 
-const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
+const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
     const [initialPrefs] = useState(() => getStoredPrefs());
 
     const [nGames, setNGames] = useState(initialPrefs.nGames);
@@ -61,6 +180,17 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
     const [selectedDate, setSelectedDate] = useState(initialPrefs.selectedDate);
     const [forceMean, setForceMean] = useState(initialPrefs.forceMean);
     const [useGeneralStats, setUseGeneralStats] = useState(initialPrefs.useGeneralStats);
+
+    // Optimization State
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [optimizedParams, setOptimizedParams] = useState({}); // { 'Serie A': { nGames: ..., ... } }
+    const [isOptimizationActive, setIsOptimizationActive] = useState(false);
+
+    // Values used for current active optimization for display/logic
+    const [currentBettingParams, setCurrentBettingParams] = useState({});
+
+    // Modal State
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
     // Persist changes
     useEffect(() => {
@@ -118,6 +248,46 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                     return [...filtered, league];
                 }
             });
+        }
+    };
+
+    // Optimization Handler
+    const handleOptimizationStart = (bettingParams) => {
+        if (!matchData || matchData.length === 0) return;
+
+        setIsSettingsModalOpen(false);
+        setIsOptimizing(true);
+        setCurrentBettingParams(bettingParams);
+
+        // Use setTimeout to allow UI to render the loading state
+        setTimeout(() => {
+            const leagues = [...new Set(matchData.map(m => m.league).filter(Boolean))];
+            const newOptimizedParams = {};
+
+            leagues.forEach(league => {
+                // Filter matches for this league
+                const leagueMatches = matchData.filter(m => m.league === league);
+                // Find best strategy using user-defined betting params
+                const best = findBestStrategy(leagueMatches, selectedStatistic, bettingParams);
+                if (best) {
+                    newOptimizedParams[league] = best;
+                }
+            });
+
+            console.log("Optimization Complete:", newOptimizedParams);
+            setOptimizedParams(newOptimizedParams);
+            setIsOptimizationActive(true);
+            setIsOptimizing(false);
+        }, 100);
+    };
+
+    const toggleOptimization = () => {
+        if (isOptimizationActive) {
+            setIsOptimizationActive(false);
+            setOptimizedParams({});
+            setCurrentBettingParams({});
+        } else {
+            setIsSettingsModalOpen(true);
         }
     };
 
@@ -197,24 +367,49 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
         // Calculate predictions
         const predictions = candidates.map(match => {
+            // Determine params to use
+            let currentNGames = nGames;
+            let currentUseGeneralStats = useGeneralStats;
+            let currentForceMean = forceMean;
+            let isOptimized = false;
+
+            if (isOptimizationActive && optimizedParams[match.league]) {
+                const p = optimizedParams[match.league];
+                currentNGames = p.nGames;
+                currentUseGeneralStats = p.useGeneralStats;
+                currentForceMean = p.forceMean;
+                isOptimized = true;
+            }
+
             const pred = calculatePrediction(
                 match.home,
                 match.away,
                 stats,
-                nGames,
+                currentNGames,
                 false,
-                useGeneralStats,
+                currentUseGeneralStats,
                 selectedStatistic,
-                forceMean ? 'mean' : 'median'
+                currentForceMean ? 'mean' : 'median'
             );
-            return { ...match, prediction: pred };
+            return {
+                ...match,
+                prediction: pred,
+                isOptimized,
+                usedParams: { n: currentNGames, ugs: currentUseGeneralStats, fm: currentForceMean }
+            };
         }).filter(m => m.prediction !== null);
+
+        // Apply Min Prediction Filter based on current betting params if valid
+        // Only if filtering is desirable here? 
+        // The user might want to see all matches but sorted. 
+        // However, if optimized for "Min Pred 10", matches with 9 should ideally be ranked lower or filtered.
+        // Let's keep them all but sort by value.
 
         // Sort by Total Expected corners/goals/etc (Descending)
         const sorted = predictions.sort((a, b) => b.prediction.total - a.prediction.total);
 
         return sorted.slice(0, displayCount);
-    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues, selectedDate, useGeneralStats, forceMean]);
+    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues, selectedDate, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, selectedStatistic]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -257,6 +452,13 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                     className="w-[180px]"
                 />
             </Header>
+
+            <OptimizationSettingsModal
+                isOpen={isSettingsModalOpen}
+                onClose={() => setIsSettingsModalOpen(false)}
+                onRun={handleOptimizationStart}
+                selectedStatistic={selectedStatistic}
+            />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
                 <div className="space-y-6 relative">
@@ -378,87 +580,112 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                                 </div>
                             </Dropdown>
 
-                            {/* Sample Size */}
-                            <Dropdown
-                                label="Sample"
-                                active={activeDropdown === 'sample'}
-                                onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
-                                value={nGames === 'all' ? 'Season' : `Last ${nGames}`}
-                                width="w-full"
-                                className="flex-1 min-w-[100px]"
-                            >
-                                <div className="space-y-1">
-                                    {[3, 5, 10, 'all'].map(n => (
+                            {/* Manual Overrides (Disable if optimized) */}
+                            <div className={`flex gap-3 transition-opacity ${isOptimizationActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                {/* Sample Size */}
+                                <Dropdown
+                                    label="Sample"
+                                    active={activeDropdown === 'sample'}
+                                    onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
+                                    value={nGames === 'all' ? 'Season' : `Last ${nGames}`}
+                                    width="w-full"
+                                    className="flex-1 min-w-[100px]"
+                                >
+                                    <div className="space-y-1">
+                                        {[3, 5, 10, 'all'].map(n => (
+                                            <button
+                                                key={n}
+                                                onClick={() => { setNGames(n); setActiveDropdown(null); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${nGames === n
+                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                    : 'text-zinc-400 hover:bg-white/5'}`}
+                                            >
+                                                {n === 'all' ? 'Whole Season' : `Last ${n} Games`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Dropdown>
+
+                                {/* Trend */}
+                                <Dropdown
+                                    label="Trend"
+                                    active={activeDropdown === 'trend'}
+                                    onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
+                                    value={useGeneralStats ? 'General' : 'Specific'}
+                                    width="w-full"
+                                    className="flex-1 min-w-[100px]"
+                                >
+                                    <div className="space-y-1">
                                         <button
-                                            key={n}
-                                            onClick={() => { setNGames(n); setActiveDropdown(null); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${nGames === n
+                                            onClick={() => { setUseGeneralStats(false); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!useGeneralStats
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n === 'all' ? 'Whole Season' : `Last ${n} Games`}
+                                            Specific (Home/Away)
                                         </button>
-                                    ))}
-                                </div>
-                            </Dropdown>
+                                        <button
+                                            onClick={() => { setUseGeneralStats(true); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${useGeneralStats
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
+                                        >
+                                            General (All Matches)
+                                        </button>
+                                    </div>
+                                </Dropdown>
 
-                            {/* Trend */}
-                            <Dropdown
-                                label="Trend"
-                                active={activeDropdown === 'trend'}
-                                onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
-                                value={useGeneralStats ? 'General' : 'Specific'}
-                                width="w-full"
-                                className="flex-1 min-w-[100px]"
-                            >
-                                <div className="space-y-1">
-                                    <button
-                                        onClick={() => { setUseGeneralStats(false); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!useGeneralStats
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'text-zinc-400 hover:bg-white/5'}`}
-                                    >
-                                        Specific (Home/Away)
-                                    </button>
-                                    <button
-                                        onClick={() => { setUseGeneralStats(true); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${useGeneralStats
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'text-zinc-400 hover:bg-white/5'}`}
-                                    >
-                                        General (All Matches)
-                                    </button>
-                                </div>
-                            </Dropdown>
+                                {/* Calc */}
+                                <Dropdown
+                                    label="Calc"
+                                    active={activeDropdown === 'calc'}
+                                    onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}
+                                    value={forceMean ? 'Mean' : 'Median'}
+                                    width="w-full"
+                                    className="flex-1 min-w-[100px]"
+                                >
+                                    <div className="space-y-1">
+                                        <button
+                                            onClick={() => { setForceMean(false); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!forceMean
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
+                                        >
+                                            Median (Default)
+                                        </button>
+                                        <button
+                                            onClick={() => { setForceMean(true); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${forceMean
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
+                                        >
+                                            Mean (Average)
+                                        </button>
+                                    </div>
+                                </Dropdown>
+                            </div>
 
-                            {/* Calc */}
-                            <Dropdown
-                                label="Calc"
-                                active={activeDropdown === 'calc'}
-                                onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}
-                                value={forceMean ? 'Mean' : 'Median'}
-                                width="w-full"
-                                className="flex-1 min-w-[100px]"
-                            >
-                                <div className="space-y-1">
-                                    <button
-                                        onClick={() => { setForceMean(false); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${!forceMean
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'text-zinc-400 hover:bg-white/5'}`}
-                                    >
-                                        Median (Default)
-                                    </button>
-                                    <button
-                                        onClick={() => { setForceMean(true); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${forceMean
-                                            ? 'bg-emerald-500/20 text-emerald-400'
-                                            : 'text-zinc-400 hover:bg-white/5'}`}
-                                    >
-                                        Mean (Average)
-                                    </button>
-                                </div>
-                            </Dropdown>
+                            {/* Optimize Button */}
+                            <div className="flex flex-col flex-1 min-w-[120px]">
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">AI Optimize</span>
+                                <button
+                                    onClick={toggleOptimization}
+                                    disabled={isOptimizing}
+                                    className={`relative w-full text-sm font-bold uppercase tracking-wider rounded-lg border px-3 py-1.5 flex items-center justify-center gap-2 transition-all ${isOptimizationActive
+                                        ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                                        : 'bg-zinc-800 text-zinc-400 border-white/5 hover:bg-zinc-700 hover:text-white'
+                                        }`}
+                                >
+                                    {isOptimizing ? (
+                                        <span className="animate-pulse">Optimizing...</span>
+                                    ) : (
+                                        <>
+                                            {isOptimizationActive ? <BrainCircuit className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                                            {isOptimizationActive ? 'Active' : 'Optimize'}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -486,8 +713,15 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                                                 : match.date;
                                         })()}
                                     </div>
-                                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-12">
-                                        {match.league || 'Unknown League'}
+                                    <div className="flex flex-col items-end">
+                                        <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-12">
+                                            {match.league || 'Unknown League'}
+                                        </div>
+                                        {match.isOptimized && (
+                                            <div className="text-[9px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-12 mt-1 flex items-center gap-1">
+                                                <BrainCircuit className="w-3 h-3" /> AI Optimized
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -523,6 +757,11 @@ const HotMatches = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                                         <span className="block text-lg font-bold text-blue-400">{match.prediction.expAway.toFixed(2)}</span>
                                     </div>
                                 </div>
+                                {isOptimizationActive && match.usedParams && (
+                                    <div className="mt-2 text-[9px] text-zinc-600 font-mono text-center">
+                                        Using: {match.usedParams.n == 'all' ? 'Season' : `Last ${match.usedParams.n}`} • {match.usedParams.ugs ? 'Gen' : 'Spec'} • {match.usedParams.fm ? 'Mean' : 'Median'}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

@@ -241,6 +241,7 @@ export default function App() {
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             selectedStatistic={selectedStatistic}
+            matchData={matchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
             onMatchClick={(match) => {

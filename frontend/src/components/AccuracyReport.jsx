@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { processData, calculatePrediction, VOLATILE_STATS } from '../utils/stats';
-import { ChevronDown, Play, AlertCircle, CheckCircle, TrendingUp, X } from 'lucide-react';
+import { ChevronDown, Play, AlertCircle, CheckCircle, TrendingUp, X, Sparkles } from 'lucide-react';
 
 const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
     const [nGames, setNGames] = useState(5);
@@ -29,158 +29,156 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
         });
     }, [matches, selectedStatistic]);
 
-    const runBacktest = () => {
-        setIsCalculating(true);
+    // Helper to calculate backtest metrics for a given set of parameters
+    const calculateBacktestLogic = (nGamesOpt, forceMeanOpt, useGeneralStatsOpt) => {
+        const tempResults = [];
+        let count = 0;
+        let totalDiff = 0;
 
-        // Use setTimeout to allow UI to update to "Calculating..." state
-        setTimeout(() => {
-            const tempResults = [];
-            let count = 0;
-            let totalDiff = 0;
+        let underCount = 0; // Wins for Model
+        let overCount = 0; // Losses for Model
+        let noBetCount = 0;
+        let underSum = 0;
+        let overSum = 0;
 
-            let underCount = 0; // Wins for Model
-            let overCount = 0; // Losses for Model
-            let noBetCount = 0;
-            let underSum = 0;
-            let overSum = 0;
+        let benchmarkWins = 0;
 
-            let benchmarkWins = 0;
+        for (let i = 0; i < sortedMatches.length; i++) {
+            const targetMatch = sortedMatches[i];
 
-            for (let i = 0; i < sortedMatches.length; i++) {
-                const targetMatch = sortedMatches[i];
+            // Get history strictly BEFORE this match
+            const pastMatches = sortedMatches.slice(0, i);
 
-                // Get history strictly BEFORE this match
-                const pastMatches = sortedMatches.slice(0, i);
+            const stats = processData(pastMatches, selectedStatistic);
 
-                const stats = processData(pastMatches, selectedStatistic);
+            const homeTeam = targetMatch.home || targetMatch.squadre?.home;
+            const awayTeam = targetMatch.away || targetMatch.squadre?.away;
 
-                const homeTeam = targetMatch.home || targetMatch.squadre?.home;
-                const awayTeam = targetMatch.away || targetMatch.squadre?.away;
+            // --- Benchmark Calculation (Rolling Mean/Median) ---
+            const pastTotals = [];
+            pastMatches.forEach(pm => {
+                const s = pm.stats?.[selectedStatistic];
+                if (s) pastTotals.push(Number(s.home) + Number(s.away));
+            });
 
-                // --- Benchmark Calculation (Rolling Mean/Median) ---
-                const pastTotals = [];
-                pastMatches.forEach(pm => {
-                    const s = pm.stats?.[selectedStatistic];
-                    if (s) pastTotals.push(Number(s.home) + Number(s.away));
-                });
-
-                let benchmarkVal = 0;
-                if (pastTotals.length > 0) {
-                    if (forceMean) {
-                        benchmarkVal = pastTotals.reduce((a, b) => a + b, 0) / pastTotals.length;
-                    } else {
-                        pastTotals.sort((a, b) => a - b);
-                        const mid = Math.floor(pastTotals.length / 2);
-                        benchmarkVal = pastTotals.length % 2 !== 0
-                            ? pastTotals[mid]
-                            : (pastTotals[mid - 1] + pastTotals[mid]) / 2;
-                    }
-                }
-
-                const prediction = calculatePrediction(
-                    homeTeam,
-                    awayTeam,
-                    stats,
-                    nGames,
-                    false, // useAdjustedMode
-                    useGeneralStats, // useGeneralStats
-                    selectedStatistic,
-                    forceMean ? 'mean' : null
-                );
-
-                if (prediction && prediction.total > 0) {
-                    const actualHome = Number(targetMatch.stats[selectedStatistic].home);
-                    const actualAway = Number(targetMatch.stats[selectedStatistic].away);
-                    const actualTotal = actualHome + actualAway;
-
-                    const diff = actualTotal - prediction.total;
-                    const absDiff = Math.abs(diff);
-
-                    // --- Model Betting Logic ---
-                    let adjustedTotal = prediction.total;
-                    if (softBuffer !== '' && !isNaN(parseFloat(softBuffer))) {
-                        adjustedTotal -= parseFloat(softBuffer);
-                    }
-                    let impliedLine = Math.round(adjustedTotal) - 0.5;
-
-                    let isCapped = false;
-                    if (maxCap !== '' && !isNaN(parseFloat(maxCap))) {
-                        const cap = parseFloat(maxCap);
-                        if (impliedLine > cap) {
-                            impliedLine = cap;
-                            isCapped = true;
-                        }
-                    }
-                    const isWin = actualTotal > impliedLine;
-
-                    // Check Min Prediction Threshold
-                    let isNoBet = false;
-                    if (minPred !== '' && !isNaN(parseFloat(minPred))) {
-                        if (prediction.total < parseFloat(minPred)) {
-                            isNoBet = true;
-                        }
-                    }
-
-                    if (!isNoBet) {
-                        if (isWin) {
-                            underCount++;
-                            underSum += diff;
-                        } else {
-                            overCount++;
-                            overSum += Math.abs(diff);
-                        }
-                    } else {
-                        noBetCount++;
-                    }
-
-                    // --- Benchmark Betting Logic ---
-                    let benchAdjusted = benchmarkVal;
-                    if (softBuffer !== '' && !isNaN(parseFloat(softBuffer))) {
-                        benchAdjusted -= parseFloat(softBuffer);
-                    }
-                    let benchLine = Math.round(benchAdjusted) - 0.5;
-                    if (maxCap !== '' && !isNaN(parseFloat(maxCap))) {
-                        const cap = parseFloat(maxCap);
-                        if (benchLine > cap) {
-                            benchLine = cap;
-                        }
-                    }
-
-                    // Only count benchmark wins if the MODEL also bet (fair comparison)
-                    if (!isNoBet) {
-                        const benchWin = actualTotal > benchLine;
-                        if (benchWin) benchmarkWins++;
-                    }
-
-                    tempResults.push({
-                        match: targetMatch,
-                        home: homeTeam,
-                        away: awayTeam,
-                        prediction: prediction,
-                        actual: { home: actualHome, away: actualAway, total: actualTotal },
-                        diff: diff,
-                        absDiff: absDiff,
-                        isWin: isWin,
-                        isNoBet: isNoBet,
-                        impliedLine: impliedLine,
-                        isCapped: isCapped
-                    });
-
-                    if (!isNoBet) {
-                        totalDiff += absDiff;
-                        count++;
-                    }
+            let benchmarkVal = 0;
+            if (pastTotals.length > 0) {
+                if (forceMeanOpt) {
+                    benchmarkVal = pastTotals.reduce((a, b) => a + b, 0) / pastTotals.length;
+                } else {
+                    pastTotals.sort((a, b) => a - b);
+                    const mid = Math.floor(pastTotals.length / 2);
+                    benchmarkVal = pastTotals.length % 2 !== 0
+                        ? pastTotals[mid]
+                        : (pastTotals[mid - 1] + pastTotals[mid]) / 2;
                 }
             }
 
-            // Calculate Summary
-            const avgError = count > 0 ? (totalDiff / count) : 0;
-            const winDiff = underCount - benchmarkWins;
-            const winMargin = underCount > 0 ? (underSum / underCount) : 0;
-            const lossMargin = overCount > 0 ? (overSum / overCount) : 0;
+            const prediction = calculatePrediction(
+                homeTeam,
+                awayTeam,
+                stats,
+                nGamesOpt,
+                false, // useAdjustedMode
+                useGeneralStatsOpt, // useGeneralStats
+                selectedStatistic,
+                forceMeanOpt ? 'mean' : null
+            );
 
-            setResults(tempResults.reverse()); // Show newest first
-            setSummary({
+            if (prediction && prediction.total > 0) {
+                const actualHome = Number(targetMatch.stats[selectedStatistic].home);
+                const actualAway = Number(targetMatch.stats[selectedStatistic].away);
+                const actualTotal = actualHome + actualAway;
+
+                const diff = actualTotal - prediction.total;
+                const absDiff = Math.abs(diff);
+
+                // --- Model Betting Logic ---
+                let adjustedTotal = prediction.total;
+                if (softBuffer !== '' && !isNaN(parseFloat(softBuffer))) {
+                    adjustedTotal -= parseFloat(softBuffer);
+                }
+                let impliedLine = Math.round(adjustedTotal) - 0.5;
+
+                let isCapped = false;
+                if (maxCap !== '' && !isNaN(parseFloat(maxCap))) {
+                    const cap = parseFloat(maxCap);
+                    if (impliedLine > cap) {
+                        impliedLine = cap;
+                        isCapped = true;
+                    }
+                }
+                const isWin = actualTotal > impliedLine;
+
+                // Check Min Prediction Threshold
+                let isNoBet = false;
+                if (minPred !== '' && !isNaN(parseFloat(minPred))) {
+                    if (prediction.total < parseFloat(minPred)) {
+                        isNoBet = true;
+                    }
+                }
+
+                if (!isNoBet) {
+                    if (isWin) {
+                        underCount++;
+                        underSum += diff;
+                    } else {
+                        overCount++;
+                        overSum += Math.abs(diff);
+                    }
+                } else {
+                    noBetCount++;
+                }
+
+                // --- Benchmark Betting Logic ---
+                let benchAdjusted = benchmarkVal;
+                if (softBuffer !== '' && !isNaN(parseFloat(softBuffer))) {
+                    benchAdjusted -= parseFloat(softBuffer);
+                }
+                let benchLine = Math.round(benchAdjusted) - 0.5;
+                if (maxCap !== '' && !isNaN(parseFloat(maxCap))) {
+                    const cap = parseFloat(maxCap);
+                    if (benchLine > cap) {
+                        benchLine = cap;
+                    }
+                }
+
+                // Only count benchmark wins if the MODEL also bet (fair comparison)
+                if (!isNoBet) {
+                    const benchWin = actualTotal > benchLine;
+                    if (benchWin) benchmarkWins++;
+                }
+
+                tempResults.push({
+                    match: targetMatch,
+                    home: homeTeam,
+                    away: awayTeam,
+                    prediction: prediction,
+                    actual: { home: actualHome, away: actualAway, total: actualTotal },
+                    diff: diff,
+                    absDiff: absDiff,
+                    isWin: isWin,
+                    isNoBet: isNoBet,
+                    impliedLine: impliedLine,
+                    isCapped: isCapped
+                });
+
+                if (!isNoBet) {
+                    totalDiff += absDiff;
+                    count++;
+                }
+            }
+        }
+
+        // Calculate Summary
+        const avgError = count > 0 ? (totalDiff / count) : 0;
+        const winDiff = underCount - benchmarkWins;
+        const winMargin = underCount > 0 ? (underSum / underCount) : 0;
+        const lossMargin = overCount > 0 ? (overSum / overCount) : 0;
+
+        return {
+            results: tempResults,
+            summary: {
                 totalAnalyzed: count,
                 avgError: avgError,
                 modelWins: underCount,
@@ -189,7 +187,69 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                 noBetCount: noBetCount,
                 wins: { count: underCount, margin: winMargin },
                 losses: { count: overCount, margin: lossMargin }
-            });
+            }
+        };
+    };
+
+    const runBacktest = () => {
+        setIsCalculating(true);
+
+        // Use setTimeout to allow UI to update to "Calculating..." state
+        setTimeout(() => {
+            const { results: res, summary: sum } = calculateBacktestLogic(nGames, forceMean, useGeneralStats);
+            setResults(res.reverse()); // Show newest first
+            setSummary(sum);
+            setIsCalculating(false);
+        }, 100);
+    };
+
+    const optimizeSettings = () => {
+        setIsCalculating(true);
+        setTimeout(() => {
+            const nGamesOptions = [3, 5, 'all'];
+            const forceMeanOptions = [false, true];
+            const generalStatsOptions = [false, true];
+
+            let bestWinRate = -1;
+            let bestParams = null;
+            let bestResult = null;
+
+            for (const n of nGamesOptions) {
+                for (const fm of forceMeanOptions) {
+                    for (const ugs of generalStatsOptions) {
+                        const { summary, results } = calculateBacktestLogic(n, fm, ugs);
+
+                        // Calculate metrics: Win Percentage
+                        const winRate = summary.totalAnalyzed > 0
+                            ? (summary.modelWins / summary.totalAnalyzed)
+                            : 0;
+
+                        // Maximize Win Rate
+                        // Tie breaker: maximize Total Analyzed (more bets is better if same rate)
+                        if (winRate > bestWinRate) {
+                            bestWinRate = winRate;
+                            bestParams = { n, fm, ugs };
+                            bestResult = { summary, results };
+                        } else if (winRate === bestWinRate) {
+                            if (bestParams && summary.totalAnalyzed > (bestResult.summary.totalAnalyzed || 0)) {
+                                // Prefer more games if win rate is tied
+                                bestWinRate = winRate;
+                                bestParams = { n, fm, ugs };
+                                bestResult = { summary, results };
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bestParams) {
+                setNGames(bestParams.n);
+                setForceMean(bestParams.fm);
+                setUseGeneralStats(bestParams.ugs);
+
+                setResults(bestResult.results.reverse());
+                setSummary(bestResult.summary);
+            }
             setIsCalculating(false);
         }, 100);
     };
@@ -341,11 +401,26 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                     </div>
 
                     {/* Action Bar */}
-                    <div className="px-6 pb-6 pt-0">
+                    <div className="px-6 pb-6 pt-0 flex gap-4">
+                        <button
+                            onClick={optimizeSettings}
+                            disabled={isCalculating}
+                            className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-black uppercase tracking-widest text-sm rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-white/5 hover:border-emerald-500/50"
+                            title="Automatically find the best combination of settings"
+                        >
+                            {isCalculating ? (
+                                <span className="animate-pulse">...</span>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400/20" /> Auto-Optimize
+                                </>
+                            )}
+                        </button>
+
                         <button
                             onClick={runBacktest}
                             disabled={isCalculating}
-                            className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black uppercase tracking-widest text-sm rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+                            className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black uppercase tracking-widest text-sm rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
                         >
                             {isCalculating ? (
                                 <span className="animate-pulse">Computing Matches...</span>
