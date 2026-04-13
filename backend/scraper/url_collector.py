@@ -73,8 +73,8 @@ def fetch_match_urls(driver, url, last_round_only=False):
     soup = BeautifulSoup(soup_html, "html.parser")
     results = []
 
-    # Select BOTH rounds and matches in order
-    all_rows = soup.select('div[id="live-table"] div.event__round, div[id="live-table"] div.event__match')
+    # Select BOTH rounds and matches in order (support both live-table and tournamentPage IDs)
+    all_rows = soup.select('div[id="live-table"] div.event__round, div[id="live-table"] div.event__match, div[id="tournamentPage"] div.event__round, div[id="tournamentPage"] div.event__match')
     current_round = "Unknown"
     first_round_found = None
 

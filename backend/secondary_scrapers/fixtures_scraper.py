@@ -443,7 +443,8 @@ def scrape_fixtures():
         {"name": "Bundesliga", "key": "bundesliga", "base_url": "https://www.diretta.it/calcio/germania/bundesliga/"},
         {"name": "Ligue 1", "key": "ligue1", "base_url": "https://www.diretta.it/calcio/francia/ligue-1/"},
         {"name": "Premier League", "key": "premier", "base_url": "https://www.diretta.it/calcio/inghilterra/premier-league/"},
-        {"name": "Eerste Divisie", "key": "eerstedivisie", "base_url": "https://www.diretta.it/calcio/olanda/eerste-divisie/"}
+        {"name": "Eerste Divisie", "key": "eerstedivisie", "base_url": "https://www.diretta.it/calcio/olanda/eerste-divisie/"},
+        {"name": "Serie A Betano", "key": "betano", "base_url": "https://www.diretta.it/calcio/brasile/serie-a-betano/"}
     ]
     
     target_leagues = leagues

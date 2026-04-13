@@ -312,7 +312,8 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
                 "bundesliga": "Bundesliga",
                 "ligue1": "Ligue 1",
                 "premier": "Premier League",
-                "eerstedivisie": "Eerste Divisie"
+                "eerstedivisie": "Eerste Divisie",
+                "betano": "Serie A Betano"
             }
             
             # Check JSON field first
@@ -447,7 +448,9 @@ def fetch_existing_urls(league_slug=None):
             "eredivisie": "Eredivisie",
             "bundesliga": "Bundesliga",
             "ligue1": "Ligue 1",
-            "premier": "Premier League"
+            "premier": "Premier League",
+            "eerstedivisie": "Eerste Divisie",
+            "betano": "Serie A Betano"
         }
         db_league = league_map.get(league_slug.lower())
         if db_league:
