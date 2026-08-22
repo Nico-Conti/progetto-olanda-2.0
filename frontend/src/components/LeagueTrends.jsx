@@ -3,15 +3,32 @@ import { Info, TrendingUp, Flame, Snowflake } from 'lucide-react';
 import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
 
-const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick }) => {
+const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season, currentSeason }) => {
     const [sliderValue, setSliderValue] = useState(0); // 0: 3, 1: 5, 2: 10, 3: All
     const options = [3, 5, 10, 'all'];
     const nGames = options[sliderValue];
 
     const teams = Object.keys(stats).sort();
 
+    // Between seasons there is nothing to trend yet, so this falls back to the
+    // last season with results. Say so - otherwise the list quietly shows teams
+    // that have since been promoted or relegated.
+    const showingPastSeason = Boolean(season && currentSeason && season !== currentSeason);
+
     return (
         <div className="space-y-6">
+            {showingPastSeason && (
+                <div className="glass-panel rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
+                    <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                        Showing <span className="font-bold text-amber-300">{season}</span> - no matches
+                        have been played yet in {currentSeason}. These are last season's teams, so any
+                        side that has since been promoted or relegated still appears here. Trends switch
+                        over automatically once the new season's first results are in.
+                    </p>
+                </div>
+            )}
+
             {/* Controls & Legend */}
             <div className="glass-panel p-5 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
                 <div className="flex flex-col gap-2 w-full md:w-1/3">

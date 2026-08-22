@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-const MatchRow = ({ match, onShowAnalysis, teamLogos, selectedStatistic }) => {
+const MatchRow = ({ match, onShowAnalysis, teamLogos }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     return (

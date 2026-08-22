@@ -1,7 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
-const Select = ({ value, onChange, options, placeholder = "Select...", className = "" }) => {
+// Written out in full: Tailwind only sees literal class strings, so an
+// interpolated `border-${accent}-500/50` would never be generated.
+const ACCENTS = {
+    purple: {
+        border: 'hover:border-purple-500/50',
+        open: 'border-purple-500/50',
+        text: 'group-hover:text-purple-400',
+        selected: 'bg-purple-500 text-white shadow-lg',
+    },
+    emerald: {
+        border: 'hover:border-emerald-500/50',
+        open: 'border-emerald-500/50',
+        text: 'group-hover:text-emerald-400',
+        selected: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20',
+    },
+};
+
+const Select = ({ value, onChange, options, placeholder = "Select...", className = "", accent = "purple" }) => {
+    const theme = ACCENTS[accent] ?? ACCENTS.purple;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -34,15 +52,15 @@ const Select = ({ value, onChange, options, placeholder = "Select...", className
                     bg-zinc-950 rounded-lg border border-white/10 
                     px-3 py-2 h-10
                     text-sm font-bold text-white
-                    hover:border-purple-500/50 transition-colors group
-                    ${isOpen ? 'border-purple-500/50' : ''}
+                    ${theme.border} transition-colors group
+                    ${isOpen ? theme.open : ''}
                 `}
             >
-                <span className={`truncate ${!selectedOption ? 'text-zinc-500' : 'group-hover:text-purple-400 transition-colors'}`}>
+                <span className={`truncate ${!selectedOption ? 'text-zinc-500' : `${theme.text} transition-colors`}`}>
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
                 <ChevronDown
-                    className={`w-4 h-4 text-zinc-600 group-hover:text-purple-400 transition-colors ${isOpen ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-zinc-600 ${theme.text} transition-colors ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
 
@@ -59,13 +77,13 @@ const Select = ({ value, onChange, options, placeholder = "Select...", className
                                 className={`
                                     w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold text-left transition-all
                                     ${value === option.value
-                                        ? 'bg-purple-500 text-white shadow-lg'
+                                        ? theme.selected
                                         : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}
                                 `}
                             >
                                 {option.label}
                                 {value === option.value && (
-                                    <Check className="w-3.5 h-3.5 text-white" />
+                                    <Check className="w-3.5 h-3.5" />
                                 )}
                             </button>
                         ))}

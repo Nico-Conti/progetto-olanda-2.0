@@ -1,36 +1,26 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, Sparkles, BrainCircuit, X, Play } from 'lucide-react';
-import { calculatePrediction } from '../utils/stats';
-import { findBestStrategy } from '../utils/backtest';
+import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
+import EngineToggle from './EngineToggle';
+import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
+import { findBestStrategy, defaultLineFor, MIN_CALLS } from '../utils/backtest';
+import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
+import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
+import { useClickOutside } from '../hooks/useClickOutside';
+import Dropdown from './ui/Dropdown';
 import StatisticSelector from './StatisticSelector';
+import SignalBadge from './SignalBadge';
+import DerivedBadge from './DerivedBadge';
 import Header from './Header';
 
-const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[140px]', className = '' }) => (
-    <div className={`dropdown-container relative ${className}`}>
-        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">{label}</span>
-        <div className="relative">
-            <button
-                onClick={onToggle}
-                className={`bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold text-left flex items-center justify-between ${width}`}
-            >
-                <span className="truncate">{value}</span>
-                <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${active ? '-rotate-90' : 'rotate-90'}`} />
-            </button>
-            {active && (
-                <div className="absolute top-full mt-2 left-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl min-w-[200px] animate-in fade-in zoom-in-95 duration-200 z-50">
-                    {children}
-                </div>
-            )}
-        </div>
-    </div>
-);
-
 const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }) => {
-    const [softBuffer, setSoftBuffer] = useState('');
-    const [minPrediction, setMinPrediction] = useState('');
-    const [maxLineCap, setMaxLineCap] = useState('');
+    const suggested = defaultLineFor(selectedStatistic);
+    const [line, setLine] = useState('');
 
     if (!isOpen) return null;
+
+    const options = STAT_CONFIG[resolveStatKey(selectedStatistic)]?.total?.options ?? [];
+    const chosen = line === '' ? suggested : Number(line);
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -48,72 +38,41 @@ const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }
                         Optimization Settings
                     </h2>
                     <p className="text-zinc-400 text-sm mt-1">
-                        Configure the betting parameters to maximize.
+                        Finds, per league, the settings whose over/under calls beat simply always
+                        betting the same side.
                     </p>
                 </div>
 
                 <div className="space-y-4">
-                    {/* Soft Buffer */}
                     <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Soft Buffer (-)</label>
-                        <div className="relative">
-                            <input
-                                type="number"
-                                step="0.5"
-                                value={softBuffer}
-                                placeholder="0"
-                                onChange={(e) => setSoftBuffer(e.target.value)}
-                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-bold">POINTS</span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">
-                            Subtracts this amount from the prediction to create a safer line.
-                        </p>
-                    </div>
-
-                    {/* Min Prediction */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Min Prediction</label>
-                        <div className="relative">
-                            <input
-                                type="number"
-                                step="0.5"
-                                value={minPrediction}
-                                placeholder="0"
-                                onChange={(e) => setMinPrediction(e.target.value)}
-                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 font-bold">TOTAL</span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">
-                            Only bet if the prediction is at least this value.
-                        </p>
-                    </div>
-
-                    {/* Max Line Cap */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">Max Line Cap (Optional)</label>
-                        <div className="relative">
-                            <input
-                                type="number"
-                                step="0.5"
-                                value={maxLineCap}
-                                placeholder="None"
-                                onChange={(e) => setMaxLineCap(e.target.value)}
-                                className="w-full bg-zinc-900 border border-white/10 rounded-lg p-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold placeholder:text-zinc-600"
-                            />
-                            {maxLineCap !== '' && (
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">
+                            Line for {getStatLabel(selectedStatistic)}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {[...new Set([suggested, ...options])].filter(v => v != null).map(v => (
                                 <button
-                                    onClick={() => setMaxLineCap('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                    key={v}
+                                    onClick={() => setLine(String(v))}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${chosen === v
+                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                        : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'}`}
                                 >
-                                    <X className="w-4 h-4" />
+                                    {v}{v === suggested ? ' (default)' : ''}
                                 </button>
-                            )}
+                            ))}
                         </div>
-                        <p className="text-[10px] text-zinc-500 mt-1">
-                            Caps the betting line at this value.
+                        <p className="text-[10px] text-zinc-500 mt-2">
+                            Each match is called over or under this line. The confidence margin -
+                            how far the prediction must sit from the line before a call is made -
+                            is swept automatically, along with the sample size and averaging mode.
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border border-white/5 bg-zinc-900/60 p-3">
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                            Strategies are ranked by how far they beat the base rate, over at least
+                            {' '}{MIN_CALLS} calls. Some statistics have no edge at all - the result
+                            will say so rather than showing a flattering percentage.
                         </p>
                     </div>
                 </div>
@@ -126,11 +85,7 @@ const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }
                         Cancel
                     </button>
                     <button
-                        onClick={() => onRun({
-                            softBuffer: softBuffer === '' ? 0 : Number(softBuffer),
-                            minPrediction: minPrediction === '' ? 0 : Number(minPrediction),
-                            maxLineCap: maxLineCap === '' ? null : Number(maxLineCap)
-                        })}
+                        onClick={() => onRun({ line: chosen })}
                         className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-sm rounded-lg transition-colors shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
                     >
                         <Play className="w-4 h-4 fill-current" />
@@ -149,107 +104,36 @@ const DEFAULT_PREFS = {
     selectedLeagues: ['All'],
     selectedDate: null,
     forceMean: false,
-    useGeneralStats: false
+    useGeneralStats: false,
+    isOptimizationActive: false,
+    optimizedParams: {},
+    currentBettingParams: {}
 };
 
-const getStoredPrefs = () => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.selectedDate) {
-                parsed.selectedDate = new Date(parsed.selectedDate);
-            }
-            return { ...DEFAULT_PREFS, ...parsed };
-        }
-    } catch (e) {
-        console.error("Failed to load prefs", e);
-    }
-    return DEFAULT_PREFS;
-};
+const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
+    const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
+    const {
+        nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats,
+        isOptimizationActive, optimizedParams,
+    } = prefs;
 
-const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
-    const [initialPrefs] = useState(() => getStoredPrefs());
-
-    const [nGames, setNGames] = useState(initialPrefs.nGames);
-    const [displayCount, setDisplayCount] = useState(initialPrefs.displayCount);
-    const [selectedLeagues, setSelectedLeagues] = useState(initialPrefs.selectedLeagues);
+    const setNGames = (v) => setPrefs({ nGames: v });
+    const setDisplayCount = (v) => setPrefs({ displayCount: v });
+    const setSelectedDate = (v) => setPrefs({ selectedDate: v });
+    const setForceMean = (v) => setPrefs({ forceMean: v });
+    const setUseGeneralStats = (v) => setPrefs({ useGeneralStats: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    const [selectedDate, setSelectedDate] = useState(initialPrefs.selectedDate);
-    const [forceMean, setForceMean] = useState(initialPrefs.forceMean);
-    const [useGeneralStats, setUseGeneralStats] = useState(initialPrefs.useGeneralStats);
-
-    // Optimization State
+    // Optimization State (transient - not persisted)
     const [isOptimizing, setIsOptimizing] = useState(false);
-    const [optimizedParams, setOptimizedParams] = useState({}); // { 'Serie A': { nGames: ..., ... } }
-    const [isOptimizationActive, setIsOptimizationActive] = useState(false);
-
-    // Values used for current active optimization for display/logic
-    const [currentBettingParams, setCurrentBettingParams] = useState({});
-
-    // Modal State
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
-    // Persist changes
-    useEffect(() => {
-        const prefsToSave = {
-            nGames,
-            displayCount,
-            selectedLeagues,
-            selectedDate,
-            forceMean,
-            useGeneralStats
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsToSave));
-    }, [nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats]);
+    const { availableLeagues, availableDates, candidates } =
+        useUpcomingFixtures(fixtures, stats, { selectedLeagues, selectedDate });
 
-    // 0. Get available leagues for filter
-    const availableLeagues = useMemo(() => {
-        if (!fixtures) return [];
-        const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
-        return leagues.sort();
-    }, [fixtures]);
-
-    // 0.5 Get available dates from fixtures (e.g. from today onwards)
-    const availableDates = useMemo(() => {
-        if (!fixtures) return [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const dates = new Set();
-        fixtures.forEach(f => {
-            if (!f.date) return;
-            const d = new Date(f.date);
-            d.setHours(0, 0, 0, 0);
-            if (d >= today) {
-                dates.add(d.toISOString());
-            }
-        });
-
-        // Convert to array, sort, and take next 14 days
-        return Array.from(dates)
-            .map(d => new Date(d))
-            .sort((a, b) => a - b)
-            .slice(0, 14);
-    }, [fixtures]);
-
-    const handleLeagueToggle = (league) => {
-        if (league === 'All') {
-            setSelectedLeagues(['All']);
-        } else {
-            setSelectedLeagues(prev => {
-                const filtered = prev.filter(l => l !== 'All');
-                if (filtered.includes(league)) {
-                    const result = filtered.filter(l => l !== league);
-                    return result.length === 0 ? ['All'] : result;
-                } else {
-                    return [...filtered, league];
-                }
-            });
-        }
-    };
+    const handleLeagueToggle = (league) =>
+        setPrefs(prev => ({ selectedLeagues: toggleLeagueSelection(prev.selectedLeagues, league) }));
 
     // Optimization Handler
     const handleOptimizationStart = (bettingParams) => {
@@ -257,171 +141,86 @@ const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled,
 
         setIsSettingsModalOpen(false);
         setIsOptimizing(true);
-        setCurrentBettingParams(bettingParams);
 
-        // Use setTimeout to allow UI to render the loading state
+        // Yield a frame so the loading state paints before the sweep runs.
         setTimeout(() => {
             const leagues = [...new Set(matchData.map(m => m.league).filter(Boolean))];
             const newOptimizedParams = {};
 
             leagues.forEach(league => {
-                // Filter matches for this league
                 const leagueMatches = matchData.filter(m => m.league === league);
-                // Find best strategy using user-defined betting params
                 const best = findBestStrategy(leagueMatches, selectedStatistic, bettingParams);
-                if (best) {
-                    newOptimizedParams[league] = best;
-                }
+                if (best) newOptimizedParams[league] = best;
             });
 
-            console.log("Optimization Complete:", newOptimizedParams);
-            setOptimizedParams(newOptimizedParams);
-            setIsOptimizationActive(true);
+            setPrefs({
+                currentBettingParams: bettingParams,
+                optimizedParams: newOptimizedParams,
+                isOptimizationActive: true,
+            });
             setIsOptimizing(false);
         }, 100);
     };
 
     const toggleOptimization = () => {
         if (isOptimizationActive) {
-            setIsOptimizationActive(false);
-            setOptimizedParams({});
-            setCurrentBettingParams({});
+            setPrefs({
+                isOptimizationActive: false,
+                optimizedParams: {},
+                currentBettingParams: {},
+            });
         } else {
             setIsSettingsModalOpen(true);
         }
     };
 
-    // 1. Identify upcoming matchday for each league
-    const upcomingMatchdays = useMemo(() => {
-        if (!fixtures) return {};
-        const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
-        const map = {};
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+    // Team histories for whatever statistic actually drives the selected one:
+    // corners are predicted from shots, goals from box touches, everything else
+    // from itself. See utils/predictTotal.js.
+    const predictionModel = useMemo(
+        // Residual tracking costs one extra prediction per match folded in, so
+        // it is only switched on for the engine that needs it.
+        () => buildPredictionModel(matchData, selectedStatistic,
+            { trackResiduals: engine === ENGINES.COUNT }),
+        [matchData, selectedStatistic, engine]
+    );
 
-        leagues.forEach(league => {
-            const leagueFixtures = fixtures.filter(f => f.league === league);
-
-            // Find unplayed matches for this league that are NOT in the past
-            const candidates = leagueFixtures.filter(f => {
-                // 1. Basic unplayed check (not in scraped stats)
-                if (stats && stats[f.home]) {
-                    const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-                    if (played) return false;
-                }
-
-                // 2. Date check: must be today or future (allow 24h grace)
-                if (f.date) {
-                    const matchDate = new Date(f.date);
-                    if (matchDate < oneDayAgo) return false;
-                }
-
-                return true;
-            });
-
-            if (candidates.length > 0) {
-                // Sort by DATE (closest in time) to find the upcoming matchday
-                // Use Infinity for TBD to push them to the end
-                const sortedByTime = candidates.sort((a, b) => {
-                    const dateA = a.date ? new Date(a.date).getTime() : Infinity;
-                    const dateB = b.date ? new Date(b.date).getTime() : Infinity;
-                    return dateA - dateB;
-                });
-                map[league] = sortedByTime[0].matchday;
-            }
-        });
-        return map;
-    }, [fixtures, stats]);
-
+    // Rank the shared candidate set by expected total, applying the optimized
+    // per-league model params when optimization is switched on.
     const topMatches = useMemo(() => {
-        if (!fixtures || !stats) return [];
+        return candidates
+            .map(match => {
+                const optimized = isOptimizationActive ? optimizedParams[match.league] : null;
 
-        // Filter for unplayed matches that are in the upcoming matchday for their league
-        const candidates = fixtures.filter(f => {
-            if (!f.league) return false;
+                const currentNGames = optimized ? optimized.nGames : nGames;
+                const currentUseGeneralStats = optimized ? optimized.useGeneralStats : useGeneralStats;
+                const currentForceMean = optimized ? optimized.forceMean : forceMean;
 
-            // Apply Multi-League Filter
-            const isAllSelected = selectedLeagues.includes('All');
-            if (!isAllSelected && !selectedLeagues.includes(f.league)) return false;
+                const pred = predictFromModel(predictionModel, match.home, match.away, {
+                    nGames: currentNGames,
+                    useGeneralStats: currentUseGeneralStats,
+                    aggregatorOverride: currentForceMean ? 'mean' : 'median',
+                    // Kickoff, so a fixture next month is not modelled as if it
+                    // were today. Falls back to now for a fixture with no date.
+                    asOf: match.date ?? new Date(),
+                    engine,
+                });
 
-            // Unplayed Check
-            if (stats && stats[f.home]) {
-                const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-                if (played) return false;
-            }
-
-            // Today Only Logic
-            // Date Filter Logic
-            if (selectedDate) {
-                if (!f.date) return false;
-                const d = new Date(f.date);
-                return d.toDateString() === selectedDate.toDateString();
-            }
-
-            // Default: Upcoming Matchday Logic
-            const targetMatchday = upcomingMatchdays[f.league];
-            if (f.matchday !== targetMatchday) return false;
-
-            return true;
-        });
-
-        // Calculate predictions
-        const predictions = candidates.map(match => {
-            // Determine params to use
-            let currentNGames = nGames;
-            let currentUseGeneralStats = useGeneralStats;
-            let currentForceMean = forceMean;
-            let isOptimized = false;
-
-            if (isOptimizationActive && optimizedParams[match.league]) {
-                const p = optimizedParams[match.league];
-                currentNGames = p.nGames;
-                currentUseGeneralStats = p.useGeneralStats;
-                currentForceMean = p.forceMean;
-                isOptimized = true;
-            }
-
-            const pred = calculatePrediction(
-                match.home,
-                match.away,
-                stats,
-                currentNGames,
-                false,
-                currentUseGeneralStats,
-                selectedStatistic,
-                currentForceMean ? 'mean' : 'median'
-            );
-            return {
-                ...match,
-                prediction: pred,
-                isOptimized,
-                usedParams: { n: currentNGames, ugs: currentUseGeneralStats, fm: currentForceMean }
-            };
-        }).filter(m => m.prediction !== null);
-
-        // Apply Min Prediction Filter based on current betting params if valid
-        // Only if filtering is desirable here? 
-        // The user might want to see all matches but sorted. 
-        // However, if optimized for "Min Pred 10", matches with 9 should ideally be ranked lower or filtered.
-        // Let's keep them all but sort by value.
-
-        // Sort by Total Expected corners/goals/etc (Descending)
-        const sorted = predictions.sort((a, b) => b.prediction.total - a.prediction.total);
-
-        return sorted.slice(0, displayCount);
-    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues, selectedDate, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, selectedStatistic]);
+                return {
+                    ...match,
+                    prediction: pred,
+                    isOptimized: Boolean(optimized),
+                    strategy: optimized || null,
+                    usedParams: { n: currentNGames, ugs: currentUseGeneralStats, fm: currentForceMean }
+                };
+            })
+            .filter(m => m.prediction !== null)
+            .sort((a, b) => b.prediction.total - a.prediction.total)
+            .slice(0, displayCount);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine]);
 
     // Close dropdown when clicking outside
-    useEffect(() => {
-        if (!activeDropdown) return;
-        const handleClickOutside = (e) => {
-            if (!e.target.closest('.dropdown-container')) {
-                setActiveDropdown(null);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [activeDropdown]);
+    useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
 
     const appTitle = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -472,9 +271,14 @@ const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled,
                                 <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
                                     Hot <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">Matches</span>
                                 </h2>
-                                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide mt-0.5">
-                                    Top {selectedStatistic.replace('_', ' ')} picks
-                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide">
+                                        Top {getStatLabel(selectedStatistic)} picks
+                                    </p>
+                                    <SignalBadge statistic={selectedStatistic} showLabel />
+                                    <EngineToggle engine={engine} onChange={onEngineChange} />
+                                    <DerivedBadge statistic={selectedStatistic} />
+                                </div>
                             </div>
                         </div>
 
@@ -718,9 +522,22 @@ const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled,
                                             {match.league || 'Unknown League'}
                                         </div>
                                         {match.isOptimized && (
-                                            <div className="text-[9px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-12 mt-1 flex items-center gap-1">
-                                                <BrainCircuit className="w-3 h-3" /> AI Optimized
-                                            </div>
+                                            match.strategy?.beatsBaseRate ? (
+                                                <div
+                                                    title={`Calls over/under ${match.strategy.line} correctly ${(100 * match.strategy.accuracy).toFixed(1)}% of the time vs a ${(100 * match.strategy.baseRate).toFixed(1)}% base rate, over ${match.strategy.calls} calls.`}
+                                                    className="text-[9px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-12 mt-1 flex items-center gap-1"
+                                                >
+                                                    <BrainCircuit className="w-3 h-3" />
+                                                    +{(100 * match.strategy.edge).toFixed(1)}pt edge
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    title={`No setting beat simply always betting the same side at ${match.strategy?.line}. Best was ${(100 * (match.strategy?.accuracy ?? 0)).toFixed(1)}% vs a ${(100 * (match.strategy?.baseRate ?? 0)).toFixed(1)}% base rate.`}
+                                                    className="text-[9px] font-bold text-zinc-500 uppercase bg-zinc-500/10 px-1.5 py-0.5 rounded border border-zinc-500/20 mr-12 mt-1 flex items-center gap-1"
+                                                >
+                                                    <BrainCircuit className="w-3 h-3" /> No edge found
+                                                </div>
+                                            )
                                         )}
                                     </div>
                                 </div>
@@ -737,7 +554,7 @@ const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled,
                                             {match.prediction.total.toFixed(1)}
                                         </div>
                                         <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-full mt-1 border border-emerald-500/20">
-                                            Exp. {selectedStatistic === 'corners' ? 'Corners' : selectedStatistic === 'goals' ? 'Goals' : selectedStatistic.replace('_', ' ')}
+                                            Exp. {getStatLabel(selectedStatistic)}
                                         </span>
                                     </div>
                                     <div className="flex flex-col items-center gap-2 w-1/3">
@@ -760,6 +577,9 @@ const HotMatches = ({ stats, fixtures, matchData, teamLogos, isAnimationEnabled,
                                 {isOptimizationActive && match.usedParams && (
                                     <div className="mt-2 text-[9px] text-zinc-600 font-mono text-center">
                                         Using: {match.usedParams.n == 'all' ? 'Season' : `Last ${match.usedParams.n}`} • {match.usedParams.ugs ? 'Gen' : 'Spec'} • {match.usedParams.fm ? 'Mean' : 'Median'}
+                                        {match.strategy && (
+                                            <> • margin {match.strategy.margin} • {(100 * match.strategy.accuracy).toFixed(0)}% vs {(100 * match.strategy.baseRate).toFixed(0)}% base ({match.strategy.calls})</>
+                                        )}
                                     </div>
                                 )}
                             </div>

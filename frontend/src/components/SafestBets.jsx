@@ -1,28 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Shield, Calendar, TrendingUp, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { calculatePrediction } from '../utils/stats';
+import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
+import { getStatLabel } from '../utils/statistics';
+import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
+import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
+import { useClickOutside } from '../hooks/useClickOutside';
+import Dropdown from './ui/Dropdown';
 import StatisticSelector from './StatisticSelector';
+import EngineToggle from './EngineToggle';
 import Header from './Header';
-
-const Dropdown = ({ label, active, onToggle, value, children, width = 'min-w-[140px]', className = '' }) => (
-    <div className={`dropdown-container relative ${className}`}>
-        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">{label}</span>
-        <div className="relative">
-            <button
-                onClick={onToggle}
-                className={`bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 font-bold text-left flex items-center justify-between ${width}`}
-            >
-                <span className="truncate">{value}</span>
-                <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${active ? '-rotate-90' : 'rotate-90'}`} />
-            </button>
-            {active && (
-                <div className="absolute top-full mt-2 left-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl min-w-[200px] animate-in fade-in zoom-in-95 duration-200 z-50">
-                    {children}
-                </div>
-            )}
-        </div>
-    </div>
-);
 
 const STORAGE_KEY = 'olanda_safestbets_prefs';
 const DEFAULT_PREFS = {
@@ -32,22 +18,6 @@ const DEFAULT_PREFS = {
     selectedDate: null,
     forceMean: false,
     useGeneralStats: false
-};
-
-const getStoredPrefs = () => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.selectedDate) {
-                parsed.selectedDate = new Date(parsed.selectedDate);
-            }
-            return { ...DEFAULT_PREFS, ...parsed };
-        }
-    } catch (e) {
-        console.error("Failed to load prefs", e);
-    }
-    return DEFAULT_PREFS;
 };
 
 const CONFIDENCE_THRESHOLDS = {
@@ -70,184 +40,54 @@ const getConfidenceLabel = (stdDev, statType) => {
     return { label: 'Low', color: 'text-red-400' };
 };
 
-const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
-    const [initialPrefs] = useState(() => getStoredPrefs());
+const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick }) => {
+    const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
+    const { nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats } = prefs;
 
-    const [nGames, setNGames] = useState(initialPrefs.nGames);
-    const [displayCount, setDisplayCount] = useState(initialPrefs.displayCount);
-    const [selectedLeagues, setSelectedLeagues] = useState(initialPrefs.selectedLeagues);
+    const setNGames = (v) => setPrefs({ nGames: v });
+    const setDisplayCount = (v) => setPrefs({ displayCount: v });
+    const setSelectedDate = (v) => setPrefs({ selectedDate: v });
+    const setForceMean = (v) => setPrefs({ forceMean: v });
+    const setUseGeneralStats = (v) => setPrefs({ useGeneralStats: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    const [selectedDate, setSelectedDate] = useState(initialPrefs.selectedDate);
-    const [forceMean, setForceMean] = useState(initialPrefs.forceMean);
-    const [useGeneralStats, setUseGeneralStats] = useState(initialPrefs.useGeneralStats);
+    const { availableLeagues, availableDates, candidates } =
+        useUpcomingFixtures(fixtures, stats, { selectedLeagues, selectedDate });
 
-    // Persist changes
-    useEffect(() => {
-        const prefsToSave = {
-            nGames,
-            displayCount,
-            selectedLeagues,
-            selectedDate,
-            forceMean,
-            useGeneralStats
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefsToSave));
-    }, [nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats]);
+    const handleLeagueToggle = (league) =>
+        setPrefs(prev => ({ selectedLeagues: toggleLeagueSelection(prev.selectedLeagues, league) }));
 
-    // 0. Get available leagues for filter
-    const availableLeagues = useMemo(() => {
-        if (!fixtures) return [];
-        const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
-        return leagues.sort();
-    }, [fixtures]);
+    // Team histories for whatever statistic actually drives the selected one:
+    // corners are predicted from shots, goals from box touches, everything else
+    // from itself. See utils/predictTotal.js.
+    const predictionModel = useMemo(
+        () => buildPredictionModel(matchData, selectedStatistic,
+            { trackResiduals: engine === ENGINES.COUNT }),
+        [matchData, selectedStatistic, engine]
+    );
 
-    // 0.5 Get available dates from fixtures (e.g. from today onwards)
-    const availableDates = useMemo(() => {
-        if (!fixtures) return [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const dates = new Set();
-        fixtures.forEach(f => {
-            if (!f.date) return;
-            const d = new Date(f.date);
-            d.setHours(0, 0, 0, 0);
-            if (d >= today) {
-                dates.add(d.toISOString());
-            }
-        });
-
-        // Convert to array, sort, and take next 14 days
-        return Array.from(dates)
-            .map(d => new Date(d))
-            .sort((a, b) => a - b)
-            .slice(0, 14);
-    }, [fixtures]);
-
-    const handleLeagueToggle = (league) => {
-        if (league === 'All') {
-            setSelectedLeagues(['All']);
-        } else {
-            setSelectedLeagues(prev => {
-                const filtered = prev.filter(l => l !== 'All');
-                if (filtered.includes(league)) {
-                    const result = filtered.filter(l => l !== league);
-                    return result.length === 0 ? ['All'] : result;
-                } else {
-                    return [...filtered, league];
-                }
-            });
-        }
-    };
-
-    // 1. Identify upcoming matchday for each league
-    const upcomingMatchdays = useMemo(() => {
-        if (!fixtures) return {};
-        const leagues = [...new Set(fixtures.map(f => f.league).filter(Boolean))];
-        const map = {};
-        const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-
-        leagues.forEach(league => {
-            const leagueFixtures = fixtures.filter(f => f.league === league);
-
-            // Find unplayed matches for this league that are NOT in the past
-            const candidates = leagueFixtures.filter(f => {
-                // 1. Basic unplayed check (not in scraped stats)
-                if (stats && stats[f.home]) {
-                    const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-                    if (played) return false;
-                }
-
-                // 2. Date check: must be today or future (allow 24h grace)
-                if (f.date) {
-                    const matchDate = new Date(f.date);
-                    if (matchDate < oneDayAgo) return false;
-                }
-
-                return true;
-            });
-
-            if (candidates.length > 0) {
-                // Sort by DATE (closest in time) to find the upcoming matchday
-                // Use Infinity for TBD to push them to the end
-                const sortedByTime = candidates.sort((a, b) => {
-                    const dateA = a.date ? new Date(a.date).getTime() : Infinity;
-                    const dateB = b.date ? new Date(b.date).getTime() : Infinity;
-                    return dateA - dateB;
-                });
-                map[league] = sortedByTime[0].matchday;
-            }
-        });
-        return map;
-    }, [fixtures, stats]);
-
+    // Rank the shared candidate set by prediction variance: the lower the
+    // spread, the "safer" the bet.
     const safestMatches = useMemo(() => {
-        if (!fixtures || !stats) return [];
-
-        // Filter for unplayed matches that are in the upcoming matchday for their league
-        const candidates = fixtures.filter(f => {
-            if (!f.league) return false;
-
-            // Apply Multi-League Filter
-            const isAllSelected = selectedLeagues.includes('All');
-            if (!isAllSelected && !selectedLeagues.includes(f.league)) return false;
-
-            // Unplayed Check
-            if (stats && stats[f.home]) {
-                const played = stats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
-                if (played) return false;
-            }
-
-            // Today Only Logic
-            // Date Filter Logic
-            if (selectedDate) {
-                if (!f.date) return false;
-                const d = new Date(f.date);
-                return d.toDateString() === selectedDate.toDateString();
-            }
-
-            // Default: Upcoming Matchday Logic
-            const targetMatchday = upcomingMatchdays[f.league];
-            if (f.matchday !== targetMatchday) return false;
-
-            return true;
-        });
-
-        // Calculate predictions
-        const predictions = candidates.map(match => {
-            const pred = calculatePrediction(
-                match.home,
-                match.away,
-                stats,
-                nGames,
-                false,
-                useGeneralStats,
-                selectedStatistic,
-                forceMean ? 'mean' : 'median'
-            );
-            return { ...match, prediction: pred };
-        }).filter(m => m.prediction !== null);
-
-        // Sort by Total Variance (Standard Deviation) (Ascending - Smallest variance first)
-        const sorted = predictions.sort((a, b) => a.prediction.totalStd - b.prediction.totalStd);
-
-        return sorted.slice(0, displayCount);
-    }, [fixtures, stats, nGames, upcomingMatchdays, displayCount, selectedLeagues, selectedDate, useGeneralStats, forceMean]);
+        return candidates
+            .map(match => ({
+                ...match,
+                prediction: predictFromModel(predictionModel, match.home, match.away, {
+                    nGames,
+                    useGeneralStats,
+                    aggregatorOverride: forceMean ? 'mean' : 'median',
+                    asOf: match.date ?? new Date(),
+                    engine,
+                })
+            }))
+            .filter(m => m.prediction !== null)
+            .sort((a, b) => a.prediction.totalStd - b.prediction.totalStd)
+            .slice(0, displayCount);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, engine]);
 
     // Close dropdown when clicking outside
-    useEffect(() => {
-        if (!activeDropdown) return;
-        const handleClickOutside = (e) => {
-            if (!e.target.closest('.dropdown-container')) {
-                setActiveDropdown(null);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [activeDropdown]);
+    useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
 
     const appTitle = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -272,6 +112,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                 onToggleAnimation={onToggleAnimation}
                 pageName={pageName}
             >
+                <EngineToggle engine={engine} onChange={onEngineChange} />
                 <StatisticSelector
                     value={selectedStatistic}
                     onChange={onStatisticChange}
@@ -292,7 +133,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                                     Safest <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Bets</span>
                                 </h2>
                                 <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide mt-0.5">
-                                    Low Variance {selectedStatistic.replace('_', ' ')} Picks
+                                    Low Variance {getStatLabel(selectedStatistic)} Picks
                                 </p>
                             </div>
                         </div>
@@ -300,6 +141,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
                         <div className="flex flex-wrap items-center justify-between gap-3 w-full flex-1">
                             {/* League Multi-Filter */}
                             <Dropdown
+                                accent="cyan"
                                 label="Leagues"
                                 active={activeDropdown === 'league'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'league' ? null : 'league')}
@@ -338,6 +180,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
                             {/* Date Selector */}
                             <Dropdown
+                                accent="cyan"
                                 label="Date"
                                 active={activeDropdown === 'date'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}
@@ -377,6 +220,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
                             {/* View Count */}
                             <Dropdown
+                                accent="cyan"
                                 label="View"
                                 active={activeDropdown === 'view'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'view' ? null : 'view')}
@@ -401,6 +245,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
                             {/* Sample Size */}
                             <Dropdown
+                                accent="cyan"
                                 label="Sample"
                                 active={activeDropdown === 'sample'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
@@ -425,6 +270,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
                             {/* Trend */}
                             <Dropdown
+                                accent="cyan"
                                 label="Trend"
                                 active={activeDropdown === 'trend'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
@@ -454,6 +300,7 @@ const SafestBets = ({ stats, fixtures, teamLogos, isAnimationEnabled, onToggleAn
 
                             {/* Calc */}
                             <Dropdown
+                                accent="cyan"
                                 label="Calc"
                                 active={activeDropdown === 'calc'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}

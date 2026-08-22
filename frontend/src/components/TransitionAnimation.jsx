@@ -1,29 +1,35 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
-    const [stage, setStage] = useState('idle'); // idle, animating
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    // Measured once, at first render rather than in an effect (which would
+    // force an immediate second render).
+    const [dimensions] = useState(() => ({
+        width: typeof window === 'undefined' ? 0 : window.innerWidth,
+        height: typeof window === 'undefined' ? 0 : window.innerHeight,
+    }));
 
-    useEffect(() => {
-        setDimensions({
-            width: window.innerWidth,
-            height: window.innerHeight
-        });
-    }, []);
+    // Stays mounted briefly after `isActive` drops so the fade-out can play.
+    // Set by the props-changed pattern rather than synchronously in an effect.
+    const [isMounted, setIsMounted] = useState(isActive);
+    const [prevActive, setPrevActive] = useState(isActive);
+    if (prevActive !== isActive) {
+        setPrevActive(isActive);
+        if (isActive) setIsMounted(true);
+    }
+    const stage = isActive ? 'animating' : 'idle';
 
     const { width, height } = dimensions;
 
-    // Generate Golden Spiral Path
-    // Logarithmic spiral: r = a * e^(b * theta)
-    // Golden spiral b = ln(phi) / (pi/2) approx 0.3063489
-    const generateSpiralPath = () => {
+    // Generate the spiral path the ball follows.
+    // (Radius grows linearly with progress, not exponentially - the golden
+    // ratio constant this started from is no longer used.)
+    const pathString = React.useMemo(() => {
         if (!width) return '';
 
         const centerX = width / 2;
         const centerY = height / 2;
         // Scale factor to cover screen
         const maxRadius = Math.sqrt(width * width + height * height) * 0.2;
-        const b = 0.3063489;
         const rotations = 3;
         const points = [];
 
@@ -51,14 +57,10 @@ const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
         // For simplicity, using a polyline-like path with many segments looks smooth enough
         // or we can just use L (line to) for dense points
         return `M ${points[0]} L ${points.slice(1).join(' ')}`;
-    };
-
-    const pathString = React.useMemo(() => generateSpiralPath(), [width, height]);
+    }, [width, height]);
 
     useEffect(() => {
         if (isActive) {
-            setStage('animating');
-
             // Timing constants
             const totalDuration = 1800;
             const midPoint = totalDuration * 1;
@@ -78,13 +80,13 @@ const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
                 clearTimeout(endTimer);
             };
         } else {
-            // Reset stage when not active
-            const resetTimer = setTimeout(() => setStage('idle'), 300); // Wait for fade out
+            // Unmount after the fade-out has finished
+            const resetTimer = setTimeout(() => setIsMounted(false), 300);
             return () => clearTimeout(resetTimer);
         }
     }, [isActive, onMidPoint, onComplete]);
 
-    if (!isActive && stage === 'idle') return null;
+    if (!isActive && !isMounted) return null;
 
     return (
         <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center overflow-hidden">

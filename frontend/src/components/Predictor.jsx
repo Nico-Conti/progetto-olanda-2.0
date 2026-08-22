@@ -1,29 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, TrendingUp, BarChart2 } from 'lucide-react';
-import { processData, calculatePrediction, VOLATILE_STATS } from '../utils/stats';
+import { VOLATILE_STATS } from '../utils/stats';
+import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
+import EngineToggle from './EngineToggle';
+import { STAT_OPTIONS, resolveStatKey, STAT_CONFIG } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
+import ProbabilityLadder from './predictor/ProbabilityLadder';
 import StatsAnalysis from './predictor/StatsAnalysis';
 import StatisticSelector from './StatisticSelector';
 import BetBuilderCell from './BetBuilderCell';
 import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 
-const STAT_OPTIONS = [
-    { value: 'main', label: 'Main' },
-    { value: 'corners', label: 'Corners' },
-    { value: 'goals', label: 'Goals' },
-    { value: 'shots', label: 'Shots' },
-    { value: 'shots_on_target', label: 'Shots on Target' },
-    { value: 'fouls', label: 'Fouls' },
-    { value: 'yellow_cards', label: 'Yellow Cards' },
-    { value: 'red_cards', label: 'Red Cards' },
-    { value: 'possession', label: 'Possession' },
-];
 
-const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel, onRefresh }) => {
+const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
     const [selectedMatch, setSelectedMatch] = useState(null);
     const [nGames, setNGames] = useState(5);
     const [selectedMatchday, setSelectedMatchday] = useState(null);
@@ -43,31 +36,46 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         }
     }, [preSelectedMatch]);
 
-    // Memoize all stats
-    const allProcessedStats = useMemo(() => {
-        const stats = {};
+    // One prediction model per statistic. 'main' and 'goals' both read the goals
+    // column, so the underlying keys are built once and shared.
+    //
+    // This replaced a parallel processData cache: the model already holds the
+    // team histories, and which statistic they are built on is now the model's
+    // decision, not the caller's - corners are predicted from shots, goals from
+    // box touches. See utils/predictTotal.js.
+    const allPredictionModels = useMemo(() => {
+        const byKey = {};
+        const models = {};
         STAT_OPTIONS.forEach(opt => {
-            const statKey = opt.value === 'main' ? 'goals' : opt.value;
-            stats[opt.value] = processData(matchData, statKey);
+            const statKey = resolveStatKey(opt.value);
+            byKey[statKey] ??= buildPredictionModel(matchData, statKey,
+                // Only the count engine needs the residual history, and building
+                // it costs an extra prediction per match per statistic.
+                { trackResiduals: engine === ENGINES.COUNT });
+            models[opt.value] = byKey[statKey];
         });
-        return stats;
-    }, [matchData]);
+        return models;
+    }, [matchData, engine]);
 
     // League Averages for Hot Match condition
     const leagueAverages = useMemo(() => {
+        const byKey = {};
         const averages = {};
         STAT_OPTIONS.forEach(opt => {
-            const statistic = opt.value;
-            let totalVal = 0;
-            let count = 0;
-            matchData.forEach(m => {
-                const statObj = m.stats?.[statistic];
-                if (statObj) {
-                    totalVal += Number(statObj.home) + Number(statObj.away);
-                    count++;
-                }
-            });
-            averages[statistic] = count > 0 ? totalVal / count : 0;
+            const statKey = resolveStatKey(opt.value);
+            if (byKey[statKey] === undefined) {
+                let totalVal = 0;
+                let count = 0;
+                matchData.forEach(m => {
+                    const statObj = m.stats?.[statKey];
+                    if (statObj) {
+                        totalVal += Number(statObj.home) + Number(statObj.away);
+                        count++;
+                    }
+                });
+                byKey[statKey] = count > 0 ? totalVal / count : 0;
+            }
+            averages[opt.value] = byKey[statKey];
         });
         return averages;
     }, [matchData]);
@@ -84,10 +92,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
     }, [selectedStatistic]);
 
     // Recalculate stats based on localStatistic
-    const localStats = useMemo(() => {
-        if (localStatistic === selectedStatistic) return globalStats;
-        return processData(matchData, localStatistic);
-    }, [matchData, localStatistic, selectedStatistic, globalStats]);
+    const localModel = useMemo(
+        () => allPredictionModels[localStatistic]
+            ?? buildPredictionModel(matchData, localStatistic,
+                { trackResiduals: engine === ENGINES.COUNT }),
+        [allPredictionModels, localStatistic, matchData, engine]
+    );
 
     // Custom Matchup State
     const [customHome, setCustomHome] = useState('');
@@ -104,8 +114,17 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
     const customPrediction = useMemo(() => {
         if (!customHome || !customAway || !showCustomPrediction) return null;
-        return calculatePrediction(customHome, customAway, localStats, nGames, false, useGeneralStats, localStatistic, forceMean ? 'mean' : null);
-    }, [customHome, customAway, localStats, nGames, showCustomPrediction, useGeneralStats, localStatistic, forceMean]);
+        return predictFromModel(localModel, customHome, customAway, {
+            nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
+            // A hypothetical matchup has no kickoff; model it as of now.
+            asOf: new Date(), engine,
+        });
+    }, [customHome, customAway, localModel, nGames, showCustomPrediction, useGeneralStats, forceMean, engine]);
+
+    // The line a statistic is judged at, so a probability has something to be a
+    // probability OF. Same source the backtests and Hot Matches use.
+    const lineFor = (stat) => STAT_CONFIG[resolveStatKey(stat)]?.total?.default ?? null;
+    const showProbability = engine === ENGINES.COUNT;
 
     const upcomingMatches = useMemo(() => {
         if (!fixtures || !globalStats) return [];
@@ -124,9 +143,20 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
             // 2. Priority Check: Use explicit status from DB if available
             if (f.status === 'PLAYED') return false;
 
-            // 3. Fallback: If status is unknown/missing, check if stats exist
+            // 3. Fallback: no status from the DB, so infer from results.
+            //
+            // Season matters here. History now spans the current season AND the
+            // previous one, so that recency decay has something to carry across
+            // the summer. Without the season check this finds LAST season's
+            // home fixture between the same two teams and hides this season's -
+            // which silently removed almost every fixture except those involving
+            // promoted sides.
             if (!globalStats[f.home]) return true;
-            const played = globalStats[f.home].all_matches.some(m => m.opponent === f.away && m.location === 'Home');
+            const played = globalStats[f.home].all_matches.some(m =>
+                m.opponent === f.away
+                && m.location === 'Home'
+                && (!f.season || !m.season || m.season === f.season)
+            );
             return !played;
         });
 
@@ -134,14 +164,20 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         const predictions = unplayed.map(match => {
             const matchId = `${match.home}-${match.away}`;
             const stat = matchStatistics[matchId] || selectedStatistic;
-            const statsToUse = allProcessedStats[stat] || globalStats;
+            const modelToUse = allPredictionModels[stat] ?? allPredictionModels[selectedStatistic];
 
-            const pred = calculatePrediction(match.home, match.away, statsToUse, nGames, false, useGeneralStats, stat, forceMean ? 'mean' : null);
+            const pred = predictFromModel(modelToUse, match.home, match.away, {
+                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
+                asOf: match.date ?? new Date(), engine,
+            });
             return { ...match, prediction: pred, selectedStat: stat };
-        }).filter(m => m.prediction !== null); // Filter out matches where we couldn't calc prediction (e.g. missing team stats)
+        });
+        // Fixtures with no prediction are kept deliberately: early in a season
+        // there is no form to model yet, but the schedule should still be
+        // visible. The rendering shows a dash wherever a number would go.
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allProcessedStats, useGeneralStats, forceMean]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allPredictionModels, useGeneralStats, forceMean, engine]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -196,13 +232,50 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
         return upcomingMatches.filter(m => m.matchday === selectedMatchday);
     }, [upcomingMatches, selectedMatchday]);
 
+    // Explain an empty or number-less table: either no fixtures are loaded at
+    // all, or fixtures are listed but there is not enough played history yet to
+    // model them, so every expected value renders as a dash.
+    const emptyReason = useMemo(() => {
+        const played = matchData?.length || 0;
+        const withPrediction = upcomingMatches.filter(m => m.prediction).length;
+
+        if (upcomingMatches.length === 0) return { kind: 'no-fixtures' };
+        if (withPrediction > 0) return null;
+
+        return {
+            kind: played === 0 ? 'season-not-started' : 'not-enough-history',
+            count: upcomingMatches.length,
+            first: [...upcomingMatches].sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0))[0],
+            played,
+        };
+    }, [upcomingMatches, matchData]);
+
     if (selectedMatch) {
-        const { home, away, prediction } = selectedMatch;
+        const { home, away } = selectedMatch;
         // Recalculate prediction for selected match to ensure it uses the current nGames if changed in detail view
         // Use LOCAL stats here
-        const detailPred = calculatePrediction(home, away, localStats, nGames, false, useGeneralStats, localStatistic, forceMean ? 'mean' : null);
+        const detailPred = predictFromModel(localModel, home, away, {
+            nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
+            asOf: selectedMatch.date ?? new Date(), engine,
+        });
 
-        if (!detailPred) return <div>Error loading match details</div>;
+        if (!detailPred) {
+            return (
+                <div className="glass-panel rounded-xl border border-white/10 p-10 text-center animate-in fade-in">
+                    <h3 className="text-base font-black text-white">{home} vs {away}</h3>
+                    <p className="text-zinc-400 text-sm mt-2 max-w-md mx-auto">
+                        No prediction yet - neither side has played enough matches this season to
+                        model from. Come back once the first results are in.
+                    </p>
+                    <button
+                        onClick={() => { setSelectedMatch(null); if (onExitPreview) onExitPreview(); }}
+                        className="mt-5 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-bold rounded-lg border border-white/10 transition-colors"
+                    >
+                        Back
+                    </button>
+                </div>
+            );
+        }
 
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -232,6 +305,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         {/* Local Statistic Selector */}
                         <div className="w-full sm:w-auto">
+                            <EngineToggle engine={engine} onChange={onEngineChange} className="mr-2" />
                             <StatisticSelector
                                 value={localStatistic}
                                 onChange={(e) => setLocalStatistic(e.target.value)}
@@ -327,6 +401,14 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 {/* Prediction Hero */}
                 <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
 
+                {/* Only the distribution engine can price a ladder of lines. */}
+                {detailPred?.probOver && (
+                    <div className="mt-4">
+                        <ProbabilityLadder prediction={detailPred} statistic={localStatistic}
+                            home={home} away={away} priceFor={priceFor} />
+                    </div>
+                )}
+
                 {/* Stats Analysis Breakdown */}
                 <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} selectedStatistic={localStatistic} />
 
@@ -413,7 +495,14 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
 
                     <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
+                    {/* Prediction engine. Classic is the measured model and the
+                        default; Distribution prices any line from one fit. */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Engine:</span>
+                        <EngineToggle engine={engine} onChange={onEngineChange} />
+                    </div>
 
+                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Gen. Trend:</span>
@@ -497,6 +586,42 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                 </div >
             </div >
 
+            {emptyReason && (
+                <div className="glass-panel rounded-xl border border-white/10 p-8 text-center mb-4">
+                    {emptyReason.kind === 'no-fixtures' ? (
+                        <>
+                            <h3 className="text-base font-black text-white">No upcoming fixtures</h3>
+                            <p className="text-zinc-400 text-sm mt-2">
+                                Nothing scheduled for this league and season. Run the fixtures scraper to load them.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <h3 className="text-base font-black text-white">
+                                {emptyReason.kind === 'season-not-started'
+                                    ? "This season hasn't kicked off yet"
+                                    : 'Not enough history to predict yet'}
+                            </h3>
+                            <p className="text-zinc-400 text-sm mt-2 max-w-xl mx-auto">
+                                The {emptyReason.count} fixtures below are scheduled
+                                {emptyReason.first?.date && (
+                                    <> , starting{' '}
+                                        <span className="text-zinc-200 font-bold">
+                                            {new Date(emptyReason.first.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}
+                                        </span></>
+                                )}
+                                , but {emptyReason.played === 0
+                                    ? 'no matches have been played in this season yet'
+                                    : `only ${emptyReason.played} matches have been played so far`}
+                                , so there is no form to model from. Expected values show as
+                                {' '}<span className="text-zinc-300 font-bold">-</span>{' '}
+                                until the first results are in.
+                            </p>
+                        </>
+                    )}
+                </div>
+            )}
+
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
                 {/* Mobile View (Cards) */}
                 <div className="md:hidden space-y-4">
@@ -523,7 +648,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             </div>
 
                             {/* Hot Match Indicator */}
-                            {match.selectedStat !== 'possession' && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
+                            {match.selectedStat !== 'possession' && match.prediction && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
                                 <div className="absolute top-0 left-0 bg-red-500/20 text-red-500 p-1.5 rounded-br-lg animate-pulse border-r border-b border-red-500/20 z-10">
                                     <Flame className="w-3.5 h-3.5 fill-current" />
                                 </div>
@@ -533,19 +658,27 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             <div className="flex items-center justify-between mt-2 mb-4">
                                 <div className="flex flex-col items-center w-1/3 text-center">
                                     <img src={teamLogos[match.home]} alt={match.home} className="w-10 h-10 object-contain mb-1" />
-                                    <span className={`text-xs font-bold leading-tight ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
+                                    <span className={`text-xs font-bold leading-tight ${match.prediction && match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
                                 </div>
 
                                 <div className="flex flex-col items-center justify-center w-1/3">
                                     <span className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Total</span>
                                     <div className="text-2xl font-black text-white tracking-tighter bg-white/5 px-3 py-1 rounded-lg border border-white/5">
-                                        {match.prediction.total.toFixed(1)}
+                                        {match.prediction ? match.prediction.total.toFixed(1) : '-'}
                                     </div>
+                                    {/* The distribution engine can say how likely the
+                                        line is, not just where the total lands. */}
+                                    {match.prediction?.probOver && lineFor(match.selectedStat) != null && (
+                                        <span className="text-[10px] font-bold text-zinc-400 mt-1 tabular-nums">
+                                            {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
+                                            <span className="text-zinc-600"> over {lineFor(match.selectedStat)}</span>
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col items-center w-1/3 text-center">
                                     <img src={teamLogos[match.away]} alt={match.away} className="w-10 h-10 object-contain mb-1" />
-                                    <span className={`text-xs font-bold leading-tight ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
+                                    <span className={`text-xs font-bold leading-tight ${match.prediction && match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
                                 </div>
                             </div>
 
@@ -553,11 +686,11 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                             <div className="grid grid-cols-2 gap-2 mb-4">
                                 <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2 text-center">
                                     <div className="text-[10px] text-emerald-500/70 font-bold uppercase">Home Exp</div>
-                                    <div className="text-lg font-mono font-bold text-emerald-400">{match.prediction.expHome.toFixed(2)}</div>
+                                    <div className="text-lg font-mono font-bold text-emerald-400">{match.prediction ? match.prediction.expHome.toFixed(2) : '-'}</div>
                                 </div>
                                 <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2 text-center">
                                     <div className="text-[10px] text-blue-500/70 font-bold uppercase">Away Exp</div>
-                                    <div className="text-lg font-mono font-bold text-blue-400">{match.prediction.expAway.toFixed(2)}</div>
+                                    <div className="text-lg font-mono font-bold text-blue-400">{match.prediction ? match.prediction.expAway.toFixed(2) : '-'}</div>
                                 </div>
                             </div>
 
@@ -583,6 +716,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <BetBuilderCell
                                         game={`${match.home} vs ${match.away}`}
+                                        priceFor={priceFor}
                                         home={match.home}
                                         away={match.away}
                                         teamLogos={teamLogos}
@@ -613,6 +747,12 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500">Home Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500">Away Exp</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white">Total Exp</th>
+                                {showProbability && (
+                                    <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500"
+                                        title="Probability the total goes over the configured line, from the fitted distribution.">
+                                        P(Over)
+                                    </th>
+                                )}
                                 <th className="px-3 py-3 text-center font-bold tracking-wider">Stat</th>
                                 <th className="px-3 py-3 text-center font-bold tracking-wider">Bet Builder</th>
                             </tr>
@@ -643,7 +783,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                         <div className="flex items-center gap-3 justify-center">
                                             <div className="flex items-center gap-2 w-[150px] justify-end">
                                                 <span
-                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}
+                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction && match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}
                                                     title={match.home}
                                                 >
                                                     {match.home}
@@ -656,7 +796,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                             <div className="flex items-center gap-2 w-[150px]">
                                                 <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 flex-shrink-0 object-contain" />
                                                 <span
-                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}
+                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction && match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}
                                                     title={match.away}
                                                 >
                                                     {match.away}
@@ -664,15 +804,29 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                             </div>
                                         </div>
                                         {/* Hot Indicator */}
-                                        {match.selectedStat !== 'possession' && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
+                                        {match.selectedStat !== 'possession' && match.prediction && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
                                             <div className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full animate-pulse border border-red-500/20" title="Hot Match (15% Above Avg)">
                                                 <Flame className="w-3.5 h-3.5 fill-current" />
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction.expHome.toFixed(2)}</td>
-                                    <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction.expAway.toFixed(2)}</td>
-                                    <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction.total.toFixed(1)}</td>
+                                    <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction ? match.prediction.expHome.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                    <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction ? match.prediction.expAway.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                    <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction ? match.prediction.total.toFixed(1) : '-'}</td>
+                                    {showProbability && (
+                                        <td className="px-3 py-4 text-center font-black bg-emerald-500/5 tabular-nums">
+                                            {match.prediction?.probOver && lineFor(match.selectedStat) != null ? (
+                                                <>
+                                                    <span className="text-emerald-400">
+                                                        {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
+                                                    </span>
+                                                    <span className="block text-[10px] font-bold text-zinc-600">
+                                                        over {lineFor(match.selectedStat)}
+                                                    </span>
+                                                </>
+                                            ) : <span className="text-zinc-600">-</span>}
+                                        </td>
+                                    )}
                                     <td className="px-3 py-4 text-center">
                                         <div className="relative inline-block">
                                             <select
@@ -693,6 +847,7 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                                     <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                         <BetBuilderCell
                                             game={`${match.home} vs ${match.away}`}
+                                            priceFor={priceFor}
                                             home={match.home}
                                             away={match.away}
                                             teamLogos={teamLogos}
@@ -779,6 +934,13 @@ const Predictor = ({ stats: globalStats, fixtures, matches, teams, teamLogos, se
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                             {/* Prediction Hero (Reused) */}
                             <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
+
+                            {customPrediction?.probOver && (
+                                <div className="mt-4">
+                                    <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
+                                        home={customHome} away={customAway} priceFor={priceFor} />
+                                </div>
+                            )}
 
                             {/* Detailed History (Reused) */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
