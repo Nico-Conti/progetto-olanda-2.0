@@ -4,6 +4,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# Status text on a match page that means "this result is final".
+FINISHED_STATUS_MARKERS = (
+    "FINALE",       # Finale, Dopo rig., Dopo tempi suppl.
+    "TERMINATO",
+    "A TAVOLINO",   # walkover / result awarded administratively
+)
+
+
 def scrape_basic_info(soup):
     """Extracts Team names and Score from the header."""
     try:
@@ -225,12 +233,15 @@ def scrape_match_details(driver, product_url, skip_comments=False):
         initial_soup = BeautifulSoup(driver.page_source, "html.parser")
         
         # --- SAFEGUARD: CHECK STATUS ---
-        # Prevent scraping "Scheduled" or "Postponed" games as 0-0 results
+        # Prevent scraping "Scheduled" or "Postponed" games as 0-0 results.
+        # The listed markers all mean the result is final and counts in the
+        # table - including "A TAVOLINO", a walkover awarded off the pitch,
+        # which is still a real result and was leaving a hole in the season.
         status_elem = initial_soup.select_one('div.detailScore__status')
         if status_elem:
             status_text = status_elem.text.strip().upper()
             # Allow "FINALE", "DOPO RIG.", "DOPO TEMPI SUPPL." etc.
-            if "FINALE" not in status_text and "TERMINATO" not in status_text:
+            if not any(m in status_text for m in FINISHED_STATUS_MARKERS):
                 print(f"  -> ⚠️ Skipping match: Status is '{status_text}' (Not Finished)")
                 return None
         else:

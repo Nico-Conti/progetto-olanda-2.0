@@ -1,8 +1,48 @@
+import datetime
+import re
 import time
+
+import pytz
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from .driver import fully_scroll
+from .config import year_for_month_in_season
+
+ROME = pytz.timezone("Europe/Rome")
+
+# Diretta prints a match row's kick-off in one of two shapes, depending on how
+# long ago it was:
+#   "24.05. 20:45"  - recent: day/month and a time, but no year
+#   "29.12.2025"    - older:  day/month/year, but no time
+_DATE_WITH_TIME = re.compile(r"^\s*(\d{1,2})\.(\d{1,2})\.\s+(\d{1,2}):(\d{2})\s*$")
+_DATE_WITH_YEAR = re.compile(r"^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})\s*$")
+
+
+def parse_row_date(text, season):
+    """Kick-off for a match row, as an aware datetime (None if unparseable).
+
+    When the row carries no year it is taken from the season being scraped,
+    never from today - guessing relative to now mis-dates a season's opening
+    fixtures by a year for most of the year.
+    """
+    text = text or ""
+
+    m = _DATE_WITH_TIME.match(text)
+    if m:
+        day, month, hour, minute = (int(g) for g in m.groups())
+        year = year_for_month_in_season(season, month)
+    else:
+        m = _DATE_WITH_YEAR.match(text)
+        if not m:
+            return None
+        day, month, year = (int(g) for g in m.groups())
+        hour = minute = 0  # older rows drop the time
+
+    try:
+        return ROME.localize(datetime.datetime(year, month, day, hour, minute))
+    except ValueError:
+        return None
 
 def check_more_matches(driver):
     """
@@ -46,7 +86,7 @@ def check_more_matches(driver):
             
     print("  -> All matches loaded (or button not found).")
 
-def fetch_match_urls(driver, url, last_round_only=False):
+def fetch_match_urls(driver, url, last_round_only=False, season=None):
     print(f"Scraping {url}")
     driver.get(url)
 
@@ -101,10 +141,16 @@ def fetch_match_urls(driver, url, last_round_only=False):
                 # Construct full URL if it's relative
                 if product_link.startswith('/'):
                     product_link = f"https://www.diretta.it{product_link}"
-                
+
+                # The kick-off is on this row; the match page itself does not
+                # carry a usable date, which is why matches had none until now.
+                time_node = row.select_one('.event__stageTime')
+                when = parse_row_date(time_node.get_text(strip=True) if time_node else None, season)
+
                 results.append({
                     "giornata": current_round,
-                    "url": product_link
+                    "url": product_link,
+                    "match_date": when.isoformat() if when else None,
                 })
 
     return results
