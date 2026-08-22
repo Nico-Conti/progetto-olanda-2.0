@@ -13,7 +13,7 @@ export const useBackendHealth = () => {
                 } else {
                     setIsOnline(false);
                 }
-            } catch (error) {
+            } catch {
                 setIsOnline(false);
             }
         };
@@ -21,8 +21,9 @@ export const useBackendHealth = () => {
         // Check immediately
         checkHealth();
 
-        // Poll every 5 seconds
-        const interval = setInterval(checkHealth, 5000);
+        // Poll every 30 seconds. This only drives an online/offline dot, so a
+        // 5s cadence was six times the traffic for no extra information.
+        const interval = setInterval(checkHealth, 30000);
 
         return () => clearInterval(interval);
     }, []);

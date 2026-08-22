@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import { API_BASE_URL } from '../config';
 
 export const useMatchData = () => {
@@ -13,15 +12,12 @@ export const useMatchData = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            console.log(`Fetching data from Backend (${API_BASE_URL})...`);
-
             // Fetch Matches
             const matchesResponse = await fetch(`${API_BASE_URL}/matches`);
             if (!matchesResponse.ok) {
                 throw new Error(`Error fetching matches: ${matchesResponse.statusText}`);
             }
             const matches = await matchesResponse.json();
-            console.log("Matches fetched:", matches?.length);
 
             // Fetch Fixtures
             const fixturesResponse = await fetch(`${API_BASE_URL}/fixtures`);
@@ -29,7 +25,6 @@ export const useMatchData = () => {
                 throw new Error(`Error fetching fixtures: ${fixturesResponse.statusText}`);
             }
             const fixtures = await fixturesResponse.json();
-            console.log("Fixtures fetched:", fixtures?.length);
 
             // Transform fixtures to a flat list for easier consumption
             const flatFixtures = fixtures.map(f => {
@@ -42,11 +37,11 @@ export const useMatchData = () => {
                     date: f.match_date, // Keep raw date for sorting/filtering
                     matchday: mDay ? parseInt(mDay, 10) : 0,
                     league: f.league,
+                    season: f.season || null,
                     status: f.status
                 };
             });
 
-            console.log("Formatted fixtures:", flatFixtures);
             setFixturesData(flatFixtures);
 
             // Fetch Teams (Logos)
@@ -76,11 +71,28 @@ export const useMatchData = () => {
                     shots_on_target: { home: match.home_shots_on_target ?? 0, away: match.away_shots_on_target ?? 0 },
                     goals: { home: match.home_goals ?? 0, away: match.away_goals ?? 0 },
                     possession: { home: match.home_possession ?? 0, away: match.away_possession ?? 0 },
+                    // Scraped and stored since the start, but only exposed by
+                    // /matches recently. Keys are named after the DB columns:
+                    // `blocked_shots` holds diretta's "Palle intercettate"
+                    // (interceptions), which the syncer writes there on purpose
+                    // - see backend/services/supabase_syncer.py:92.
+                    xg: { home: match.home_xg ?? 0, away: match.away_xg ?? 0 },
+                    xgot: { home: match.home_xgot ?? 0, away: match.away_xgot ?? 0 },
+                    big_chances: { home: match.home_big_chances ?? 0, away: match.away_big_chances ?? 0 },
+                    box_touches: { home: match.home_box_touches ?? 0, away: match.away_box_touches ?? 0 },
+                    crosses: { home: match.home_crosses ?? 0, away: match.away_crosses ?? 0 },
+                    goalkeeper_saves: { home: match.home_goalkeeper_saves ?? 0, away: match.away_goalkeeper_saves ?? 0 },
+                    blocked_shots: { home: match.home_blocked_shots ?? 0, away: match.away_blocked_shots ?? 0 },
                 },
                 giornata: match.giornata || 0,
                 league: match.league, // Include league for filtering
-                tldr: match["tl dr corner"] || match.tldr || "",
-                detailed_summary: match["detailed comment corner"] || match.detailed_summary || "",
+                season: match.season || null,
+                // summary_match / detail_corner are the live column names. The
+                // old "tl dr corner" / "detailed comment corner" columns no
+                // longer exist, so reading them returned "" for every match and
+                // the analysis never rendered.
+                tldr: match.summary_match || "",
+                detailed_summary: match.detail_corner || "",
                 date: match.match_date
             }));
 
