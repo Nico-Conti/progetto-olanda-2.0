@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
 
+// A match row and an analysis row have to agree on what identifies a match.
+// Both come from the same table, so the raw column values compare directly -
+// do not normalise one side only.
+const analysisKey = (league, season, date, home, away) =>
+    `${league}|${season}|${date}|${home}|${away}`;
+
 export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
     const [fixturesData, setFixturesData] = useState([]);
@@ -12,19 +18,31 @@ export const useMatchData = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch Matches
-            const matchesResponse = await fetch(`${API_BASE_URL}/matches`);
+
+            // These four are independent. Awaiting them one after another cost
+            // the sum of their latencies for no reason; /matches alone is ~5s.
+            const [matchesResponse, fixturesResponse, teamsResponse, leaguesResponse] =
+                await Promise.all([
+                    fetch(`${API_BASE_URL}/matches`),
+                    fetch(`${API_BASE_URL}/fixtures`),
+                    fetch(`${API_BASE_URL}/teams`),
+                    fetch(`${API_BASE_URL}/leagues`),
+                ]);
+
+            // Matches and fixtures are load-bearing: without them there is
+            // nothing to render, so a failure is an error. Teams and leagues
+            // only decorate, and are handled softly below.
             if (!matchesResponse.ok) {
                 throw new Error(`Error fetching matches: ${matchesResponse.statusText}`);
             }
-            const matches = await matchesResponse.json();
-
-            // Fetch Fixtures
-            const fixturesResponse = await fetch(`${API_BASE_URL}/fixtures`);
             if (!fixturesResponse.ok) {
                 throw new Error(`Error fetching fixtures: ${fixturesResponse.statusText}`);
             }
-            const fixtures = await fixturesResponse.json();
+
+            const [matches, fixtures] = await Promise.all([
+                matchesResponse.json(),
+                fixturesResponse.json(),
+            ]);
 
             // Transform fixtures to a flat list for easier consumption
             const flatFixtures = fixtures.map(f => {
@@ -44,8 +62,7 @@ export const useMatchData = () => {
 
             setFixturesData(flatFixtures);
 
-            // Fetch Teams (Logos)
-            const teamsResponse = await fetch(`${API_BASE_URL}/teams`);
+            // Teams (Logos)
             let teamLogosMap = {};
             if (teamsResponse.ok) {
                 const teams = await teamsResponse.json();
@@ -87,26 +104,49 @@ export const useMatchData = () => {
                 giornata: match.giornata || 0,
                 league: match.league, // Include league for filtering
                 season: match.season || null,
-                // summary_match / detail_corner are the live column names. The
-                // old "tl dr corner" / "detailed comment corner" columns no
-                // longer exist, so reading them returned "" for every match and
-                // the analysis never rendered.
-                tldr: match.summary_match || "",
-                detailed_summary: match.detail_corner || "",
+                // summary_match / detail_corner no longer ride along with
+                // /matches - they were 27% of it and nothing shows them until a
+                // match is opened. They arrive from /matches/analysis just
+                // below and are merged in; until then these stay empty, which
+                // is what every consumer already falls back on.
+                tldr: "",
+                detailed_summary: "",
                 date: match.match_date
             }));
 
             setMatchData(formattedData);
             setTeamLogos(teamLogosMap);
 
-            // Fetch Leagues
-            const leaguesResponse = await fetch(`${API_BASE_URL}/leagues`);
             if (leaguesResponse.ok) {
                 const leaguesData = await leaguesResponse.json();
                 setLeagues(leaguesData);
             } else {
                 console.error("Failed to fetch leagues:", leaguesResponse.statusText);
             }
+
+            // Deliberately not awaited: the app is already usable, and the
+            // prose only matters once someone opens a match. A failure here
+            // leaves the empty-string fallbacks in place rather than breaking
+            // a load that has otherwise succeeded.
+            fetch(`${API_BASE_URL}/matches/analysis`)
+                .then(res => (res.ok ? res.json() : Promise.reject(res.statusText)))
+                .then(rows => {
+                    const byKey = new Map(rows.map(r => [
+                        analysisKey(r.league, r.season || null, r.match_date,
+                                    r.home_team || 'Unknown', r.away_team || 'Unknown'),
+                        r,
+                    ]));
+                    setMatchData(prev => prev.map(m => {
+                        const hit = byKey.get(analysisKey(
+                            m.league, m.season, m.date, m.squadre.home, m.squadre.away));
+                        return hit
+                            ? { ...m,
+                                tldr: hit.summary_match || "",
+                                detailed_summary: hit.detail_corner || "" }
+                            : m;
+                    }));
+                })
+                .catch(err => console.error('Error fetching match analysis:', err));
 
         } catch (err) {
             console.error('Error fetching data:', err);
