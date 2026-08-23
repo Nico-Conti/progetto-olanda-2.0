@@ -44,3 +44,7 @@ frontend/src/utils/__experiments__/data.json
 frontend/src/utils/__experiments__/odds.json
 frontend/src/utils/__experiments__/data_fd.json
 frontend/src/utils/__experiments__/odds_fd.json
+
+# Local working notes - deliberately untracked
+CLAUDE.md
+docs/
