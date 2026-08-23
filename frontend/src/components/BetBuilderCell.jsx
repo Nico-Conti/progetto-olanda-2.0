@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Check, X } from 'lucide-react';
+import { useClickOutside } from '../hooks/useClickOutside';
 
-const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet }) => {
+const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor }) => {
     const [team, setTeam] = useState(existingBet ? (existingBet.team || 'total') : 'total');
     const [option, setOption] = useState(existingBet ? existingBet.option : 'O');
     const [value, setValue] = useState(existingBet ? existingBet.value : null);
@@ -17,6 +18,18 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
         // For others
         return bets.some(b => b.game === game && b.stat === stat && b.team === team && b.option === option && b.value === value);
     }, [bets, game, stat, value, team, option]);
+
+    /**
+     * The bookmaker's price for what is currently selected, if we captured one.
+     *
+     * Only match totals are priced: the capture stores over/under on the whole
+     * match, so a team-specific or 1X2 selection has no stored equivalent and
+     * shows nothing rather than borrowing an unrelated number.
+     */
+    const currentPrice = useMemo(() => {
+        if (!priceFor || stat === 'main' || team !== 'total' || value == null) return null;
+        return priceFor(home, away, stat, Number(value), option === 'O');
+    }, [priceFor, home, away, stat, team, value, option]);
 
     // Reset "Added" feedback after a delay
     const handleAdd = () => {
@@ -66,8 +79,22 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
 
     const options = getDynamicOptions(stat, team, prediction);
 
-    // Initial value setup or sync with existingBet
-    useEffect(() => {
+    // Initial value setup or sync with existingBet.
+    //
+    // This is derived state, so it is adjusted during render (React's
+    // "adjusting state when props change" pattern) rather than in an effect,
+    // which would render once with a stale value and then again to correct it.
+    const [syncedFrom, setSyncedFrom] = useState(null);
+    const syncKey = { stat, team, prediction, existingBet };
+    const needsSync = !syncedFrom
+        || syncedFrom.stat !== stat
+        || syncedFrom.team !== team
+        || syncedFrom.prediction !== prediction
+        || syncedFrom.existingBet !== existingBet;
+
+    if (needsSync) {
+        setSyncedFrom(syncKey);
+
         if (existingBet) {
             setValue(existingBet.value);
             setTeam(existingBet.team || 'total');
@@ -77,7 +104,9 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                 setValue('1');
             } else {
                 // Pick the option closest to prediction
-                let target = prediction ? (team === 'home' ? prediction.expHome : team === 'away' ? prediction.expAway : prediction.total) : 2.5;
+                const target = prediction
+                    ? (team === 'home' ? prediction.expHome : team === 'away' ? prediction.expAway : prediction.total)
+                    : 2.5;
                 let closest = options[0];
                 let minDiff = Math.abs(options[0] - target);
 
@@ -91,21 +120,13 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                 setValue(closest);
             }
         }
-    }, [stat, team, prediction, existingBet]);
+    }
 
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
     // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    useClickOutside(isOpen, dropdownRef, useCallback(() => setIsOpen(false), []));
 
     if (stat === 'main') {
         const getStyle = (val) => {
@@ -246,6 +267,21 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                     U
                 </button>
             </div>
+
+            {priceFor && stat !== 'main' && team === 'total' && (
+                <span
+                    className={`min-w-[42px] text-center px-1.5 py-1 rounded text-[11px] font-mono font-black tabular-nums ${
+                        currentPrice > 1
+                            ? 'bg-white/10 text-white'
+                            : 'text-zinc-600'
+                    }`}
+                    title={currentPrice > 1
+                        ? `Bookmaker price for ${option === 'O' ? 'over' : 'under'} ${value}`
+                        : 'No price captured for this line'}
+                >
+                    {currentPrice > 1 ? currentPrice.toFixed(2) : '—'}
+                </span>
+            )}
 
             <select
                 value={value || ''}

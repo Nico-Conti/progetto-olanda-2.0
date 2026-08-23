@@ -1,5 +1,9 @@
+import { VOLATILE_STATS, resolveStatKey } from './statistics.js';
+
 export const processData = (matches, statistic = 'corners') => {
     const teamStats = {};
+    // 'main' is a UI market, not a scraped column - it reads from goals.
+    const statKey = resolveStatKey(statistic);
 
     // Sort matches by giornata descending (newest first) to ensure "Last N" works correctly
     const sortedMatches = [...matches].sort((a, b) => b.giornata - a.giornata);
@@ -7,7 +11,7 @@ export const processData = (matches, statistic = 'corners') => {
     sortedMatches.forEach(match => {
         const homeTeam = match.squadre.home;
         const awayTeam = match.squadre.away;
-        const statObj = match.stats?.[statistic] || { home: 0, away: 0 };
+        const statObj = match.stats?.[statKey] || { home: 0, away: 0 };
         const cHome = Number(statObj.home);
         const cAway = Number(statObj.away);
         const total = cHome + cAway;
@@ -24,13 +28,13 @@ export const processData = (matches, statistic = 'corners') => {
         teamStats[homeTeam].home_for.push(cHome);
         teamStats[homeTeam].home_ag.push(cAway);
         teamStats[homeTeam].home_totals.push(total);
-        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
+        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, season: match.season ?? null, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
 
         // Away Team Stats
         teamStats[awayTeam].away_for.push(cAway);
         teamStats[awayTeam].away_ag.push(cHome);
         teamStats[awayTeam].away_totals.push(total);
-        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
+        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, season: match.season ?? null, tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date });
     });
 
     return teamStats;
@@ -45,7 +49,7 @@ export const getMedian = (list) => {
 
 export const getAvg = (list) => list.length > 0 ? list.reduce((a, b) => a + b, 0) / list.length : 0;
 
-export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards', 'offsides'];
+export { VOLATILE_STATS } from './statistics.js';
 
 export const getTrendData = (list, nGames) => {
     if (!list || list.length === 0) return { season: 0, recent: 0, diff: 0 };
@@ -143,13 +147,15 @@ export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMo
     if (aggregatorOverride) {
         aggregator = aggregatorOverride === 'median' ? getMedian : getAvg;
     } else {
-        aggregator = VOLATILE_STATS.includes(statType) ? getMedian : getAvg;
+        aggregator = VOLATILE_STATS.includes(resolveStatKey(statType)) ? getMedian : getAvg;
     }
 
     const getRelevant = (team, loc) => {
         // If useGeneralStats is true, we take ALL matches regardless of location
+        // Copy before sorting: sorting `all_matches` in place would mutate the
+        // caller's stats object (and the incremental backtest accumulator).
         let matches = useGeneralStats
-            ? stats[team].all_matches
+            ? [...stats[team].all_matches]
             : stats[team].all_matches.filter(m => m.location === loc);
 
         matches.sort((a, b) => b.giornata - a.giornata);
@@ -163,6 +169,17 @@ export const calculatePrediction = (home, away, stats, nGames = 5, useAdjustedMo
 
     const homeMatches = getRelevant(home, 'Home');
     const awayMatches = getRelevant(away, 'Away');
+
+    // A side with no matches in the relevant location has no rate, and zero is
+    // not one. `getAvg([])` returns 0, so without this a team that has only
+    // played at home is treated, as the away side, as generating and conceding
+    // nothing - halving the predicted total.
+    //
+    // That produced predictions like 3.3 shots on target where the league
+    // averages 8.7, and because the error is systematic and one-sided it looked
+    // like an enormous betting edge rather than a bug. Early season, when a team
+    // may genuinely have played only home games, is exactly when it bites.
+    if (!homeMatches.length || !awayMatches.length) return null;
 
     let hForList, hAgList, aForList, aAgList;
     let hFor, hAg, aFor, aAg;

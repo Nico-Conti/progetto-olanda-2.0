@@ -1,36 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import { STAT_OPTIONS } from '../utils/statistics';
+import SignalBadge from './SignalBadge';
+import DerivedBadge from './DerivedBadge';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const StatisticSelector = ({ value, onChange, className = "" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    const options = [
-        { value: 'main', label: 'Main' },
-        { value: 'corners', label: 'Corners' },
-        { value: 'goals', label: 'Goals' },
-        { value: 'shots', label: 'Shots' },
-        { value: 'shots_on_target', label: 'Shots on Target' },
-        { value: 'fouls', label: 'Fouls' },
-        { value: 'yellow_cards', label: 'Yellow Cards' },
-        { value: 'red_cards', label: 'Red Cards' },
-        { value: 'possession', label: 'Possession' },
-    ];
-
+    const options = STAT_OPTIONS;
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+    useClickOutside(isOpen, dropdownRef, useCallback(() => setIsOpen(false), []));
 
     const handleSelect = (optionValue) => {
         onChange({ target: { value: optionValue } }); // Mimic event object for compatibility
@@ -82,7 +64,11 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                                     : 'text-zinc-400 hover:bg-white/5 hover:text-white'}
                             `}
                         >
-                            {option.label}
+                            <span className="flex items-center gap-2">
+                                {option.label}
+                                <SignalBadge statistic={option.value} />
+                                <DerivedBadge statistic={option.value} />
+                            </span>
                             {value === option.value && (
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                             )}

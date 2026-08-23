@@ -1,7 +1,10 @@
+import argparse
 import os
 import sys
 import time
 import datetime
+
+import pytz
 
 # Add project root to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -10,8 +13,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from backend.scraper.driver import make_driver
-import time
-import datetime
+from backend.scraper.config import LEAGUES, LEAGUE_SLUGS, current_season, year_for_month_in_season
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -40,28 +42,28 @@ def setup_supabase_client():
 
 
 
-def parse_date(date_str, time_str):
-    # Diretta format example: "29.11. 20:00" or "01.12. 12:15"
-    # We need to add the current year or next year
+def parse_date(date_str, time_str, season):
+    """'29.11.' + '20:00' -> an aware datetime, with the year from `season`.
+
+    The year must come from the season, not from today. This previously guessed
+    with a "+/- 6 months from now" rule, which dated a season's August fixtures
+    to the wrong year on any scrape from February onwards - that is how 20
+    Serie A 2025/26 fixtures ended up carrying 2026 dates.
+    """
     try:
-        current_year = datetime.datetime.now().year
         day, month = map(int, date_str.strip('.').split('.'))
         hour, minute = map(int, time_str.split(':'))
-        
-        # Handle year rollover (e.g. scraping in Dec for Jan matches)
-        now = datetime.datetime.now()
-        year = current_year
-        if month < now.month and (now.month - month) > 6:
-             year += 1
-        elif month > now.month and (month - now.month) > 6:
-             year -= 1
-        
-        return datetime.datetime(year, month, day, hour, minute)
+
+        year = year_for_month_in_season(season, month)
+
+        naive_dt = datetime.datetime(year, month, day, hour, minute)
+        rome_tz = pytz.timezone('Europe/Rome')
+        return rome_tz.localize(naive_dt)
     except Exception as e:
         print(f"Error parsing date {date_str} {time_str}: {e}")
         return None
 
-def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
+def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtures"):
     print(f"Connecting to {url} ({scrape_type})...")
     driver.get(url)
     print("  -> Page loaded, waiting for content...")
@@ -171,7 +173,10 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                         home_team = None
                         away_team = None
                         match_date = None
-                        match_date = None
+                        # Must be reset per row: it is function-scoped, so a stale
+                        # value from an earlier row would be reused for a row that
+                        # has no time of its own.
+                        raw_time = None
                         status = "SCHEDULED"
                         if scrape_type == "results":
                              status = "PLAYED" # Default for results page
@@ -235,11 +240,11 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                             status = "POSTPONED"
 
                         # Validate time format to be sure if we found one
-                        if 'raw_time' in locals() and "." in raw_time and ":" in raw_time:
+                        if raw_time and "." in raw_time and ":" in raw_time:
                             if " " in raw_time:
                                 try:
                                     date_part, time_part = raw_time.split(" ")
-                                    match_date_obj = parse_date(date_part, time_part)
+                                    match_date_obj = parse_date(date_part, time_part, season)
                                     if match_date_obj:
                                         match_date = match_date_obj.isoformat()
                                 except:
@@ -256,7 +261,8 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                                 "match_date": match_date, # Can be None
                                 "giornata": current_round,
                                 "status": status,
-                                "league": league_name
+                                "league": league_name,
+                                "season": season,
                             })
                             print(f"  -> Scraped: {home_team} vs {away_team} ({status}, Date: {match_date})")
                     else:
@@ -290,7 +296,7 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                     # supabase-py .range(start, end) is 0-indexed inclusive? checking docs standard
                     # usually .range(0, 999) -> 1000 items
                     
-                    batch_res = supabase.table("fixtures").select("id, home_team, away_team, match_date, league, giornata").range(offset, offset + fetch_batch - 1).execute()
+                    batch_res = supabase.table("fixtures").select("id, home_team, away_team, match_date, league, giornata, season").range(offset, offset + fetch_batch - 1).execute()
                     batch_data = batch_res.data
                     
                     if not batch_data:
@@ -315,24 +321,22 @@ def scrape_league(driver, supabase, league_name, url, scrape_type="fixtures"):
                     a = normalize_team(f['away_team'])
                     # Giornata might be None or int
                     g = str(f.get('giornata', 0)) 
-                    key = f"{h}_{a}_{g}"
+                    # Season keeps the same fixture in different years apart
+                    key = f"{h}_{a}_{g}_{f.get('season')}"
                     existing_map[key] = f
                 
                 print(f"  -> Loaded {len(all_existing)} existing fixtures for comparison.")
                 
                 to_insert = []
                 updates_count = 0
-                
-                to_insert = []
-                updates_count = 0
-                
+
                 for f in fixtures:
                     # Normalize current fixture for lookup
                     h_curr = normalize_team(f['home_team'])
                     a_curr = normalize_team(f['away_team'])
                     g_curr = str(f.get('giornata', 0))
                     
-                    key = f"{h_curr}_{a_curr}_{g_curr}"
+                    key = f"{h_curr}_{a_curr}_{g_curr}_{f.get('season')}"
                     existing_record = existing_map.get(key)
                     
                     if not existing_record:
@@ -424,8 +428,6 @@ def get_next_fixtures(supabase):
     except Exception as e:
         print(f"Error fetching next fixtures: {e}")
 
-import argparse
-
 def scrape_fixtures():
     parser = argparse.ArgumentParser(description="Scrape fixtures for a specific league.")
     parser.add_argument("league", nargs="?", help="League to scrape (serieb, eredivisie, laliga)")
@@ -436,22 +438,16 @@ def scrape_fixtures():
         return
 
     leagues = [
-        {"name": "La Liga", "key": "laliga", "base_url": "https://www.diretta.it/calcio/spagna/laliga/"},
-        {"name": "Eredivisie", "key": "eredivisie", "base_url": "https://www.diretta.it/calcio/olanda/eredivisie/"},
-        {"name": "Serie B", "key": "serieb", "base_url": "https://www.diretta.it/calcio/italia/serie-b/"},
-        {"name": "Serie A", "key": "seriea", "base_url": "https://www.diretta.it/calcio/italia/serie-a/"},
-        {"name": "Bundesliga", "key": "bundesliga", "base_url": "https://www.diretta.it/calcio/germania/bundesliga/"},
-        {"name": "Ligue 1", "key": "ligue1", "base_url": "https://www.diretta.it/calcio/francia/ligue-1/"},
-        {"name": "Premier League", "key": "premier", "base_url": "https://www.diretta.it/calcio/inghilterra/premier-league/"},
-        {"name": "Eerste Divisie", "key": "eerstedivisie", "base_url": "https://www.diretta.it/calcio/olanda/eerste-divisie/"},
-        {"name": "Serie A Betano", "key": "betano", "base_url": "https://www.diretta.it/calcio/brasile/serie-a-betano/"}
+        {"name": cfg["name"], "key": slug, "base_url": cfg["base_url"]}
+        for slug, cfg in LEAGUES.items()
     ]
-    
+
     target_leagues = leagues
     if args.league:
-        target_leagues = [l for l in leagues if l["key"] == args.league.lower() or l["name"].lower() == args.league.lower()]
+        wanted = args.league.lower()
+        target_leagues = [l for l in leagues if l["key"] == wanted or l["name"].lower() == wanted]
         if not target_leagues:
-            print(f"League '{args.league}' not found. Available: {[l['key'] for l in leagues]}")
+            print(f"League '{args.league}' not found. Available: {LEAGUE_SLUGS}")
             return
 
     for league in target_leagues:
@@ -461,17 +457,20 @@ def scrape_fixtures():
              print("Failed to initialize driver. Skipping.")
              continue
 
+        season = current_season(league['key'])
+        print(f"    -> Season: {season}")
+
         # 1. Scrape Results (History)
         try:
              results_url = league['base_url'] + "risultati/"
-             scrape_league(driver, supabase, league['name'], results_url, scrape_type="results")
+             scrape_league(driver, supabase, league['name'], results_url, season, scrape_type="results")
         except Exception as e:
              print(f"Error scraping RESULTS for {league['name']}: {e}")
 
         # 2. Scrape Fixtures (Future)
         try:
              fixtures_url = league['base_url'] + "calendario/"
-             scrape_league(driver, supabase, league['name'], fixtures_url, scrape_type="fixtures")
+             scrape_league(driver, supabase, league['name'], fixtures_url, season, scrape_type="fixtures")
         except Exception as e:
              print(f"Error scraping FIXTURES for {league['name']}: {e}")
 

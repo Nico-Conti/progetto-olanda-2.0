@@ -1,0 +1,69 @@
+name: Odds Capture
+
+# Separate from scraper_cron.yml on purpose. That job drives Selenium against
+# diretta.it once a day and takes minutes per league. This one is a handful of
+# plain HTTP calls with no browser, and it has to run often rather than deeply:
+# bookmakers post foul and card markets only as kickoff approaches - measured
+# across a full matchday, every Serie A fixture kicking off that day carried
+# them while none of the next day's did - so a nightly sweep captures none of
+# the markets this project most wants.
+#
+# Odds history is also the one asset here that cannot be backfilled. A missed
+# window is gone permanently, unlike match statistics which can be re-scraped.
+
+on:
+  schedule:
+    # Every 3 hours. Enough to build a price path into kickoff without
+    # re-reading numbers that have not moved.
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      within:
+        description: 'Only fixtures kicking off within this many hours'
+        required: false
+        default: '72'
+      dry_run:
+        description: 'Capture but do not write to the database'
+        required: false
+        type: boolean
+        default: false
+
+# A late run is worse than no run here, and two concurrent runs would just
+# duplicate snapshots at the same timestamp.
+concurrency:
+  group: odds-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        # No browser needed - the odds come from a JSON API, so this is just
+        # requests + dotenv rather than the scraper's Selenium stack.
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests python-dotenv
+
+      - name: Capture odds
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          WITHIN: ${{ github.event.inputs.within || '72' }}
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m backend.odds.domusbet --capture --within "$WITHIN"
+          else
+            python -m backend.odds.domusbet --capture --within "$WITHIN" --write
+          fi

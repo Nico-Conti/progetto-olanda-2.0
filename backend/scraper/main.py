@@ -17,14 +17,14 @@ if backend_dir not in sys.path:
 from backend.services.gemini_analyzer import analyze_match_comments
 from backend.services.supabase_syncer import sync_matches_to_supabase, fetch_existing_urls
 
-from .config import LEAGUE_URLS
+from .config import LEAGUE_SLUGS, current_season, season_results_url
 from .driver import make_driver
 from .url_collector import fetch_match_urls
 from .match_details import scrape_match_details
 
 def main():
     parser = argparse.ArgumentParser(description="Scrape match data for Eredivisie, La Liga, or Serie B.")
-    parser.add_argument("league", nargs="?", default="eredivisie", choices=["eredivisie", "laliga", "serieb", "seriea", "bundesliga", "ligue1", "premier", "eerstedivisie", "betano"], help="League to scrape")
+    parser.add_argument("league", nargs="?", default="eredivisie", choices=LEAGUE_SLUGS, help="League to scrape")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of matches to scrape")
     parser.add_argument("--skip-analysis", action="store_true", help="Skip Gemini analysis")
     parser.add_argument("--skip-sync", action="store_true", help="Skip syncing to Supabase")
@@ -33,17 +33,21 @@ def main():
     parser.add_argument("--match-urls", nargs="+", help="List of specific match URLs to scrape (ignores league/limit settings)")
 
     parser.add_argument("--batch-size", type=int, default=30, help="Restart browser and sync every N matches (default: 30)")
+    parser.add_argument("--season", help="Season to scrape, e.g. 2025/2026 (default: the one in progress)")
 
     args = parser.parse_args()
     
     league_name = args.league
-    target_url = LEAGUE_URLS[league_name]
+    season = args.season or current_season(league_name)
+    # A finished season lives under its archive URL; the season in progress is
+    # at the plain league URL.
+    target_url = season_results_url(league_name, season)
     
     # Serie B specific logic
     is_serieb = league_name == "serieb" or league_name == "eerstedivisie"
     skip_comments = is_serieb
     
-    print(f"--- Starting Scraper for {league_name.upper()} ---")
+    print(f"--- Starting Scraper for {league_name.upper()} ({season}) ---")
     if is_serieb:
         print("    -> Serie B/Eerste detected: Skipping comment scraping.")
 
@@ -63,7 +67,7 @@ def main():
             # and it's required for the data structure.
             all_games_meta = [{'url': url, 'giornata': 'Giornata 999'} for url in args.match_urls]
         else:
-            all_games_meta = fetch_match_urls(driver, target_url, last_round_only=args.last_round)
+            all_games_meta = fetch_match_urls(driver, target_url, last_round_only=args.last_round, season=season)
             print(f"\nFound {len(all_games_meta)} matches.")
         
         print("\n--- STEP 2: Scraping Details ---")
@@ -82,7 +86,7 @@ def main():
                 # Sync current batch if not skipping
                 if not args.skip_sync and current_batch:
                     print(f"    -> Syncing batch of {len(current_batch)} matches to Supabase...")
-                    sync_matches_to_supabase(data_list=current_batch)
+                    sync_matches_to_supabase(data_list=current_batch, season=season)
                     current_batch = [] # Clear batch after sync
                 
                 print("    -> Restarting browser to free resources...")
@@ -110,7 +114,10 @@ def main():
             if details:
                 details['giornata'] = game['giornata']
                 details['url'] = game['url']
+                if game.get('match_date'):
+                    details['match_date'] = game['match_date']
                 details['league'] = league_name # Add league field for clarity
+                details['season'] = season
                 
                 # --- GEMINI ANALYSIS ---
                 # Skip analysis for Serie B if comments are missing, or if explicitly skipped
@@ -135,7 +142,7 @@ def main():
         # Sync any remaining matches in the final batch
         if not args.skip_sync and current_batch:
             print(f"\n--- Syncing final batch of {len(current_batch)} matches ---")
-            sync_matches_to_supabase(data_list=current_batch)
+            sync_matches_to_supabase(data_list=current_batch, season=season)
         
         # Handle file dump if sync was skipped
         if args.skip_sync and all_games_full_data:

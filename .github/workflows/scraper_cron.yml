@@ -53,8 +53,8 @@ jobs:
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
-        # Define defaults
-        LEAGUES="eredivisie laliga serieb seriea bundesliga ligue1 premier eerstedivisie betano"
+        # Single source of truth: backend/scraper/config.py
+        LEAGUES=$(python -c "from backend.scraper.config import LEAGUE_SLUGS; print(' '.join(LEAGUE_SLUGS))")
         
         # Build arguments based on inputs/events
         COMMON_ARGS=""
@@ -86,6 +86,14 @@ jobs:
 
         echo "Leagues to process: $LEAGUES"
         echo "Common Args: $COMMON_ARGS"
+
+        # Fixtures first: the predictor needs upcoming matches, and this is
+        # cheap (one calendar page per league) compared to the results scrape.
+        # Failures here must not stop the results run.
+        for LEAGUE in $LEAGUES; do
+          echo "--- Fixtures for [$LEAGUE] ---"
+          python -m backend.secondary_scrapers.fixtures_scraper "$LEAGUE" || echo "::warning::Fixtures scrape failed for $LEAGUE"
+        done
 
         # Loop through leagues
         FAILURES=0

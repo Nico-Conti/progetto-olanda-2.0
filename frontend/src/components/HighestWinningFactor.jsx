@@ -3,41 +3,7 @@ import Header from './Header';
 import ConfigurationPanel from './highest-winning-factor/ConfigurationPanel';
 import ResultsList from './highest-winning-factor/ResultsList';
 import { processData } from '../utils/stats';
-
-const STAT_CONFIG = {
-    corners: {
-        total: { default: 9.5, step: 1, options: [7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5] },
-        individual: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5, 7.5] }
-    },
-    goals: {
-        total: { default: 2.5, step: 1, options: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5] },
-        individual: { default: 1.5, step: 1, options: [0.5, 1.5, 2.5, 3.5] }
-    },
-    shots: {
-        total: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
-        individual: { default: 12.5, step: 1, options: [9.5, 10.5, 11.5, 12.5, 13.5, 14.5] }
-    },
-    shots_on_target: {
-        total: { default: 8.5, step: 1, options: [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] },
-        individual: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] }
-    },
-    fouls: {
-        total: { default: 24.5, step: 1, options: [20.5, 22.5, 24.5, 26.5, 28.5, 30.5] },
-        individual: { default: 11.5, step: 1, options: [9.5, 10.5, 11.5, 12.5, 13.5] }
-    },
-    yellow_cards: {
-        total: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] },
-        individual: { default: 1.5, step: 1, options: [0.5, 1.5, 2.5, 3.5] }
-    },
-    red_cards: {
-        total: { default: 0.5, step: 0.5, options: [0.5] },
-        individual: { default: 0.5, step: 0.5, options: [0.5] }
-    },
-    possession: {
-        total: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] },
-        individual: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] }
-    },
-};
+import { STAT_CONFIG } from '../utils/statistics';
 
 import StatisticSelector from './StatisticSelector';
 
@@ -194,8 +160,6 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                             availableLeagues={availableLeagues}
                             analysisMode={analysisMode}
                             setAnalysisMode={setAnalysisMode}
-                            selectedStatistic={selectedStatistic}
-                            setSelectedStatistic={setSelectedStatistic}
                             operator={operator}
                             setOperator={setOperator}
                             threshold={threshold}

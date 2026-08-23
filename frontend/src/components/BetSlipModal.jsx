@@ -1,7 +1,30 @@
 import React from 'react';
 import { X, Trash2, Printer, Trophy } from 'lucide-react';
+import { useMemo } from 'react';
 
-const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear }) => {
+const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor }) => {
+    /**
+     * The accumulator: every selection must land, so the payout multiplies.
+     *
+     * Priced only when every leg has a real bookmaker price. A partial product
+     * would understate the return and read as if it were the whole slip, which
+     * is worse than showing nothing - so legs without a price are counted and
+     * reported instead.
+     */
+    const combined = useMemo(() => {
+        if (!bets?.length || !priceFor) return null;
+        let multiplier = 1;
+        let priced = 0;
+        for (const bet of bets) {
+            const price = priceFor(bet);
+            if (price > 1) {
+                multiplier *= price;
+                priced++;
+            }
+        }
+        return { multiplier, priced, total: bets.length };
+    }, [bets, priceFor]);
+
     if (!isOpen) return null;
 
     const handlePrint = () => {
@@ -91,6 +114,13 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear }) => {
                                             <span className="selection text-emerald-400 font-mono font-bold text-sm">
                                                 {bet.stat === 'main' ? bet.value : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`}
                                             </span>
+                                            {priceFor && (
+                                                priceFor(bet) > 1
+                                                    ? <span className="font-mono font-black text-sm text-white bg-white/10 px-1.5 py-0.5 rounded">
+                                                        {priceFor(bet).toFixed(2)}
+                                                    </span>
+                                                    : <span className="text-[10px] uppercase font-bold text-zinc-600">no price</span>
+                                            )}
                                         </div>
                                     </div>
                                     <button
@@ -105,6 +135,32 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Combined odds for the slip as an accumulator. */}
+                {combined && combined.priced > 0 && (
+                    <div className="px-4 py-3 border-t border-white/10 bg-emerald-500/5">
+                        <div className="flex items-baseline justify-between">
+                            <div>
+                                <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                                    Combined odds
+                                </div>
+                                <div className="text-[10px] text-zinc-500 mt-0.5">
+                                    {combined.priced === combined.total
+                                        ? `all ${combined.total} selections priced`
+                                        : `${combined.priced} of ${combined.total} priced — the rest have no odds stored`}
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-2xl font-black text-emerald-400 font-mono tabular-nums">
+                                    {combined.multiplier.toFixed(2)}
+                                </div>
+                                <div className="text-[10px] text-zinc-500">
+                                    €10 returns €{(10 * combined.multiplier).toFixed(2)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div className="p-4 border-t border-white/10 bg-zinc-950/50 flex gap-3">

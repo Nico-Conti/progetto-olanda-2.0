@@ -3,10 +3,18 @@ import json
 import requests
 from dotenv import load_dotenv
 
-def normalize_key(home, away, giornata):
+from backend.scraper.config import LEAGUE_NAMES, resolve_league_name
+
+def normalize_key(home, away, giornata, season=None):
     """
-    Creates a normalized key for matching: "home_away_giornata"
-    Example: "nijmegen_sparta_rotterdam_14"
+    Creates a normalized key for matching: "home_away_giornata[_season]"
+    Example: "nijmegen_sparta_rotterdam_14_2025/2026"
+
+    The season is part of the key because the same fixture recurs every year:
+    without it, next season's matchday-1 Inter vs Monza collides with last
+    season's. This is the fallback path - matching on `url` is tried first and
+    is already unique across seasons - but it is exactly the path that runs for
+    rows with no URL.
     """
     h = home.lower().replace(" ", "_").strip()
     a = away.lower().replace(" ", "_").strip()
@@ -14,7 +22,8 @@ def normalize_key(home, away, giornata):
     # Handle "Giornata 14" -> "14"
     g_str = str(giornata).lower().replace("giornata", "").strip()
     
-    return f"{h}_{a}_{g_str}"
+    key = f"{h}_{a}_{g_str}"
+    return f"{key}_{season}" if season else key
 
 def parse_giornata(giornata_str):
     """Parses 'Giornata 14' to 14 (int)."""
@@ -141,9 +150,19 @@ def build_stats_payload(local_match):
     if local_match.get("url"):
         payload["url"] = local_match.get("url")
 
+    # 5. Kick-off time, read off the results list row by url_collector.
+    if local_match.get("match_date"):
+        payload["match_date"] = local_match.get("match_date")
+
     return payload
 
-def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, filters=""):
+# PostgREST caps a single response (db-max-rows, 1000 on Supabase by default),
+# so a page can come back smaller than asked for even when more rows exist.
+PAGE_SIZE = 1000
+MAX_ROWS = 200000  # safety stop, so a paging bug cannot loop forever
+
+
+def fetch_all_records(base_url, table, headers, select="*", batch_size=PAGE_SIZE, filters=""):
     """
     Fetches ALL records from a Supabase table using pagination (offset/limit).
     Can optionaly accept a query string 'filters' (e.g. "&league=eq.Serie A")
@@ -160,18 +179,21 @@ def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, fil
             resp.raise_for_status()
             
             data = resp.json()
+            # An empty page is the only reliable end signal. Comparing the page
+            # size against batch_size is not: the server silently truncates to
+            # its own cap, which used to end this loop after the first 1000 rows.
             if not data:
                 break
             
             all_data.extend(data)
-            # Optional: print progress for large datasets
-            if offset % 20000 == 0 and offset > 0:
+            if offset and offset % 20000 == 0:
                 print(f"   ... loaded {len(all_data)} records so far")
 
-            if len(data) < batch_size:
+            offset += len(data)
+
+            if len(all_data) >= MAX_ROWS:
+                print(f"⚠️  Stopping at {len(all_data)} records (MAX_ROWS)")
                 break
-            
-            offset += batch_size
             
         except Exception as e:
             print(f"❌ Error fetching batch at offset {offset}: {e}")
@@ -180,9 +202,12 @@ def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, fil
 
     return all_data
 
-def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
+def sync_matches_to_supabase(json_path="matches_data.json", data_list=None, season=None):
     """
     Reads a local JSON file OR uses a provided list and syncs match data to Supabase.
+
+    `season` tags every row written in this run (e.g. "2025/2026"). Individual
+    matches may carry their own "season" key, which wins.
     """
     load_dotenv()
     
@@ -233,7 +258,7 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
         u = match.get("url", "")
         
         if h and a and g:
-            k = normalize_key(h, a, g)
+            k = normalize_key(h, a, g, match.get("season"))
             db_lookup[k] = match["id"]
         
         if u:
@@ -253,10 +278,13 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
         match_url = local_match.get("url")
         gemini_analysis = local_match.get("gemini_analysis")
 
-        key = normalize_key(h, a, g)
+        match_season = local_match.get("season") or season
+        key = normalize_key(h, a, g, match_season)
 
         # Prepare base payload
         payload = build_stats_payload(local_match)
+        if match_season:
+            payload["season"] = match_season
 
         match_id = None
         
@@ -297,44 +325,17 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
                 skipped_count += 1
                 continue
             
-            # Infer league from payload/filename
-            league = "Eredivisie" # Default to Title Case
-            
-            # 1. Try to get from JSON
-            raw_league = local_match.get("league", "")
-            
-            # Map of raw keys/slugs to Title Case
-            league_map = {
-                "seriea": "Serie A",
-                "serieb": "Serie B",
-                "laliga": "La Liga",
-                "eredivisie": "Eredivisie",
-                "bundesliga": "Bundesliga",
-                "ligue1": "Ligue 1",
-                "premier": "Premier League",
-                "eerstedivisie": "Eerste Divisie",
-                "betano": "Serie A Betano"
-            }
-            
-            # Check JSON field first
-            if raw_league and raw_league.lower() in league_map:
-                league = league_map[raw_league.lower()]
-            
-            # Fallback to filename check if JSON didn't give a known league
-            elif "laliga" in json_path.lower():
-                league = "La Liga"
-            elif "serieb" in json_path.lower():
-                league = "Serie B"
-            elif "seriea" in json_path.lower():
-                league = "Serie A"
-            elif "bundesliga" in json_path.lower():
-                league = "Bundesliga"
-            elif "ligue1" in json_path.lower():
-                league = "Ligue 1"
-            elif "premier" in json_path.lower():
-                league = "Premier League"
-            
-            payload["league"] = league
+            # Infer league from payload, falling back to the source filename.
+            league = resolve_league_name(local_match.get("league"))
+
+            if not league:
+                haystack = json_path.lower()
+                for slug, name in LEAGUE_NAMES.items():
+                    if slug in haystack:
+                        league = name
+                        break
+
+            payload["league"] = league or "Eredivisie"
             
             try:
                 post_url = f"{url}/rest/v1/matches"
@@ -351,70 +352,6 @@ def sync_matches_to_supabase(json_path="matches_data.json", data_list=None):
 
     print(f"Updated: {updated_count}")
     print(f"Skipped: {skipped_count}")
-
-def fetch_existing_urls():
-    """
-    Fetches all match URLs currently in Supabase.
-    Returns a set of URLs.
-    """
-    load_dotenv()
-    
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_KEY")
-
-    if not url or not key:
-        print("❌ Error: Missing SUPABASE_URL or SUPABASE_KEY in .env")
-        return set()
-
-    headers = {
-        "apikey": key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-    }
-
-def fetch_all_records(base_url, table, headers, select="*", batch_size=5000, filters=""):
-    """
-    Fetches ALL records from a Supabase table using pagination (offset/limit).
-    Can optionaly accept a query string 'filters' (e.g. "&league=eq.Serie A")
-    """
-    all_data = []
-    offset = 0
-    print(f"⏳ Fetching all records from '{table}' (Batch size: {batch_size}, Filters: '{filters}')...")
-    
-    while True:
-        try:
-            # Construct URL with limit and offset
-            req_url = f"{base_url}/rest/v1/{table}?select={select}&limit={batch_size}&offset={offset}{filters}"
-            resp = requests.get(req_url, headers=headers)
-            resp.raise_for_status()
-            
-            data = resp.json()
-            if not data:
-                break
-            
-            all_data.extend(data)
-            # Optional: print progress for large datasets
-            if offset % 20000 == 0 and offset > 0:
-                print(f"   ... loaded {len(all_data)} records so far")
-
-            if len(data) < batch_size:
-                break
-            
-            offset += batch_size
-            
-        except Exception as e:
-            print(f"❌ Error fetching batch at offset {offset}: {e}")
-            # If a batch fails, we probably should stop or retry. For now, stopping to avoid endless loops.
-            break
-
-    return all_data
-
-# ... (sync_matches_to_supabase removed from snippet for brevity of tool call as it wasn't modified in plan, 
-#      but we need to be careful with line numbers. The replace block targets lines 339-355 which is fetch_existing_urls)
-# Wait, I need to update fetch_all_records signature as well which is lines 145+.
-# This tool call only supports contiguous edits. I'll split this into two calls or use multi_replace.
-# Using multi_replace is safer for non-contiguous edits in the same file.
 
 def fetch_existing_urls(league_slug=None):
     """
@@ -441,18 +378,7 @@ def fetch_existing_urls(league_slug=None):
     # Map slug to DB League Name
     filters = ""
     if league_slug:
-        league_map = {
-            "seriea": "Serie A",
-            "serieb": "Serie B",
-            "laliga": "La Liga",
-            "eredivisie": "Eredivisie",
-            "bundesliga": "Bundesliga",
-            "ligue1": "Ligue 1",
-            "premier": "Premier League",
-            "eerstedivisie": "Eerste Divisie",
-            "betano": "Serie A Betano"
-        }
-        db_league = league_map.get(league_slug.lower())
+        db_league = resolve_league_name(league_slug)
         if db_league:
             # URL encode the space if needed, but requests usually handles it.
             # Supabase postgrest format: &col=eq.val

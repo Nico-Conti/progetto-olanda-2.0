@@ -3,26 +3,12 @@ import { Calculator, ChevronDown, Plus, Minus } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import Select from '../ui/Select';
 
-
-const STAT_OPTIONS = [
-    { value: 'corners', label: 'Corners' },
-    { value: 'goals', label: 'Goals' },
-    { value: 'shots', label: 'Shots' },
-    { value: 'shots_on_target', label: 'Shots on Target' },
-    { value: 'fouls', label: 'Fouls' },
-    { value: 'yellow_cards', label: 'Yellow Cards' },
-    { value: 'red_cards', label: 'Red Cards' },
-    { value: 'possession', label: 'Possession' },
-];
-
 const ConfigurationPanel = ({
     selectedLeague,
     setSelectedLeague,
     availableLeagues,
     analysisMode,
     setAnalysisMode,
-    selectedStatistic,
-    setSelectedStatistic,
     operator,
     setOperator,
     threshold,

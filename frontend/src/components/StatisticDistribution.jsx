@@ -1,15 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, BarChart2, TrendingUp, X } from 'lucide-react';
+import { getStatLabel } from '../utils/statistics';
 
-const STAT_OPTIONS = [
-    { value: 'goals', label: 'Goals' },
-    { value: 'corners', label: 'Corners' },
-    { value: 'shots', label: 'Shots' },
-    { value: 'shots_on_target', label: 'Shots on Target' },
-    { value: 'fouls', label: 'Fouls' },
-    { value: 'yellow_cards', label: 'Yellow Cards' },
-    { value: 'red_cards', label: 'Red Cards' },
+// Deliberately narrower than the full registry: a possession histogram is not
+// meaningful, so that option is left out here.
+const DISTRIBUTION_STATS = [
+    'goals', 'corners', 'shots', 'shots_on_target', 'fouls', 'yellow_cards', 'red_cards',
 ];
+const STAT_OPTIONS = DISTRIBUTION_STATS.map(value => ({ value, label: getStatLabel(value) }));
 
 const StatisticDistribution = ({ matches, onClose }) => {
     const [selectedStat, setSelectedStat] = useState('goals');

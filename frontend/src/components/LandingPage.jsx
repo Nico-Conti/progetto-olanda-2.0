@@ -2,8 +2,28 @@ import React from 'react';
 import { Flame, Trophy, ArrowRight, Zap, X, List, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import ToggleSwitch from './ui/ToggleSwitch';
 
+const PARTICLE_COUNT = 12;
+
+/**
+ * Randomised offsets/timings for the hover particle effects.
+ *
+ * Generated once per mount rather than inline in the JSX: calling Math.random()
+ * during render reshuffles every particle on each re-render, which restarts the
+ * CSS animations mid-flight.
+ */
+const makeParticles = (spread, withRotation) =>
+    Array.from({ length: PARTICLE_COUNT }, () => ({
+        tx: `${(Math.random() - 0.5) * spread}px`,
+        rot: withRotation ? `${(Math.random() - 0.5) * 60}deg` : undefined,
+        delay: `${Math.random() * 0.5}s`,
+        duration: `${0.8 + Math.random() * 0.5}s`,
+        left: `${30 + Math.random() * 40}%`,
+    }));
+
 const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimationEnabled, onToggleAnimation, onOpenTopCorners, onOpenHighestWinningFactor, onOpenSafestBets }) => {
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
+    const [fireParticles] = React.useState(() => makeParticles(100, false));
+    const [lightningParticles] = React.useState(() => makeParticles(150, true));
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden pointer-events-none">
@@ -139,15 +159,15 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                         >
                             {/* Fire Effect */}
                             <div className="absolute inset-x-0 -top-10 bottom-0 pointer-events-none overflow-visible">
-                                {[...Array(12)].map((_, i) => (
+                                {fireParticles.map((p, i) => (
                                     <div
                                         key={i}
                                         className="fire-particle w-8 h-8"
                                         style={{
-                                            '--tx': `${(Math.random() - 0.5) * 100}px`,
-                                            animationDelay: `${Math.random() * 0.5}s`,
-                                            animationDuration: `${0.8 + Math.random() * 0.5}s`,
-                                            left: `${30 + Math.random() * 40}%`
+                                            '--tx': p.tx,
+                                            animationDelay: p.delay,
+                                            animationDuration: p.duration,
+                                            left: p.left
                                         }}
                                     />
                                 ))}
@@ -174,18 +194,18 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                         >
                             {/* Lightning Effect */}
                             <div className="absolute inset-x-0 -top-10 bottom-0 pointer-events-none overflow-visible">
-                                {[...Array(12)].map((_, i) => (
+                                {lightningParticles.map((p, i) => (
                                     <svg
                                         key={i}
                                         className="lightning-bolt w-8 h-8 text-purple-400"
                                         viewBox="0 0 24 24"
                                         fill="currentColor"
                                         style={{
-                                            '--tx': `${(Math.random() - 0.5) * 150}px`,
-                                            '--rot': `${(Math.random() - 0.5) * 60}deg`,
-                                            animationDelay: `${Math.random() * 0.5}s`,
-                                            animationDuration: `${0.8 + Math.random() * 0.5}s`,
-                                            left: `${30 + Math.random() * 40}%`
+                                            '--tx': p.tx,
+                                            '--rot': p.rot,
+                                            animationDelay: p.delay,
+                                            animationDuration: p.duration,
+                                            left: p.left
                                         }}
                                     >
                                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />

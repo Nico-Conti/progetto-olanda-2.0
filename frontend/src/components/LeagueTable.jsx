@@ -2,8 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { Trophy, TrendingUp, TrendingDown, Minus, Filter } from 'lucide-react';
 import { processData } from '../utils/stats';
 
-const LeagueTable = ({ matchData, teamLogos, onTeamClick, leagueLogo, selectedStatistic = 'goals' }) => {
-    const [showFilters, setShowFilters] = useState(false);
+const LeagueTable = ({
+    matchData,
+    teamLogos,
+    onTeamClick,
+    leagueLogo,
+    selectedStatistic = 'goals',
+    season = null,
+    latestSeason = null,
+}) => {
     const [limit, setLimit] = useState('all');
     const [location, setLocation] = useState('all');
 
@@ -100,7 +107,7 @@ const LeagueTable = ({ matchData, teamLogos, onTeamClick, leagueLogo, selectedSt
         try {
             const date = new Date(dateStr);
             return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
-        } catch (e) {
+        } catch {
             return dateStr;
         }
     };
@@ -118,11 +125,15 @@ const LeagueTable = ({ matchData, teamLogos, onTeamClick, leagueLogo, selectedSt
                     )}
                     <div>
                         <h2 className="text-lg font-bold text-white">League Standings</h2>
-                        <p className="text-zinc-400 text-xs mt-0.5">Current Season Performance ({selectedStatistic})</p>
+                        <p className="text-zinc-400 text-xs mt-0.5">
+                            {season && season !== latestSeason
+                                ? `${season} final table`
+                                : 'Current Season Performance'} ({selectedStatistic})
+                        </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6 animate-in fade-in slide-in-from-right-4">
+                <div className="flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-right-4">
                     {/* Games Filter */}
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sample:</span>
@@ -172,6 +183,17 @@ const LeagueTable = ({ matchData, teamLogos, onTeamClick, leagueLogo, selectedSt
                 </div>
             </div>
 
+            {tableData.length === 0 ? (
+                <div className="p-10 text-center">
+                    <p className="text-zinc-300 text-sm font-bold">
+                        No matches played yet in {season || 'this season'}
+                    </p>
+                    <p className="text-zinc-500 text-xs mt-2 max-w-sm mx-auto">
+                        The table fills in as results come in. Pick an earlier season
+                        above to see a finished one.
+                    </p>
+                </div>
+            ) : (
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-zinc-950/50 text-xs font-bold text-zinc-500 uppercase tracking-wider border-b border-white/5">
@@ -261,6 +283,7 @@ const LeagueTable = ({ matchData, teamLogos, onTeamClick, leagueLogo, selectedSt
                     </tbody>
                 </table>
             </div>
+            )}
         </div>
     );
 };

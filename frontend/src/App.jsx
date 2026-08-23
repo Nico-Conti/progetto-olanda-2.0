@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, TrendingUp, Calculator, Trophy, Menu, X, Home } from 'lucide-react';
+import { TrendingUp, Calculator, Trophy, Home, ListOrdered } from 'lucide-react';
 import LeagueTrends from './components/LeagueTrends';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -10,6 +10,9 @@ import TransitionAnimation from './components/TransitionAnimation';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
+import { seasonsForLeague, latestSeasonForLeague, modelSeasonsForLeague } from './utils/seasons';
+import { usePredictionEngine } from './hooks/usePredictionEngine';
+import { useOdds } from './hooks/useOdds';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
 import ToggleSwitch from './components/ui/ToggleSwitch';
@@ -17,12 +20,29 @@ import BetSlipModal from './components/BetSlipModal';
 import Header from './components/Header';
 import TeamDetails from './components/TeamDetails';
 import LeagueTable from './components/LeagueTable';
+import SeasonResults from './components/SeasonResults';
+import Select from './components/ui/Select';
+const STANDINGS_VIEWS = [
+  { id: 'table', label: 'Table', Icon: Trophy },
+  { id: 'results', label: 'Results', Icon: ListOrdered },
+];
+
+const TABS = [
+  { id: 'trends', label: 'Trends', Icon: TrendingUp },
+  { id: 'predictor', label: 'Predictor', Icon: Calculator },
+  { id: 'standings', label: 'Standings', Icon: Trophy },
+];
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('trends');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const [view, setView] = useState('landing'); // 'landing', 'dashboard', 'hot-matches'
+  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | safest-bets | highest-winning-factor
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
-  const { matchData, fixturesData, teamLogos, leagues, loading, refetch } = useMatchData();
+  // Standings-only: null follows the league's current season, a label pins to
+  // a past one. Trends and the Predictor always stay on the current season.
+  const [standingsSeason, setStandingsSeason] = useState(null);
+  const [standingsView, setStandingsView] = useState('table');
+  const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
   const [previousTab, setPreviousTab] = useState('trends');
 
@@ -41,7 +61,6 @@ export default function App() {
   // Bet Slip State
   const [bets, setBets] = useState([]);
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const addToBet = (game, option, value, stat, team = 'total') => {
     setBets(prev => {
@@ -125,39 +144,113 @@ export default function App() {
     return Array.from(leagues).sort();
   }, [matchData]);
 
-  // Filter data based on selection
+  // Seasons available for the league in view, newest first
+  const availableSeasons = useMemo(
+    () => seasonsForLeague([...matchData, ...fixturesData], selectedLeague),
+    [matchData, fixturesData, selectedLeague]
+  );
+
+  // The season in progress for this league - what the dashboard shows by default
+  const latestSeason = useMemo(
+    () => latestSeasonForLeague(matchData, fixturesData, selectedLeague),
+    [matchData, fixturesData, selectedLeague]
+  );
+
+  // The newest season this league actually has *results* for. Between seasons
+  // these differ: fixtures for 2026/27 exist from the day the calendar is
+  // published, but no match has been played, so anything that looks backwards
+  // must fall back to the last season that has data or it renders empty.
+  const latestResultSeason = useMemo(
+    () => seasonsForLeague(matchData, selectedLeague)[0] ?? latestSeason,
+    [matchData, selectedLeague, latestSeason]
+  );
+
+  // Standings default to the season in progress, and offer the earlier ones in
+  // the dropdown. A pinned season only applies while it exists for the league in
+  // view; switching leagues otherwise strands you on a season it never played.
+  const activeStandingsSeason = (standingsSeason && availableSeasons.includes(standingsSeason))
+    ? standingsSeason
+    : latestSeason;
+
+  // Trends and team details look backwards, so they use the latest season with
+  // results. Season matters as much as league here: without it, two seasons of
+  // results blend into one table and one set of team form.
   const filteredMatchData = useMemo(() => {
     if (!selectedLeague) return [];
-    return matchData.filter(m => m.league === selectedLeague || !m.league); // !m.league fallback for old data
-  }, [matchData, selectedLeague]);
+    return matchData.filter(m =>
+      (m.league === selectedLeague || !m.league) &&
+      (!latestResultSeason || !m.season || m.season === latestResultSeason)
+    );
+  }, [matchData, selectedLeague, latestResultSeason]);
+
+  // The Predictor sees the season being played AND the one before it. That
+  // carry-over used to be excluded on purpose, on the reasoning that last
+  // year's form would pollute this year's. Measured over 30,037 matches it is
+  // the reverse: recency decay weights the old season lightly, and without it
+  // the model has nothing at all to work from until about matchday five. In the
+  // opening 30 days of a season carrying it over raises coverage from ~54% to
+  // ~85% and accuracy with it. See docs/prediction-model.md section 10.
+  const predictorMatchData = useMemo(() => {
+    if (!selectedLeague) return [];
+    const seasons = modelSeasonsForLeague(matchData, fixturesData, selectedLeague);
+    return matchData.filter(m =>
+      m.league === selectedLeague && (!m.season || seasons.has(m.season))
+    );
+  }, [matchData, fixturesData, selectedLeague]);
+
+  // Standings can look back at any season of the same league.
+  const standingsMatchData = useMemo(() => {
+    if (!selectedLeague) return [];
+    return matchData.filter(m =>
+      m.league === selectedLeague && m.season === activeStandingsSeason
+    );
+  }, [matchData, selectedLeague, activeStandingsSeason]);
 
   const filteredFixtures = useMemo(() => {
     if (!selectedLeague) return [];
-    // Fixtures might not have league column yet? Assuming they do or we filter by team names present in matchData
-    // For now, let's assume fixtures also have league or we just show all if we can't filter easily.
-    // Ideally fixtures table should have league column.
-    return fixturesData;
-  }, [fixturesData, selectedLeague]);
+    // League as well as season. This used to return every fixture in the DB;
+    // it only looked correct because predictions came back null for teams
+    // outside the selected league and those rows were dropped further down.
+    return fixturesData.filter(f =>
+      f.league === selectedLeague &&
+      (!latestSeason || !f.season || f.season === latestSeason)
+    );
+  }, [fixturesData, selectedLeague, latestSeason]);
+
+  // Cross-league views (Hot Matches / Safest Bets) model the same two seasons
+  // per league as the Predictor, for the same reason - and per league, since
+  // Brazil's calendar season turns over at a different time from everyone else's.
+  const currentSeasonMatchData = useMemo(() => {
+    const seasonsByLeague = {};
+    [...new Set(matchData.map(m => m.league).filter(Boolean))].forEach(lg => {
+      seasonsByLeague[lg] = modelSeasonsForLeague(matchData, fixturesData, lg);
+    });
+    return matchData.filter(m => !m.season || seasonsByLeague[m.league]?.has(m.season));
+  }, [matchData, fixturesData]);
+
+  const currentSeasonFixtures = useMemo(() => {
+    const latestByLeague = {};
+    [...new Set(fixturesData.map(f => f.league).filter(Boolean))].forEach(lg => {
+      latestByLeague[lg] = latestSeasonForLeague(matchData, fixturesData, lg);
+    });
+    return fixturesData.filter(f => !f.season || f.season === latestByLeague[f.league]);
+  }, [matchData, fixturesData]);
+
+  // Which prediction engine is running. Persisted, and defaulting to the
+  // measured `classic` model - a new engine is opted into, never imposed.
+  const { engine, setEngine } = usePredictionEngine();
+  // Bookmaker prices, if any have been captured. Optional throughout.
+  const { priceFor, priceForBet } = useOdds();
 
   const stats = useMemo(() => processData(filteredMatchData, selectedStatistic), [filteredMatchData, selectedStatistic]);
-  const allStats = useMemo(() => processData(matchData, selectedStatistic), [matchData, selectedStatistic]);
+  const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
+  const allStats = useMemo(() => processData(currentSeasonMatchData, selectedStatistic), [currentSeasonMatchData, selectedStatistic]);
   const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-200">Loading...</div>;
   }
 
-  const appTitle = (
-    <h1 className="text-lg font-black tracking-tight text-white leading-none">
-      Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
-    </h1>
-  );
-
-  const hotMatchesTitle = (
-    <h1 className="text-lg font-black tracking-tight text-white leading-none">
-      Hot <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400">Matches</span>
-    </h1>
-  );
 
   return (
     <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans relative">
@@ -181,10 +274,10 @@ export default function App() {
         isOpen={isBetSlipOpen}
         onClose={() => setIsBetSlipOpen(false)}
         bets={bets}
+        priceFor={priceForBet}
         onRemove={removeFromBet}
         onClear={clearBets}
       />
-
 
 
       {view === 'landing' && (
@@ -206,8 +299,8 @@ export default function App() {
             onBack={() => handleViewChange('landing')}
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
-            matchData={matchData}
-            fixturesData={fixturesData}
+            matchData={currentSeasonMatchData}
+            fixturesData={currentSeasonFixtures}
             teamLogos={teamLogos}
             bets={bets}
             addToBet={addToBet}
@@ -235,13 +328,15 @@ export default function App() {
       {view === 'hot-matches' && (
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <HotMatches
+            engine={engine}
+            onEngineChange={setEngine}
             stats={allStats}
-            fixtures={fixturesData}
+            fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             selectedStatistic={selectedStatistic}
-            matchData={matchData}
+            matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
             onMatchClick={(match) => {
@@ -266,12 +361,15 @@ export default function App() {
       {view === 'safest-bets' && (
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <SafestBets
+            engine={engine}
+            onEngineChange={setEngine}
             stats={allStats}
-            fixtures={fixturesData}
+            fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             selectedStatistic={selectedStatistic}
+            matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
             onMatchClick={(match) => {
@@ -295,256 +393,84 @@ export default function App() {
 
       {view === 'dashboard' && (
         <>
-          {/* Navbar */}
-          {/* Navbar */}
-          <nav className="sticky top-0 z-50 glass-panel border-b border-white/5 mb-8 backdrop-blur-xl">
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
-              <div className="flex flex-col items-center gap-0.5">
-                <img
-                  src="/logo.png"
-                  alt="Progetto Olanda 2.0"
-                  className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] cursor-pointer"
-                  onClick={() => handleViewChange('landing')}
-                />
-                <h1
-                  className="text-sm md:text-lg font-black tracking-tight text-white leading-none cursor-pointer hidden sm:block"
-                  onClick={() => handleViewChange('landing')}
-                >
-                  Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
-                </h1>
-
-                <div className="flex items-center gap-2 mt-1 hidden sm:flex">
-                  <div className={`w-2 h-2 rounded-full ${isBackendOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${isBackendOnline ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {isBackendOnline ? 'Backend Online' : 'Backend Offline'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Mobile Actions (Icons + Stat Selector) */}
-              <div className="flex items-center gap-2 md:hidden">
-                {/* Trends Tab */}
+          <Header
+            onLogoClick={() => handleViewChange('landing')}
+            title={
+              <h1
+                className="text-sm md:text-lg font-black tracking-tight text-white leading-none cursor-pointer hidden sm:block"
+              >
+                Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
+              </h1>
+            }
+            showBackendStatus={true}
+            isBackendOnline={isBackendOnline}
+            showSound={true}
+            showAnimationToggle={true}
+            isAnimationEnabled={isAnimationEnabled}
+            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+            showBetSlip={true}
+            betsCount={bets.length}
+            onOpenBetSlip={() => setIsBetSlipOpen(true)}
+          >
+            {/* Mobile: compact icon row */}
+            <div className="flex items-center gap-2 md:hidden">
+              {TABS.map(tab => (
                 <button
-                  onClick={() => handleTabChange('trends')}
-                  className={`p-2 rounded-lg border transition-all ${activeTab === 'trends'
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  title={tab.label}
+                  className={`p-2 rounded-lg border transition-all ${activeTab === tab.id
                     ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
                     : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
                     }`}
                 >
-                  <TrendingUp className="w-5 h-5" />
+                  <tab.Icon className="w-5 h-5" />
                 </button>
+              ))}
 
-                {/* Predictor Tab */}
-                <button
-                  onClick={() => handleTabChange('predictor')}
-                  className={`p-2 rounded-lg border transition-all ${activeTab === 'predictor'
-                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
-                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
-                    }`}
-                >
-                  <Calculator className="w-5 h-5" />
-                </button>
+              <StatisticSelector
+                value={selectedStatistic}
+                onChange={(e) => setSelectedStatistic(e.target.value)}
+                className="w-[115px]"
+              />
 
-                {/* Standings Tab */}
-                <button
-                  onClick={() => handleTabChange('standings')}
-                  className={`p-2 rounded-lg border transition-all ${activeTab === 'standings'
-                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
-                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
-                    }`}
-                >
-                  <Trophy className="w-5 h-5" />
-                </button>
-
-                {/* Statistic Selector */}
-                <StatisticSelector
-                  value={selectedStatistic}
-                  onChange={(e) => setSelectedStatistic(e.target.value)}
-                  className="w-[115px]"
-                />
-
-                {/* Bet Slip (Existing) */}
-                <button
-                  onClick={() => setIsBetSlipOpen(true)}
-                  className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white transition-colors"
-                >
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                    {bets.length}
-                  </div>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Desktop Nav */}
-              <div className="hidden md:flex items-center gap-3">
-
-                <StatisticSelector
-                  value={selectedStatistic}
-                  onChange={(e) => setSelectedStatistic(e.target.value)}
-                  className="w-[150px]"
-                />
-
-                {/* Main Navigation Pill */}
-                <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5 shadow-lg shadow-black/20">
-                  <button
-                    onClick={() => handleTabChange('trends')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'trends'
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    Trends
-                  </button>
-                  <button
-                    onClick={() => handleTabChange('predictor')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'predictor'
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                  >
-                    <Calculator className="w-3.5 h-3.5" />
-                    Predictor
-                  </button>
-                  <button
-                    onClick={() => handleTabChange('standings')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === 'standings'
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                  >
-                    <Trophy className="w-3.5 h-3.5" />
-                    Standings
-                  </button>
-                </div>
-
-                {/* Secondary Actions */}
-                <div className="flex items-center gap-2 pl-2 border-l border-white/5">
-                  <button
-                    onClick={() => handleViewChange('landing')}
-                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                    title="Change League"
-                  >
-                    <Home className="w-5 h-5" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const audio = new Audio('/sounds/malepisello.mp3');
-                      audio.playbackRate = Math.random() * (1.5 - 0.5) + 0.5;
-                      audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
-                    }}
-                    className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                    title="Play Sound"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-5 h-5"
-                    >
-                      <path d="M10 13V6a2 2 0 0 1 4 0v7" />
-                      <circle cx="8" cy="15" r="3" />
-                      <circle cx="16" cy="15" r="3" />
-                    </svg>
-                  </button>
-
-                  {/* Bet Slip Button */}
-                  <button
-                    onClick={() => setIsBetSlipOpen(true)}
-                    className="relative p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors group"
-                    title="Bet Slip"
-                  >
-                    <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center shadow-[0_0_8px_rgba(16,185,129,0.6)]">
-                      {bets.length}
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                      <polyline points="14 2 14 8 20 8"></polyline>
-                      <line x1="16" y1="13" x2="8" y2="13"></line>
-                      <line x1="16" y1="17" x2="8" y2="17"></line>
-                      <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                  </button>
-
-                  <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-                  <ToggleSwitch
-                    isOn={isAnimationEnabled}
-                    onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-              <div className="md:hidden border-t border-white/5 bg-zinc-950/95 backdrop-blur-xl animate-in slide-in-from-top-2">
-                <div className="p-4 space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase">View</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => { handleTabChange('trends'); setIsMobileMenuOpen(false); }}
-                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'trends' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
-                      >
-                        <TrendingUp className="w-4 h-4" /> Trends
-                      </button>
-                      <button
-                        onClick={() => { handleTabChange('predictor'); setIsMobileMenuOpen(false); }}
-                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'predictor' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
-                      >
-                        <Calculator className="w-4 h-4" /> Predictor
-                      </button>
-                      <button
-                        onClick={() => { handleTabChange('standings'); setIsMobileMenuOpen(false); }}
-                        className={`p-3 rounded-lg border text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${activeTab === 'standings' ? 'bg-zinc-800 border-emerald-500/50 text-white' : 'bg-zinc-900/50 border-white/10 text-zinc-400'}`}
-                      >
-                        <Trophy className="w-4 h-4" /> Standings
-                      </button>
-                    </div>
-                  </div>
+            {/* Desktop: navigation pill + secondary actions */}
+            <div className="hidden md:flex items-center gap-3">
+              <StatisticSelector
+                value={selectedStatistic}
+                onChange={(e) => setSelectedStatistic(e.target.value)}
+                className="w-[150px]"
+              />
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase">Statistic</label>
-                    <StatisticSelector
-                      value={selectedStatistic}
-                      onChange={(e) => setSelectedStatistic(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <button
-                      onClick={() => { handleViewChange('landing'); setIsMobileMenuOpen(false); }}
-                      className="p-3 bg-zinc-900 rounded-lg border border-white/10 text-zinc-300 text-sm font-bold flex items-center justify-center gap-2"
-                    >
-                      <Home className="w-4 h-4" /> Change League
-                    </button>
-                    <div className="flex items-center justify-between bg-zinc-900 p-2 px-3 rounded-lg border border-white/10">
-                      <span className="text-xs font-bold text-zinc-400">Animations</span>
-                      <ToggleSwitch
-                        isOn={isAnimationEnabled}
-                        onToggle={() => setIsAnimationEnabled(!isAnimationEnabled)}
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5 shadow-lg shadow-black/20">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === tab.id
+                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                      }`}
+                  >
+                    <tab.Icon className="w-3.5 h-3.5" />
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-            )}
-          </nav>
+
+              <div className="flex items-center gap-2 pl-2 border-l border-white/5">
+                <button
+                  onClick={() => handleViewChange('landing')}
+                  className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  title="Change League"
+                >
+                  <Home className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </Header>
 
           <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
             {activeTab === 'trends' && (
@@ -554,6 +480,8 @@ export default function App() {
                   teamLogos={teamLogos}
                   selectedStatistic={selectedStatistic}
                   onTeamClick={handleTeamClick}
+                  season={latestResultSeason}
+                  currentSeason={latestSeason}
                 />
               </div>
             )}
@@ -581,12 +509,15 @@ export default function App() {
             {activeTab === 'predictor' && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <Predictor
-                  stats={stats}
+                  engine={engine}
+                  onEngineChange={setEngine}
+                  priceFor={priceFor}
+                  stats={predictorStats}
                   fixtures={filteredFixtures}
                   teams={teams}
                   teamLogos={teamLogos}
                   selectedStatistic={selectedStatistic}
-                  matchData={filteredMatchData}
+                  matchData={predictorMatchData}
                   matchStatistics={matchStatistics}
                   setMatchStatistics={setMatchStatistics}
                   addToBet={addToBet}
@@ -603,20 +534,71 @@ export default function App() {
                     }
                   }}
                   backButtonLabel={backLabel}
-                  onRefresh={refetch}
                 />
               </div>
             )}
 
             {activeTab === 'standings' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4">
-                <LeagueTable
-                  matchData={filteredMatchData}
-                  teamLogos={teamLogos}
-                  leagueLogo={leagues.find(l => l.name === selectedLeague)?.logo_url || null}
-                  onTeamClick={handleTeamClick}
-                  selectedStatistic={selectedStatistic}
-                />
+              <div className="animate-in fade-in slide-in-from-bottom-4 space-y-4">
+                {/* Season bar - its own control, separate from the table's
+                    sample/view filters, plus a switch between the table and
+                    that season's results. */}
+                {/* relative z-50: glass-panel applies backdrop-blur, which creates
+                    a stacking context, so without this the season dropdown opens
+                    behind the panel below it. */}
+                <div className="glass-panel rounded-xl border border-white/10 p-3 flex flex-wrap items-center justify-between gap-3 relative z-50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Season</span>
+                    {availableSeasons.length > 1 ? (
+                      <Select
+                        accent="emerald"
+                        value={activeStandingsSeason}
+                        onChange={setStandingsSeason}
+                        options={availableSeasons.map(sn => ({
+                          value: sn,
+                          label: sn === latestSeason ? `${sn} (current)` : sn,
+                        }))}
+                        className="w-[180px]"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-white px-3 py-2">{activeStandingsSeason ?? '-'}</span>
+                    )}
+                  </div>
+
+                  <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5">
+                    {STANDINGS_VIEWS.map(v => (
+                      <button
+                        key={v.id}
+                        onClick={() => setStandingsView(v.id)}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${standingsView === v.id
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                          }`}
+                      >
+                        <v.Icon className="w-3.5 h-3.5" />
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {standingsView === 'table' ? (
+                  <LeagueTable
+                    matchData={standingsMatchData}
+                    teamLogos={teamLogos}
+                    leagueLogo={leagues.find(l => l.name === selectedLeague)?.logo_url || null}
+                    onTeamClick={handleTeamClick}
+                    selectedStatistic={selectedStatistic}
+                    season={activeStandingsSeason}
+                    latestSeason={latestSeason}
+                  />
+                ) : (
+                  <SeasonResults
+                    matchData={standingsMatchData}
+                    teamLogos={teamLogos}
+                    season={activeStandingsSeason}
+                  />
+                )}
               </div>
             )}
           </main>

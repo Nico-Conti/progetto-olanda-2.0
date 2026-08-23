@@ -1,141 +1,209 @@
+import {
+    createPredictionModel,
+    addMatchToPredictionModel,
+    predictFromModel,
+} from './predictTotal.js';
+import {
+    sortMatchesChronologically,
+    actualTotalFor,
+} from './backtestEngine.js';
+import { STAT_CONFIG, resolveStatKey } from './statistics.js';
 
-import { processData, calculatePrediction } from './stats';
+/**
+ * Walk-forward evaluation of the prediction model.
+ *
+ * A strategy is scored by how often it calls over/under correctly at a fixed line,
+ * compared against the *base rate* of simply always picking whichever side came up more
+ * often. That difference - the edge - is the only number here that means anything.
+ *
+ * This replaced an earlier metric that measured the win rate of betting over
+ * `round(prediction) - 0.5`. That line always sits below the prediction, so every model
+ * scored above 50% regardless of quality and the model that under-predicted most looked
+ * best. See docs/prediction-model.md for the measurements behind the change.
+ */
 
-// Parameters to test
+// Model parameters to sweep
 const N_GAMES_OPTIONS = [3, 5, 10, 'all'];
 const FORCE_MEAN_OPTIONS = [false, true];
 const USE_GENERAL_STATS_OPTIONS = [false, true];
 
+// Only call a match when the prediction is at least this far from the line. Filtering on
+// confidence improves accuracy monotonically for every statistic measured.
+export const MARGIN_OPTIONS = [0, 0.5, 1, 1.5, 2, 3];
+
+// Below this many calls a win rate is noise - goals at margin 3 scores 100% on four
+// matches. The optimizer will not select a combination that calls fewer than this.
+export const MIN_CALLS = 50;
+
+/** The line a statistic is judged at, unless the caller overrides it. */
+export const defaultLineFor = (statistic) =>
+    STAT_CONFIG[resolveStatKey(statistic)]?.total?.default ?? null;
+
 /**
- * Evaluates a single strategy on a set of historical matches.
- * @param {Array} matches - Sorted historical matches for a specific league.
- * @param {String} statistic - The statistic to predict (e.g., 'corners').
- * @param {Object} modelParams - { nGames, forceMean, useGeneralStats }
- * @param {Object} bettingParams - { softBuffer, minPrediction, maxLineCap }
- * @returns {Object} { winRate, totalBets, wins }
+ * The parameter combinations to sweep, in a fixed order.
+ *
+ * Order matters: ties are broken by "first one wins unless a later one is strictly
+ * better", so changing this order changes which strategy is selected on a tie.
  */
-export const evaluateStrategy = (matches, statistic, modelParams, bettingParams = {}) => {
-    let wins = 0;
-    let totalBets = 0;
-    const { softBuffer = 0, minPrediction = 0, maxLineCap = null } = bettingParams;
-
-    // We need at least some history to predict. 
-    for (let i = 0; i < matches.length; i++) {
-        const targetMatch = matches[i];
-
-        // Skip if target match doesn't have the stat (can't verify win/loss)
-        if (!targetMatch.stats || !targetMatch.stats[statistic]) continue;
-
-        const actualHome = Number(targetMatch.stats[statistic].home);
-        const actualAway = Number(targetMatch.stats[statistic].away);
-        const actualTotal = actualHome + actualAway;
-
-        // Get history strictly BEFORE this match
-        const pastMatches = matches.slice(0, i);
-
-        const stats = processData(pastMatches, statistic);
-
-        const homeTeam = targetMatch.home || targetMatch.squadre?.home;
-        const awayTeam = targetMatch.away || targetMatch.squadre?.away;
-
-        const prediction = calculatePrediction(
-            homeTeam,
-            awayTeam,
-            stats,
-            modelParams.nGames,
-            false, // useAdjustedMode (default false in HotMatches)
-            modelParams.useGeneralStats,
-            statistic,
-            modelParams.forceMean ? 'mean' : null // aggregator override
-        );
-
-        if (prediction && prediction.total > 0) {
-            // Check Min Prediction
-            if (minPrediction > 0 && prediction.total < minPrediction) continue;
-
-            // Apply Soft Buffer
-            let adjustedTotal = prediction.total;
-            if (softBuffer > 0) {
-                adjustedTotal -= softBuffer;
-            }
-
-            // Calculate Implied Line
-            let impliedLine = Math.round(adjustedTotal) - 0.5;
-
-            // Apply Max Cap
-            if (maxLineCap !== null && maxLineCap > 0) {
-                if (impliedLine > maxLineCap) {
-                    impliedLine = maxLineCap;
+const buildCombos = (statistic, margins = MARGIN_OPTIONS) => {
+    // Goals are not volatile enough for the median to help, so only the mean is
+    // worth testing there.
+    const forceMeanOptions = resolveStatKey(statistic) === 'goals' ? [true] : FORCE_MEAN_OPTIONS;
+    const combos = [];
+    for (const nGames of N_GAMES_OPTIONS) {
+        for (const forceMean of forceMeanOptions) {
+            for (const useGeneralStats of USE_GENERAL_STATS_OPTIONS) {
+                for (const margin of margins) {
+                    combos.push({ nGames, forceMean, useGeneralStats, margin });
                 }
             }
-
-            const isWin = actualTotal > impliedLine;
-
-            wins += (isWin ? 1 : 0);
-            totalBets++;
         }
     }
+    return combos;
+};
 
+const summarise = ({ correct, calls, overs, seen }) => {
+    const accuracy = calls > 0 ? correct / calls : 0;
+    // Base rate over every match seen, not just the ones called: that is the honest
+    // comparison, since always-bet-one-side needs no prediction at all.
+    const overRate = seen > 0 ? overs / seen : 0;
+    const baseRate = Math.max(overRate, 1 - overRate);
     return {
-        winRate: totalBets > 0 ? (wins / totalBets) : 0,
-        totalBets,
-        wins
+        accuracy,
+        baseRate,
+        edge: accuracy - baseRate,
+        calls,
+        seen,
+        callRate: seen > 0 ? calls / seen : 0,
+        beatsBaseRate: calls >= MIN_CALLS && accuracy > baseRate,
     };
 };
 
 /**
- * Finds the best parameter combination for a specific league.
- * @param {Array} matches - Historical matches for the league.
- * @param {String} statistic - The statistic to optimize for.
- * @param {Object} bettingParams - { softBuffer, minPrediction, maxLineCap }
- * @returns {Object|null} Best params { nGames, forceMean, useGeneralStats } or null if no data
+ * Evaluates a single strategy on a set of historical matches.
+ *
+ * @param {Array}  matches      Historical matches for one league.
+ * @param {String} statistic    The statistic to predict, e.g. 'corners'.
+ * @param {Object} modelParams  { nGames, forceMean, useGeneralStats, margin }
+ * @param {Object} options      { line } - defaults to the statistic's configured line.
+ * @returns {Object} { accuracy, baseRate, edge, calls, seen, callRate, beatsBaseRate }
  */
-export const findBestStrategy = (matches, statistic, bettingParams = {}) => {
-    if (!matches || matches.length < 5) return null; // Not enough data to optimize
+export const evaluateStrategy = (matches, statistic, modelParams, options = {}) => {
+    const line = options.line ?? defaultLineFor(statistic);
+    const margin = modelParams.margin ?? 0;
 
-    // Sort matches by date ascending
-    const sortedMatches = [...matches].filter(m => m.stats && m.stats[statistic]).sort((a, b) => {
-        if (a.date && b.date) return new Date(a.date) - new Date(b.date);
-        const getG = (s) => parseInt(String(s).replace(/\D/g, '')) || 0;
-        return getG(a.giornata) - getG(b.giornata);
-    });
+    let correct = 0, calls = 0, overs = 0, seen = 0;
+    // The model knows which statistic actually drives this one - corners are
+    // predicted from shots, goals from box touches, everything else from itself.
+    const model = createPredictionModel(statistic);
 
-    let bestWinRate = -1;
-    let bestParams = null;
-    let bestTotalBets = 0;
+    for (const match of matches) {
+        const actual = actualTotalFor(match, statistic);
 
-    // Iterate all combinations
-    for (const nGames of N_GAMES_OPTIONS) {
-        for (const forceMean of FORCE_MEAN_OPTIONS) {
-            for (const useGeneralStats of USE_GENERAL_STATS_OPTIONS) {
-                const modelParams = { nGames, forceMean, useGeneralStats };
-                const result = evaluateStrategy(sortedMatches, statistic, modelParams, bettingParams);
+        if (actual !== null && line !== null) {
+            const home = match.home || match.squadre?.home;
+            const away = match.away || match.squadre?.away;
 
-                // Strategy Selection Logic
-                // Prioritize Win Rate.
-                // Tie-breaker: Total Bets (Reliability).
+            const prediction = predictFromModel(model, home, away, {
+                nGames: modelParams.nGames,
+                useGeneralStats: modelParams.useGeneralStats,
+                aggregatorOverride: modelParams.forceMean ? 'mean' : null,
+                // Recency decay needs to know when "now" is. Passing the match's
+                // own date keeps the walk free of lookahead: history is weighted
+                // as of kickoff, not as of today.
+                asOf: match.date,
+            });
 
-                if (result.winRate > bestWinRate) {
-                    bestWinRate = result.winRate;
-                    bestParams = modelParams;
-                    bestTotalBets = result.totalBets;
-                } else if (Math.abs(result.winRate - bestWinRate) < 0.0001) {
-                    // If win rate is effectively equal, prefer more bets
-                    if (result.totalBets > bestTotalBets) {
-                        bestWinRate = result.winRate;
-                        bestParams = modelParams;
-                        bestTotalBets = result.totalBets; // Update tie-breaker
-                    }
+            if (prediction && prediction.total > 0) {
+                const isOver = actual > line;
+                seen++;
+                if (isOver) overs++;
+
+                // Only call the match when the model is confident enough.
+                if (Math.abs(prediction.total - line) >= margin) {
+                    calls++;
+                    if ((prediction.total > line) === isOver) correct++;
                 }
             }
         }
+
+        addMatchToPredictionModel(model, match);
     }
 
-    if (!bestParams) return null;
+    return summarise({ correct, calls, overs, seen });
+};
 
-    return {
-        ...bestParams,
-        winRate: bestWinRate,
-        totalBets: bestTotalBets
-    };
+/**
+ * Finds the parameter combination with the largest edge over the base rate.
+ *
+ * Walks the season once and scores every combination against the same running history,
+ * rather than replaying the season once per combination.
+ *
+ * Returns null when there is not enough data, and a result with `beatsBaseRate: false`
+ * when nothing genuinely beat always betting one side - which is the honest answer for
+ * some statistics, and the caller should say so rather than showing the percentage alone.
+ */
+export const findBestStrategy = (matches, statistic, options = {}) => {
+    if (!matches || matches.length < 5) return null;
+
+    const line = options.line ?? defaultLineFor(statistic);
+    if (line === null) return null;
+
+    const sortedMatches = sortMatchesChronologically(matches, statistic);
+    const combos = buildCombos(statistic, options.margins);
+    const tallies = combos.map(() => ({ correct: 0, calls: 0 }));
+
+    let overs = 0, seen = 0;
+    const model = createPredictionModel(statistic);
+
+    for (const match of sortedMatches) {
+        const actual = actualTotalFor(match, statistic);
+
+        if (actual !== null) {
+            const home = match.home || match.squadre?.home;
+            const away = match.away || match.squadre?.away;
+            const isOver = actual > line;
+            let counted = false;
+
+            for (let c = 0; c < combos.length; c++) {
+                const { nGames, forceMean, useGeneralStats, margin } = combos[c];
+                const prediction = predictFromModel(model, home, away, {
+                    nGames, useGeneralStats,
+                    aggregatorOverride: forceMean ? 'mean' : null,
+                    asOf: match.date,
+                });
+                if (!prediction || !(prediction.total > 0)) continue;
+
+                // Every combination that could predict this match sees it, so they all
+                // share one base rate and stay comparable.
+                if (!counted) { seen++; if (isOver) overs++; counted = true; }
+
+                if (Math.abs(prediction.total - line) >= margin) {
+                    tallies[c].calls++;
+                    if ((prediction.total > line) === isOver) tallies[c].correct++;
+                }
+            }
+        }
+
+        addMatchToPredictionModel(model, match);
+    }
+
+    let best = null;
+    for (let c = 0; c < combos.length; c++) {
+        const result = summarise({ ...tallies[c], overs, seen });
+        // Too few calls to mean anything, however good the percentage looks.
+        if (result.calls < MIN_CALLS) continue;
+        if (!best || result.edge > best.edge) best = { ...combos[c], ...result, line };
+    }
+
+    if (best) return best;
+
+    // Nothing cleared the sample-size floor. Report the widest-sampled combination so the
+    // caller has something truthful to show, flagged as not beating the base rate.
+    let widest = null;
+    for (let c = 0; c < combos.length; c++) {
+        const result = summarise({ ...tallies[c], overs, seen });
+        if (!widest || result.calls > widest.calls) widest = { ...combos[c], ...result, line };
+    }
+    return widest && widest.calls > 0 ? { ...widest, beatsBaseRate: false } : null;
 };
