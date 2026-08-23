@@ -74,9 +74,17 @@ MATCH_COLUMNS = ",".join([
     "home_crosses", "away_crosses",
     "home_goalkeeper_saves", "away_goalkeeper_saves",
     "home_blocked_shots", "away_blocked_shots",
-    # The analysis the UI actually shows. These are the current column names -
-    # "tl dr corner" / "detailed comment corner" are the pre-rename ones and do
-    # not exist on the table.
+])
+
+# The Gemini prose the UI shows on a match detail. Deliberately NOT part of
+# MATCH_COLUMNS: it is 27% of the /matches payload gzipped, only 452 of ~3100
+# rows carry any, and nothing renders it until a match is opened. /matches
+# therefore stays on the critical path and the prose follows on /matches/analysis
+# once the app has painted. Current column names - "tl dr corner" /
+# "detailed comment corner" are the pre-rename ones and do not exist.
+MATCH_ANALYSIS_COLUMNS = ",".join([
+    # The join key has to match what the frontend builds from a match row.
+    "home_team", "away_team", "league", "season", "match_date",
     "summary_match", "detail_corner",
 ])
 
@@ -99,11 +107,12 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*"):
             break
             
         all_rows.extend(rows)
-        
-        if len(rows) < chunk_size:
-            break
-            
-        current_offset += chunk_size
+
+        # Page until the server returns nothing. A short page is NOT proof of
+        # the end: PostgREST silently truncates to its own max-rows, so
+        # breaking on len(rows) < chunk_size stops early and loses data. See
+        # the same trap in the scraper's fetch_all_records.
+        current_offset += len(rows)
         
         # Safety break to avoid infinite loops if something is weird
         if current_offset > 50000:
@@ -133,10 +142,38 @@ def get_matches():
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/matches/analysis")
+def get_match_analysis():
+    """
+    The Gemini prose for the matches that have any, keyed so the frontend can
+    join it onto rows it already holds. Split off /matches so the first paint
+    does not wait on text nothing has rendered yet.
+    """
+    try:
+        rows = fetch_all_data("matches", columns=MATCH_ANALYSIS_COLUMNS)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Most rows have no analysis at all. Filtering here rather than in
+    # PostgREST keeps the query trivial, and the wire saving is the point.
+    return [r for r in rows if r.get("summary_match") or r.get("detail_corner")]
+
+
+# Everything the UI reads off a fixture. The table also carries prediction_*
+# and is_hot_match columns from an earlier server-side experiment; the frontend
+# models all of that itself and reads none of them, and they were 77% of this
+# payload.
+FIXTURE_COLUMNS = ",".join([
+    "home_team", "away_team", "match_date", "giornata",
+    "status", "league", "season",
+])
+
+
 @app.get("/fixtures")
 def get_fixtures():
     try:
-        data = fetch_all_data("fixtures", "match_date", desc=False)
+        data = fetch_all_data("fixtures", "match_date", desc=False,
+                              columns=FIXTURE_COLUMNS)
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
