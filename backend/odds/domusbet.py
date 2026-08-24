@@ -33,6 +33,8 @@ from collections import Counter
 
 import requests
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from backend.odds.aliases import match_fixtures
 
@@ -100,9 +102,40 @@ LEAGUE_TOURNAMENTS = {
 EXCLUDE = ("femminil", "u21", "u19", "u23", "primavera", "youth", "riserve", "amichevol")
 
 
+# One session, with connection-error retries, shared by every HTTP call here.
+#
+# On 2026-08-24 the 21:00 capture fetched 189 prices and then died on a single
+# getaddrinfo() for the Supabase host: WSL2 proxies DNS through the Windows host,
+# and that proxy drops resolution whenever the host's network changes - 21 such
+# failures in the kernel log across four days. One un-retried lookup cost a whole
+# window, and windows cannot be backfilled.
+#
+# `connect` retries are the ones that matter: urllib3 raises NameResolutionError
+# while connecting, which counts against them. Four attempts with a factor-3
+# backoff span ~40s (measured), which covers a blip and not an outage - an outage
+# is meant to fail the run rather than hold the window open.
+#
+# POST is in allowed_methods deliberately. The only POST here is the write, and
+# it carries `Prefer: resolution=merge-duplicates` against `odds_snapshot_uniq`,
+# so replaying it cannot duplicate a row.
+def _session():
+    retry = Retry(total=4, connect=4, read=2, status=2, backoff_factor=3,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset({"GET", "POST"}),
+                  raise_on_status=False)
+    session = requests.Session()
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+SESSION = _session()
+
+
 def get(path, **params):
-    resp = requests.get(f"{BASE}/{path}", headers=HEADERS,
-                        params={**COMMON, **params}, timeout=90)
+    resp = SESSION.get(f"{BASE}/{path}", headers=HEADERS,
+                       params={**COMMON, **params}, timeout=90)
     resp.raise_for_status()
     if not resp.content[:1] in (b"{", b"["):
         return None
@@ -298,7 +331,7 @@ def our_fixtures():
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     rows, offset = [], 0
     while True:
-        resp = requests.get(
+        resp = SESSION.get(
             f"{url}/rest/v1/fixtures?select=league,home_team,away_team,match_date"
             f"&limit=1000&offset={offset}", headers=headers, timeout=60)
         resp.raise_for_status()
@@ -373,8 +406,8 @@ def write_rows(rows):
     written = 0
     for i in range(0, len(payload), 500):
         chunk = payload[i:i + 500]
-        resp = requests.post(f"{url}/rest/v1/odds_snapshots", headers=headers,
-                             json=chunk, timeout=120)
+        resp = SESSION.post(f"{url}/rest/v1/odds_snapshots", headers=headers,
+                            json=chunk, timeout=120)
         if resp.status_code >= 400:
             sys.exit(f"Write failed ({resp.status_code}): {resp.text[:300]}")
         written += len(chunk)
@@ -416,6 +449,15 @@ def main():
     parser.add_argument("--write", action="store_true", help="write to odds_snapshots")
     args = parser.parse_args()
 
+    # One line per run, so a log that several runs have appended to can be split
+    # back into runs. flush=True is load-bearing: stdout is block-buffered when
+    # redirected to a file while the traceback goes to stderr unbuffered, so a
+    # crashing run writes its traceback BEFORE its own buffered output. Without
+    # this marker the 21:00 failure on 2026-08-24 looked like a failed run
+    # followed by a successful one - it was a single run, printing out of order.
+    print(f"=== run {datetime.datetime.now():%Y-%m-%d %H:%M:%S}"
+          f" {' '.join(sys.argv[1:])} ===", flush=True)
+
     if args.tournaments:
         rows = tournaments()
         matched = [r for r in rows if r[0]]
@@ -428,16 +470,44 @@ def main():
         coverage()
         return
 
+    # The fixture list is fetched BEFORE the capture, not after it.
+    #
+    # It is only needed to map the bookmaker's slugs onto our team names, but it
+    # used to be fetched once the prices were already in hand - so a failure here
+    # discarded work that cannot be repeated. That is exactly what happened on
+    # 2026-08-24 at 21:00: 189 prices collected, then one DNS failure, then
+    # nothing written. This call is the cheap, repeatable one, so it goes first:
+    # failing now costs a run that had not yet done anything.
+    fixtures = None
+    if not args.no_resolve:
+        # Named explicitly rather than left to look like an empty fixture list -
+        # "no credentials" and "no fixtures" need different fixes. (.env is found
+        # via PROJECT_ROOT, anchored on __file__, so the working directory does
+        # not matter here; only a genuinely absent or unreadable .env does.)
+        if not os.environ.get("SUPABASE_URL") or not os.environ.get("SUPABASE_KEY"):
+            sys.exit("Missing SUPABASE_URL / SUPABASE_KEY")
+        try:
+            fixtures = our_fixtures()
+        except requests.RequestException as exc:
+            sys.exit(f"ERROR: could not reach Supabase for the fixture list "
+                     f"({type(exc).__name__}), even after retries. Nothing was "
+                     f"captured; the next window is in 3h.")
+        if not fixtures:
+            # Unresolved slugs are worse than no rows at all: they can never join
+            # to a fixture and sit in the table looking like data. Asking for them
+            # on purpose is what --no-resolve is for.
+            msg = ("ERROR: the fixture list is empty, so bookmaker slugs cannot be "
+                   "resolved to our team names.")
+            if args.write:
+                sys.exit(msg + " Refusing to write unjoinable rows.")
+            print(msg + " Continuing with the bookmaker's own names.")
+
     rows = capture(args.league, args.within)
 
-    if not args.no_resolve:
-        fixtures = our_fixtures()
-        if fixtures:
-            rows, dropped = resolve_team_names(rows, fixtures)
-            print(f"\nresolved to our team names: {len(rows)} prices"
-                  + (f", {dropped} dropped as unmatched" if dropped else ""))
-        else:
-            print("\nNo fixtures available to resolve names against; keeping bookmaker slugs.")
+    if fixtures:
+        rows, dropped = resolve_team_names(rows, fixtures)
+        print(f"\nresolved to our team names: {len(rows)} prices"
+              + (f", {dropped} dropped as unmatched" if dropped else ""))
 
     if args.json:
         with open(args.json, "w") as fh:
