@@ -15,6 +15,35 @@ if project_root not in sys.path:
 from backend.scraper.driver import make_driver
 from backend.scraper.config import LEAGUES, LEAGUE_SLUGS, current_season, year_for_month_in_season
 
+def same_instant(a, b):
+    """Do two ISO timestamps denote the same moment?
+
+    Compared as parsed datetimes, not as strings. diretta's rows come back with
+    a local offset (`...T00:30:00+02:00`) while the stored row may carry the same
+    instant as UTC (`...T22:30:00+00:00`); string equality calls those different
+    and rewrites the row on every single run. Measured on Serie A Betano: ~110 of
+    350 fixtures were being updated every run, none of them actually changed.
+
+    Falls back to string comparison for anything unparseable, which is the old
+    behaviour and is never worse than crashing on a malformed date.
+    """
+    if a == b:
+        return True
+    if not a or not b:
+        return False
+    try:
+        da = datetime.datetime.fromisoformat(str(a).replace("Z", "+00:00"))
+        db = datetime.datetime.fromisoformat(str(b).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return False
+    # A naive datetime cannot be compared to an aware one; treat naive as UTC,
+    # which is how the scraper stores anything without an offset.
+    if (da.tzinfo is None) != (db.tzinfo is None):
+        da = da.replace(tzinfo=datetime.timezone.utc) if da.tzinfo is None else da
+        db = db.replace(tzinfo=datetime.timezone.utc) if db.tzinfo is None else db
+    return da == db
+
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -296,7 +325,11 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                     # supabase-py .range(start, end) is 0-indexed inclusive? checking docs standard
                     # usually .range(0, 999) -> 1000 items
                     
-                    batch_res = supabase.table("fixtures").select("id, home_team, away_team, match_date, league, giornata, season").range(offset, offset + fetch_batch - 1).execute()
+                    # `status` is selected so the comparison below can tell an
+                    # unchanged row from one that has since been played. Without
+                    # it every existing_record.get('status') is None, which reads
+                    # as "changed" and rewrites every fixture on every run.
+                    batch_res = supabase.table("fixtures").select("id, home_team, away_team, match_date, league, giornata, season, status").range(offset, offset + fetch_batch - 1).execute()
                     batch_data = batch_res.data
                     
                     if not batch_data:
@@ -352,21 +385,35 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                         # Handle None comparison safely
                         date_changed = False
                         if f['match_date'] and existing_date:
-                            date_changed = f['match_date'] != existing_date
+                            # Instant, not string - see same_instant().
+                            date_changed = not same_instant(f['match_date'], existing_date)
                         elif f['match_date'] and not existing_date:
                             date_changed = True
                         # If both are None, no change. If new is None, usually we don't overwrite with None unless it's postponed, 
                         # but 'status' handles that. matching on date string is usually safe.
 
                         league_needs_update = existing_league != league_name
-                        
-                        if date_changed or league_needs_update:
+
+                        # A fixture that has since been played changes status but
+                        # NOT kickoff time, and status used to be written only
+                        # inside the `date_changed` branch - so SCHEDULED -> PLAYED
+                        # never landed. Measured on Serie A Betano: 20 fixtures
+                        # whose match row existed were still marked SCHEDULED, and
+                        # a full re-run reported "Updated 112 existing matches"
+                        # while leaving all 20 untouched, because those 112 were
+                        # date and league changes.
+                        status_changed = bool(f.get('status')) and existing_record.get('status') != f['status']
+
+                        if date_changed or league_needs_update or status_changed:
                             update_payload = {}
                             if date_changed:
                                 print(f"    -> Date changed for {f['home_team']} vs {f['away_team']}: {existing_date} -> {f['match_date']}")
                                 update_payload['match_date'] = f['match_date']
-                                update_payload['status'] = f['status'] # Update status too if date changed (e.g. Postponed -> Date)
-                                
+
+                            if status_changed:
+                                print(f"    -> Status changed for {f['home_team']} vs {f['away_team']}: {existing_record.get('status')} -> {f['status']}")
+                                update_payload['status'] = f['status']
+
                             if league_needs_update:
                                 # print(f"    -> Updating league for {f['home_team']} vs {f['away_team']}")
                                 update_payload['league'] = league_name
