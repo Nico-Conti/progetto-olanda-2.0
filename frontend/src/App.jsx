@@ -236,6 +236,48 @@ export default function App() {
     return fixturesData.filter(f => !f.season || f.season === latestByLeague[f.league]);
   }, [matchData, fixturesData]);
 
+  // Winning Factor counts raw hit rates over matches already played, so unlike
+  // the predictor it must see exactly one season. Two reasons, and the second is
+  // the one that bites:
+  //
+  //  - "how often did this team go over X" is a claim about a season, and
+  //    blending two makes it a claim about neither.
+  //  - it slices "last N games" by giornata, and giornata does not order across
+  //    a season boundary. With last season present, its MD38 sorts above this
+  //    season's MD3, so on 2026-08-24 "Last 5" for Ajax returned five matches
+  //    from April and May and ignored the three already played in 2026/2027.
+  //
+  // Per league, and strictly the season being PLAYED - newest across results and
+  // fixtures, the same season the Predictor's fixture list is drawn from. This
+  // deliberately does not fall back to the newest season with results: on
+  // 2026-08-24 five of nine leagues (Bundesliga, Ligue 1, Premier League, Serie A,
+  // Serie B) had 2026/2027 fixtures published and nothing played in them, so a
+  // fallback showed 2025/2026 form - last season - which is exactly what this
+  // view must not do. Those leagues rank nothing until their first matchday, and
+  // `winningFactorNotStarted` below names them so the gap is stated, not silent.
+  const winningFactorSeasons = useMemo(() => {
+    const byLeague = {};
+    [...new Set(matchData.map(m => m.league).filter(Boolean))].forEach(lg => {
+      byLeague[lg] = latestSeasonForLeague(matchData, fixturesData, lg);
+    });
+    return byLeague;
+  }, [matchData, fixturesData]);
+
+  const winningFactorMatchData = useMemo(
+    () => matchData.filter(m => !m.season || m.season === winningFactorSeasons[m.league]),
+    [matchData, winningFactorSeasons]
+  );
+
+  // Leagues whose current season has no results yet, so Winning Factor cannot
+  // rank them at all. Named in the UI rather than quietly missing.
+  const winningFactorNotStarted = useMemo(() => {
+    const played = new Set(winningFactorMatchData.map(m => m.league));
+    return Object.keys(winningFactorSeasons)
+      .filter(lg => !played.has(lg))
+      .map(lg => ({ league: lg, season: winningFactorSeasons[lg] }))
+      .sort((a, b) => a.league.localeCompare(b.league));
+  }, [winningFactorMatchData, winningFactorSeasons]);
+
   // Which prediction engine is running. Persisted, and defaulting to the
   // measured `classic` model - a new engine is opted into, never imposed.
   const { engine, setEngine } = usePredictionEngine();
@@ -299,7 +341,8 @@ export default function App() {
             onBack={() => handleViewChange('landing')}
             isAnimationEnabled={isAnimationEnabled}
             onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
-            matchData={currentSeasonMatchData}
+            matchData={winningFactorMatchData}
+            notStartedLeagues={winningFactorNotStarted}
             fixturesData={currentSeasonFixtures}
             teamLogos={teamLogos}
             bets={bets}
