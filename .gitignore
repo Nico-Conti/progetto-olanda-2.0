@@ -48,3 +48,6 @@ frontend/src/utils/__experiments__/odds_fd.json
 # Local working notes - deliberately untracked
 CLAUDE.md
 docs/
+
+# Local odds-capture cron log (see CLAUDE.md - odds section)
+logs/
