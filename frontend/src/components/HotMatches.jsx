@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, Sparkles, BrainCircuit, X, Play } from 'lucide-react';
-import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
+import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
+import { expectedValue } from '../utils/countModel';
 import EngineToggle from './EngineToggle';
 import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
 import { findBestStrategy, defaultLineFor, MIN_CALLS } from '../utils/backtest';
@@ -97,6 +98,45 @@ const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }
     );
 };
 
+/**
+ * What "hot" means, which is not one question.
+ *
+ * `total` is the original ranking: the biggest expected number. It answers
+ * "where will the most happen", and needs no prices.
+ *
+ * `ev` is the honest betting ranking and the narrowest: it needs a captured
+ * price, and on 2026-08-24 only 31 of 1,014 upcoming fixtures had one for
+ * corners. It is additionally gated on `prediction.confident`, because EV ranks
+ * by how far the model disagrees with the market and the largest disagreements
+ * come from the least history - see the odds section of CLAUDE.md. The UI states
+ * how many fixtures survived both filters rather than quietly showing a short list.
+ *
+ * There is deliberately no "rank by P(over line)" mode, though it looks like the
+ * obvious third one. `withDistribution` fits ONE dispersion per model
+ * (`dispersionFor(model)`), shared by every match, so probOver(total, line, r) is
+ * strictly monotone in `total` - ranking on it returns the identical order, always.
+ * Verified on 180 fixtures: same five matches, same sequence, for corners and
+ * goals. It is shown on each card, where a calibrated probability beats a raw
+ * magnitude, but it is not offered as a sort. If dispersion ever becomes
+ * per-match, this stops being true and the mode becomes worth adding.
+ */
+const RANK_MODES = {
+    total: { value: 'total', label: 'Expected total', needsCount: false, needsPrice: false },
+    ev: { value: 'ev', label: 'Expected value', needsCount: true, needsPrice: true },
+};
+
+/** The line a statistic is judged at - the same one the backtests use. */
+const lineFor = (stat) => STAT_CONFIG[resolveStatKey(stat)]?.total?.default ?? null;
+
+/** Every line the market realistically offers for a statistic, ascending. */
+const linesFor = (stat) => {
+    const cfg = STAT_CONFIG[resolveStatKey(stat)]?.total;
+    if (!cfg) return [];
+    return [...new Set([cfg.default, ...(cfg.options ?? [])])]
+        .filter(v => v != null)
+        .sort((a, b) => a - b);
+};
+
 const STORAGE_KEY = 'olanda_hotmatches_prefs';
 const DEFAULT_PREFS = {
     nGames: 5,
@@ -107,21 +147,27 @@ const DEFAULT_PREFS = {
     useGeneralStats: false,
     isOptimizationActive: false,
     optimizedParams: {},
-    currentBettingParams: {}
+    currentBettingParams: {},
+    rankBy: 'total',
 };
 
-const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
+const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
         nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats,
-        isOptimizationActive, optimizedParams,
+        isOptimizationActive, optimizedParams, rankBy,
     } = prefs;
+
+    // Only the count engine produces a distribution, so the two ranking modes
+    // that need one fall back rather than ranking on undefined.
+    const effectiveRankBy = (engine === ENGINES.COUNT && RANK_MODES[rankBy]) ? rankBy : 'total';
 
     const setNGames = (v) => setPrefs({ nGames: v });
     const setDisplayCount = (v) => setPrefs({ displayCount: v });
     const setSelectedDate = (v) => setPrefs({ selectedDate: v });
     const setForceMean = (v) => setPrefs({ forceMean: v });
     const setUseGeneralStats = (v) => setPrefs({ useGeneralStats: v });
+    const setRankBy = (v) => setPrefs({ rankBy: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
@@ -188,7 +234,7 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
     // Rank the shared candidate set by expected total, applying the optimized
     // per-league model params when optimization is switched on.
     const topMatches = useMemo(() => {
-        return candidates
+        const scored = candidates
             .map(match => {
                 const optimized = isOptimizationActive ? optimizedParams[match.league] : null;
 
@@ -206,18 +252,75 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                     engine,
                 });
 
+                // P(over) at the judged line, and the best expected value across
+                // every line the market offers, both sides. Both are null under
+                // the classic engine, which has no distribution to ask.
+                const line = lineFor(selectedStatistic);
+                const probability = (pred?.probOver && line != null) ? pred.probOver(line) : null;
+
+                let bestEv = null;
+                if (pred?.probOver && priceFor) {
+                    for (const l of linesFor(selectedStatistic)) {
+                        const p = pred.probOver(l);
+                        if (p == null) continue;
+                        const overPrice = priceFor(match.home, match.away, selectedStatistic, l, true);
+                        const underPrice = priceFor(match.home, match.away, selectedStatistic, l, false);
+                        const candidatesEv = [
+                            { ev: overPrice ? expectedValue(p, overPrice) : null, side: 'Over', line: l, price: overPrice },
+                            { ev: underPrice ? expectedValue(1 - p, underPrice) : null, side: 'Under', line: l, price: underPrice },
+                        ];
+                        for (const c of candidatesEv) {
+                            if (c.ev != null && (bestEv == null || c.ev > bestEv.ev)) bestEv = c;
+                        }
+                    }
+                }
+
                 return {
                     ...match,
                     prediction: pred,
+                    probability,
+                    bestEv,
                     isOptimized: Boolean(optimized),
                     strategy: optimized || null,
                     usedParams: { n: currentNGames, ugs: currentUseGeneralStats, fm: currentForceMean }
                 };
             })
-            .filter(m => m.prediction !== null)
+            .filter(m => m.prediction !== null);
+
+        if (effectiveRankBy === 'ev') {
+            // Confidence floor as well as a price: without it the top of this
+            // table is whichever fixture has the least history, every time.
+            return scored
+                .filter(m => m.bestEv && m.prediction.confident)
+                .sort((a, b) => b.bestEv.ev - a.bestEv.ev)
+                .slice(0, displayCount);
+        }
+
+        return scored
             .sort((a, b) => b.prediction.total - a.prediction.total)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor]);
+
+    // How much of the candidate set each narrowing mode actually keeps, so the
+    // UI can say so instead of just showing a short list.
+    const coverage = useMemo(() => {
+        if (effectiveRankBy !== 'ev') return null;
+        let priced = 0, confident = 0;
+        for (const match of candidates) {
+            const pred = predictFromModel(predictionModel, match.home, match.away, {
+                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : 'median',
+                asOf: match.date ?? new Date(), engine,
+            });
+            if (!pred?.probOver || !priceFor) continue;
+            const hasPrice = linesFor(selectedStatistic).some(l =>
+                priceFor(match.home, match.away, selectedStatistic, l, true) ||
+                priceFor(match.home, match.away, selectedStatistic, l, false));
+            if (!hasPrice) continue;
+            priced++;
+            if (pred.confident) confident++;
+        }
+        return { total: candidates.length, priced, confident };
+    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor]);
 
     // Close dropdown when clicking outside
     useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
@@ -384,6 +487,38 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                                 </div>
                             </Dropdown>
 
+                            {/* Rank by - only the count engine produces the
+                                distribution that P(over) and EV are read from. */}
+                            {engine === ENGINES.COUNT && (
+                                <Dropdown
+                                    label="Rank by"
+                                    active={activeDropdown === 'rank'}
+                                    onToggle={() => setActiveDropdown(activeDropdown === 'rank' ? null : 'rank')}
+                                    value={RANK_MODES[effectiveRankBy].label}
+                                    width="w-full"
+                                    className="flex-1 min-w-[150px]"
+                                >
+                                    <div className="space-y-1">
+                                        {Object.values(RANK_MODES).map(mode => (
+                                            <button
+                                                key={mode.value}
+                                                onClick={() => { setRankBy(mode.value); setActiveDropdown(null); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${effectiveRankBy === mode.value
+                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                    : 'text-zinc-400 hover:bg-white/5'}`}
+                                            >
+                                                {mode.label}
+                                                {mode.needsPrice && (
+                                                    <span className="block text-[9px] font-medium text-zinc-500 normal-case mt-0.5">
+                                                        needs a captured price
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Dropdown>
+                            )}
+
                             {/* Manual Overrides (Disable if optimized) */}
                             <div className={`flex gap-3 transition-opacity ${isOptimizationActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                                 {/* Sample Size */}
@@ -493,6 +628,22 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                         </div>
                     </div>
 
+                    {coverage && (
+                        <div className="glass-panel rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
+                            <BrainCircuit className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-zinc-300 leading-relaxed">
+                                Ranking by expected value, so this is not the whole fixture list.
+                                Of <span className="font-bold text-amber-300">{coverage.total}</span> upcoming
+                                matches, <span className="font-bold text-amber-300">{coverage.priced}</span> have
+                                a captured {getStatLabel(selectedStatistic).toLowerCase()} price and{' '}
+                                <span className="font-bold text-amber-300">{coverage.confident}</span> of those
+                                also clear the confidence floor ({MIN_EFFECTIVE_FOR_EV} effective matches, a fitted
+                                spread, and a statistic that has actually been measured). Prices cannot be
+                                backfilled, so a fixture with none is simply absent rather than ranked last.
+                            </p>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {topMatches.map((match, idx) => (
                             <div
@@ -556,6 +707,12 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                                         <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-full mt-1 border border-emerald-500/20">
                                             Exp. {getStatLabel(selectedStatistic)}
                                         </span>
+                                        {match.probability != null && (
+                                            <span className="text-[10px] font-bold text-zinc-400 mt-1 tabular-nums">
+                                                {(100 * match.probability).toFixed(0)}%
+                                                <span className="text-zinc-600"> over {lineFor(selectedStatistic)}</span>
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col items-center gap-2 w-1/3">
                                         <img src={teamLogos[match.away]} alt={match.away} className="w-12 h-12 object-contain drop-shadow-lg" />
@@ -574,6 +731,25 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                                         <span className="block text-lg font-bold text-blue-400">{match.prediction.expAway.toFixed(2)}</span>
                                     </div>
                                 </div>
+                                {match.bestEv && (
+                                    <div
+                                        title={`Best expected value across every ${getStatLabel(selectedStatistic).toLowerCase()} line with a captured price. ${match.prediction.confident ? '' : 'Below the confidence floor - arithmetic on an estimate we do not yet trust.'}`}
+                                        className={`mt-2 flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${match.prediction.confident
+                                            ? 'bg-emerald-500/5 border-emerald-500/20'
+                                            : 'bg-white/5 border-white/10'}`}
+                                    >
+                                        <span className="uppercase tracking-wider text-zinc-500">
+                                            {match.bestEv.side} {match.bestEv.line}
+                                            <span className="text-zinc-600 normal-case font-mono"> @ {match.bestEv.price.toFixed(2)}</span>
+                                        </span>
+                                        <span className={`font-mono font-black tabular-nums ${!match.prediction.confident ? 'text-zinc-600'
+                                            : match.bestEv.ev > 0.02 ? 'text-emerald-400'
+                                                : match.bestEv.ev < -0.02 ? 'text-red-400/70' : 'text-zinc-400'}`}>
+                                            {(match.bestEv.ev >= 0 ? '+' : '') + (100 * match.bestEv.ev).toFixed(0)}% EV
+                                        </span>
+                                    </div>
+                                )}
+
                                 {isOptimizationActive && match.usedParams && (
                                     <div className="mt-2 text-[9px] text-zinc-600 font-mono text-center">
                                         Using: {match.usedParams.n == 'all' ? 'Season' : `Last ${match.usedParams.n}`} • {match.usedParams.ugs ? 'Gen' : 'Spec'} • {match.usedParams.fm ? 'Mean' : 'Median'}
@@ -587,8 +763,10 @@ const HotMatches = ({ engine, onEngineChange, stats, fixtures, matchData, teamLo
                     </div>
 
                     {topMatches.length === 0 && (
-                        <div className="text-center py-12 text-zinc-500">
-                            No upcoming matches found to analyze.
+                        <div className="text-center py-12 text-zinc-500 text-sm">
+                            {effectiveRankBy === 'ev'
+                                ? `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price and enough history to trust. Try another statistic, or rank by expected total.`
+                                : 'No upcoming matches found to analyze.'}
                         </div>
                     )}
                 </div>

@@ -373,6 +373,7 @@ export default function App() {
           <HotMatches
             engine={engine}
             onEngineChange={setEngine}
+            priceFor={priceFor}
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
