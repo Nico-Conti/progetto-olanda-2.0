@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
+import MatchStatsModal from './MatchStatsModal';
 
 /**
  * Every result of one season, newest matchday first.
@@ -8,6 +9,9 @@ import { ChevronRight } from 'lucide-react';
  * caller owns that filtering, the same way LeagueTable receives its slice.
  */
 const SeasonResults = ({ matchData, teamLogos, season }) => {
+    // The row that has been opened into the stats popup, if any.
+    const [openMatch, setOpenMatch] = useState(null);
+
     const rounds = useMemo(() => {
         const byRound = new Map();
         matchData.forEach(m => {
@@ -43,6 +47,12 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
 
     return (
         <div className="space-y-4">
+            <MatchStatsModal
+                match={openMatch}
+                teamLogos={teamLogos}
+                onClose={() => setOpenMatch(null)}
+            />
+
             {rounds.map(({ giornata, matches }) => (
                 <div key={giornata} className="glass-panel rounded-xl border border-white/10 overflow-hidden">
                     <div className="px-4 py-2 bg-zinc-900/60 border-b border-white/5 flex items-center gap-2">
@@ -61,7 +71,20 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
                             const ag = Number(m.stats?.goals?.away ?? 0);
                             const when = m.date ? new Date(m.date) : null;
                             return (
-                                <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-white/5 transition-colors">
+                                <div
+                                    key={i}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setOpenMatch(m)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setOpenMatch(m);
+                                        }
+                                    }}
+                                    title={`${m.squadre.home} vs ${m.squadre.away} - full statistics`}
+                                    className="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:outline-none transition-colors"
+                                >
                                     <span className="hidden sm:block w-14 text-[10px] font-bold text-zinc-600 uppercase tracking-wider flex-shrink-0">
                                         {when && !isNaN(when.getTime())
                                             ? when.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
