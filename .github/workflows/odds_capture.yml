@@ -11,11 +11,19 @@ name: Odds Capture
 # Odds history is also the one asset here that cannot be backfilled. A missed
 # window is gone permanently, unlike match statistics which can be re-scraped.
 
+# NO SCHEDULE - deliberately. www.domusbet.it returns 403 Forbidden to GitHub's
+# runner IP ranges, so this job can never capture anything from CI. Verified
+# 2026-08-24 on a byte-identical request (same URL, same headers): 200 OK with
+# 216 KB of JSON from an Italian residential connection, 403 from the runner,
+# failing in 8 seconds on the first call (getMenuPrematch) before a single price
+# is read. It failed all 8 times it ran and never once succeeded.
+#
+# Capture therefore runs from a machine on an Italian connection - see the cron
+# entry documented in the odds section of CLAUDE.md. This workflow is kept for
+# manual dispatch only, so it can be re-tested cheaply if the block ever lifts
+# (or if a self-hosted runner is added), without burning Actions minutes and
+# generating a failure notification every three hours.
 on:
-  schedule:
-    # Every 3 hours. Enough to build a price path into kickoff without
-    # re-reading numbers that have not moved.
-    - cron: '0 */3 * * *'
   workflow_dispatch:
     inputs:
       within:
