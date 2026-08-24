@@ -11,13 +11,12 @@ import EngineToggle from './EngineToggle';
 import Header from './Header';
 
 const STORAGE_KEY = 'olanda_safestbets_prefs';
+// The model knobs live in useModelSettings, shared with Hot Matches and the
+// Predictor - see that hook for why they are not per screen.
 const DEFAULT_PREFS = {
-    nGames: 5,
     displayCount: 9,
     selectedLeagues: ['All'],
     selectedDate: null,
-    forceMean: false,
-    useGeneralStats: false
 };
 
 const CONFIDENCE_THRESHOLDS = {
@@ -40,15 +39,13 @@ const getConfidenceLabel = (stdDev, statType) => {
     return { label: 'Low', color: 'text-red-400' };
 };
 
-const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick }) => {
+const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
-    const { nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats } = prefs;
+    const { displayCount, selectedLeagues, selectedDate } = prefs;
+    const { nGames, useGeneralStats, forceMean } = modelSettings;
 
-    const setNGames = (v) => setPrefs({ nGames: v });
     const setDisplayCount = (v) => setPrefs({ displayCount: v });
     const setSelectedDate = (v) => setPrefs({ selectedDate: v });
-    const setForceMean = (v) => setPrefs({ forceMean: v });
-    const setUseGeneralStats = (v) => setPrefs({ useGeneralStats: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
@@ -76,7 +73,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                 prediction: predictFromModel(predictionModel, match.home, match.away, {
                     nGames,
                     useGeneralStats,
-                    aggregatorOverride: forceMean ? 'mean' : 'median',
+                    aggregatorOverride: forceMean ? 'mean' : null,
                     asOf: match.date ?? new Date(),
                     engine,
                 })
@@ -315,7 +312,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                                             ? 'bg-cyan-500/20 text-cyan-400'
                                             : 'text-zinc-400 hover:bg-white/5'}`}
                                     >
-                                        Median (Default)
+                                        Auto (per statistic)
                                     </button>
                                     <button
                                         onClick={() => { setForceMean(true); setActiveDropdown(null); }}

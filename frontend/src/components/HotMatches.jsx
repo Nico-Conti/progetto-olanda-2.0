@@ -128,45 +128,50 @@ const RANK_MODES = {
 /** The line a statistic is judged at - the same one the backtests use. */
 const lineFor = (stat) => STAT_CONFIG[resolveStatKey(stat)]?.total?.default ?? null;
 
-/** Every line the market realistically offers for a statistic, ascending. */
-const linesFor = (stat) => {
+/**
+ * Every line the market realistically offers for a statistic, ascending.
+ *
+ * `extra` carries the lines this fixture is actually priced at, which the
+ * configured ladder does not always contain - total fouls are listed in steps of
+ * two while the book posted 25.5, so scanning the config alone found no foul
+ * market on a day both Serie A fixtures had one.
+ */
+const linesFor = (stat, extra = []) => {
     const cfg = STAT_CONFIG[resolveStatKey(stat)]?.total;
     if (!cfg) return [];
-    return [...new Set([cfg.default, ...(cfg.options ?? [])])]
+    return [...new Set([cfg.default, ...(cfg.options ?? []), ...extra])]
         .filter(v => v != null)
         .sort((a, b) => a - b);
 };
 
 const STORAGE_KEY = 'olanda_hotmatches_prefs';
+// nGames / useGeneralStats / forceMean deliberately do NOT live here: they are
+// shared with Safest Bets and the Predictor through useModelSettings, so the
+// same fixture cannot carry a different expected value on two screens.
 const DEFAULT_PREFS = {
-    nGames: 5,
     displayCount: 9,
     selectedLeagues: ['All'],
     selectedDate: null,
-    forceMean: false,
-    useGeneralStats: false,
     isOptimizationActive: false,
     optimizedParams: {},
     currentBettingParams: {},
     rankBy: 'total',
 };
 
-const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick }) => {
+const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
-        nGames, displayCount, selectedLeagues, selectedDate, forceMean, useGeneralStats,
+        displayCount, selectedLeagues, selectedDate,
         isOptimizationActive, optimizedParams, rankBy,
     } = prefs;
+    const { nGames, useGeneralStats, forceMean } = modelSettings;
 
     // Only the count engine produces a distribution, so the two ranking modes
     // that need one fall back rather than ranking on undefined.
     const effectiveRankBy = (engine === ENGINES.COUNT && RANK_MODES[rankBy]) ? rankBy : 'total';
 
-    const setNGames = (v) => setPrefs({ nGames: v });
     const setDisplayCount = (v) => setPrefs({ displayCount: v });
     const setSelectedDate = (v) => setPrefs({ selectedDate: v });
-    const setForceMean = (v) => setPrefs({ forceMean: v });
-    const setUseGeneralStats = (v) => setPrefs({ useGeneralStats: v });
     const setRankBy = (v) => setPrefs({ rankBy: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -245,7 +250,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
                 const pred = predictFromModel(predictionModel, match.home, match.away, {
                     nGames: currentNGames,
                     useGeneralStats: currentUseGeneralStats,
-                    aggregatorOverride: currentForceMean ? 'mean' : 'median',
+                    aggregatorOverride: currentForceMean ? 'mean' : null,
                     // Kickoff, so a fixture next month is not modelled as if it
                     // were today. Falls back to now for a fixture with no date.
                     asOf: match.date ?? new Date(),
@@ -260,7 +265,9 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
 
                 let bestEv = null;
                 if (pred?.probOver && priceFor) {
-                    for (const l of linesFor(selectedStatistic)) {
+                    const scan = linesFor(selectedStatistic,
+                        pricedLines?.(match.home, match.away, selectedStatistic) ?? []);
+                    for (const l of scan) {
                         const p = pred.probOver(l);
                         if (p == null) continue;
                         const overPrice = priceFor(match.home, match.away, selectedStatistic, l, true);
@@ -299,7 +306,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
         return scored
             .sort((a, b) => b.prediction.total - a.prediction.total)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines]);
 
     // How much of the candidate set each narrowing mode actually keeps, so the
     // UI can say so instead of just showing a short list.
@@ -308,11 +315,12 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
         let priced = 0, confident = 0;
         for (const match of candidates) {
             const pred = predictFromModel(predictionModel, match.home, match.away, {
-                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : 'median',
+                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
                 asOf: match.date ?? new Date(), engine,
             });
             if (!pred?.probOver || !priceFor) continue;
-            const hasPrice = linesFor(selectedStatistic).some(l =>
+            const hasPrice = linesFor(selectedStatistic,
+                pricedLines?.(match.home, match.away, selectedStatistic) ?? []).some(l =>
                 priceFor(match.home, match.away, selectedStatistic, l, true) ||
                 priceFor(match.home, match.away, selectedStatistic, l, false));
             if (!hasPrice) continue;
@@ -320,7 +328,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
             if (pred.confident) confident++;
         }
         return { total: candidates.length, priced, confident };
-    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor]);
+    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines]);
 
     // Close dropdown when clicking outside
     useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
@@ -590,7 +598,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, stats, fixtures, matchDa
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            Median (Default)
+                                            Auto (per statistic)
                                         </button>
                                         <button
                                             onClick={() => { setForceMean(true); setActiveDropdown(null); }}

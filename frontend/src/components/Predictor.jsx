@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, TrendingUp, BarChart2 } from 'lucide-react';
-import { VOLATILE_STATS } from '../utils/stats';
+import { VOLATILE_STATS, processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import EngineToggle from './EngineToggle';
 import { STAT_OPTIONS, resolveStatKey, STAT_CONFIG } from '../utils/statistics';
@@ -16,16 +16,21 @@ import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 
 
-const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
+const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
+    // Model history is pooled across leagues (see App.jsx); `matchData` stays the
+    // league's own and still drives the league averages, the backtest and the
+    // distribution, all of which are claims about THIS league.
+    const modelData = modelMatchData ?? matchData;
     const [selectedMatch, setSelectedMatch] = useState(null);
-    const [nGames, setNGames] = useState(5);
+    // Shared with Hot Matches and Safest Bets. These were local useState, which
+    // meant they reset to the defaults on every mount while the other two
+    // screens remembered theirs - so the same fixture could show two different
+    // expected values. See hooks/useModelSettings.js.
+    const { nGames, useGeneralStats, forceMean } = modelSettings;
     const [selectedMatchday, setSelectedMatchday] = useState(null);
     const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
     const [showAccuracy, setShowAccuracy] = useState(false);
     const [showDistribution, setShowDistribution] = useState(false);
-
-    const [useGeneralStats, setUseGeneralStats] = useState(false);
-    const [forceMean, setForceMean] = useState(false);
 
     // Sync preSelectedMatch
     useEffect(() => {
@@ -43,19 +48,36 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
     // team histories, and which statistic they are built on is now the model's
     // decision, not the caller's - corners are predicted from shots, goals from
     // box touches. See utils/predictTotal.js.
-    const allPredictionModels = useMemo(() => {
-        const byKey = {};
-        const models = {};
-        STAT_OPTIONS.forEach(opt => {
-            const statKey = resolveStatKey(opt.value);
-            byKey[statKey] ??= buildPredictionModel(matchData, statKey,
+    // Built ON DEMAND, one statistic at a time.
+    //
+    // This used to build a model for all fifteen distinct stat keys up front.
+    // That was tolerable over one league's ~400 matches, but the model history is
+    // now pooled across every league (~3,150), and eager building cost 6.1s of
+    // blocking work on opening the Predictor with the count engine - measured,
+    // against 560ms before. Hot Matches was always fast because it builds exactly
+    // one. In practice the Predictor needs one or two: the selected statistic, and
+    // whatever a row's own dropdown overrides it with.
+    //
+    // The Map is memoised on [modelData, engine], so it is a fresh cache whenever
+    // either changes and can never serve a model built from stale history.
+    // The inputs travel WITH the cache rather than beside it, so a stale Map can
+    // never be paired with fresh history - and the deps are genuinely used, which
+    // an empty-factory useMemo would only fake.
+    const modelCache = useMemo(
+        () => ({ data: modelData, trackResiduals: engine === ENGINES.COUNT, byKey: new Map() }),
+        [modelData, engine]
+    );
+    const getModel = useCallback((statistic) => {
+        // 'main' and 'goals' both read the goals column, so they share one model.
+        const statKey = resolveStatKey(statistic);
+        if (!modelCache.byKey.has(statKey)) {
+            modelCache.byKey.set(statKey, buildPredictionModel(modelCache.data, statKey,
                 // Only the count engine needs the residual history, and building
                 // it costs an extra prediction per match per statistic.
-                { trackResiduals: engine === ENGINES.COUNT });
-            models[opt.value] = byKey[statKey];
-        });
-        return models;
-    }, [matchData, engine]);
+                { trackResiduals: modelCache.trackResiduals }));
+        }
+        return modelCache.byKey.get(statKey);
+    }, [modelCache]);
 
     // League Averages for Hot Match condition
     const leagueAverages = useMemo(() => {
@@ -83,6 +105,28 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
     // Independent Statistic State
     const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
 
+    // The model's homeMatches/awayMatches are in PREDICTOR units: goals are
+    // forecast from box touches, so those rows read "42 - 18, total 60" under a
+    // heading that says goals. The prediction is right; the history was showing
+    // its input rather than the statistic asked for. This maps each row back to
+    // the same fixture measured in the target statistic, for display only - the
+    // model is untouched.
+    // Built on modelData, not matchData: the model is pooled across leagues, so a
+    // promoted or relegated side's older rows live in a different league and a
+    // league-scoped lookup would silently fall back to predictor units for them.
+    const targetHistory = useMemo(
+        () => processData(modelData, resolveStatKey(localStatistic)),
+        [modelData, localStatistic]
+    );
+    const inTargetUnits = (m) => {
+        if (!m) return m;
+        const rows = targetHistory[m.team]?.all_matches;
+        const hit = rows?.find(r =>
+            r.giornata === m.giornata && r.opponent === m.opponent
+            && r.location === m.location && r.season === m.season);
+        return hit ?? m;
+    };
+
     // Sync local statistic with global when global changes, but only if not in a specific view that overrides it?
     // Or just set initial state. The user asked for "independently", so maybe we shouldn't auto-sync if they changed it locally.
     // But if they change the global one, they probably expect the default to update.
@@ -93,10 +137,8 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
 
     // Recalculate stats based on localStatistic
     const localModel = useMemo(
-        () => allPredictionModels[localStatistic]
-            ?? buildPredictionModel(matchData, localStatistic,
-                { trackResiduals: engine === ENGINES.COUNT }),
-        [allPredictionModels, localStatistic, matchData, engine]
+        () => getModel(localStatistic),
+        [getModel, localStatistic]
     );
 
     // Custom Matchup State
@@ -164,7 +206,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
         const predictions = unplayed.map(match => {
             const matchId = `${match.home}-${match.away}`;
             const stat = matchStatistics[matchId] || selectedStatistic;
-            const modelToUse = allPredictionModels[stat] ?? allPredictionModels[selectedStatistic];
+            const modelToUse = getModel(stat) ?? getModel(selectedStatistic);
 
             const pred = predictFromModel(modelToUse, match.home, match.away, {
                 nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
@@ -177,7 +219,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
         // visible. The rendering shows a dash wherever a number would go.
 
         return predictions.sort((a, b) => a.matchday - b.matchday);
-    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, allPredictionModels, useGeneralStats, forceMean, engine]);
+    }, [fixtures, globalStats, nGames, matchStatistics, selectedStatistic, getModel, useGeneralStats, forceMean, engine]);
 
     // Get available matchdays from upcoming matches
     const availableMatchdays = useMemo(() => {
@@ -408,7 +450,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                 {detailPred?.probOver && (
                     <div className="mt-4">
                         <ProbabilityLadder prediction={detailPred} statistic={localStatistic}
-                            home={home} away={away} priceFor={priceFor} />
+                            home={home} away={away} priceFor={priceFor} pricedLines={pricedLines} />
                     </div>
                 )}
 
@@ -427,7 +469,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.homeMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
@@ -442,7 +484,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.awayMatches.map(m => (
-                                <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
@@ -941,7 +983,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                             {customPrediction?.probOver && (
                                 <div className="mt-4">
                                     <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
-                                        home={customHome} away={customAway} priceFor={priceFor} />
+                                        home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines} />
                                 </div>
                             )}
 
@@ -957,7 +999,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                                     </div>
                                     <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                         {customPrediction.homeMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                         ))}
                                     </div>
                                 </div>
@@ -972,7 +1014,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                                     </div>
                                     <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                         {customPrediction.awayMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={m} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                         ))}
                                     </div>
                                 </div>

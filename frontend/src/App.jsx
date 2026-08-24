@@ -13,6 +13,7 @@ import { processData } from './utils/stats';
 import { seasonsForLeague, latestSeasonForLeague, modelSeasonsForLeague } from './utils/seasons';
 import { usePredictionEngine } from './hooks/usePredictionEngine';
 import { useOdds } from './hooks/useOdds';
+import { useModelSettings } from './hooks/useModelSettings';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
 import ToggleSwitch from './components/ui/ToggleSwitch';
@@ -282,7 +283,11 @@ export default function App() {
   // measured `classic` model - a new engine is opted into, never imposed.
   const { engine, setEngine } = usePredictionEngine();
   // Bookmaker prices, if any have been captured. Optional throughout.
-  const { priceFor, priceForBet } = useOdds();
+  const { priceFor, priceForBet, pricedLines } = useOdds();
+  // One copy of the model knobs for every screen that predicts. Held here, not
+  // per screen: three private copies gave the same fixture different expected
+  // values depending on which view you were standing in.
+  const modelSettingsApi = useModelSettings();
 
   const stats = useMemo(() => processData(filteredMatchData, selectedStatistic), [filteredMatchData, selectedStatistic]);
   const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
@@ -371,9 +376,11 @@ export default function App() {
       {view === 'hot-matches' && (
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <HotMatches
+            {...modelSettingsApi}
             engine={engine}
             onEngineChange={setEngine}
             priceFor={priceFor}
+            pricedLines={pricedLines}
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
@@ -405,6 +412,7 @@ export default function App() {
       {view === 'safest-bets' && (
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <SafestBets
+            {...modelSettingsApi}
             engine={engine}
             onEngineChange={setEngine}
             stats={allStats}
@@ -553,10 +561,20 @@ export default function App() {
             {activeTab === 'predictor' && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <Predictor
+                  {...modelSettingsApi}
                   engine={engine}
                   onEngineChange={setEngine}
                   priceFor={priceFor}
+                  pricedLines={pricedLines}
                   stats={predictorStats}
+                  // The prediction MODEL is built on every league, exactly as Hot
+                  // Matches and Safest Bets build theirs. One pooled model measured
+                  // better than seven per-league ones, and more immediately: goals
+                  // are converted from box touches by a ratio taken over whatever
+                  // the model was trained on, so a league-only model gave the same
+                  // fixture a different total (3.51 vs 2.91 for Jong Utrecht v
+                  // Heracles) and flipped the sign of its EV between the two views.
+                  modelMatchData={currentSeasonMatchData}
                   fixtures={filteredFixtures}
                   teams={teams}
                   teamLogos={teamLogos}

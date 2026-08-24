@@ -22,14 +22,22 @@ import { MIN_EFFECTIVE_FOR_EV } from '../../utils/predictTotal';
  * the model disagrees with the market, and the largest disagreements come from
  * the least history rather than the most insight.
  */
-const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor }) => {
+const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, pricedLines }) => {
     if (!prediction?.probOver) return null;
 
     const key = resolveStatKey(statistic);
     const config = STAT_CONFIG[key]?.total;
     if (!config) return null;
 
-    const lines = [...new Set([config.default, ...(config.options ?? [])])].sort((a, b) => a - b);
+    // The configured ladder, plus any line this fixture is actually priced at.
+    // The book posts lines we do not list - both Serie A fixtures on 2026-08-24
+    // had total fouls at 25.5 only, and the foul ladder steps 20.5, 22.5, 24.5,
+    // so the day's one priced foul market showed nowhere.
+    const lines = [...new Set([
+        config.default,
+        ...(config.options ?? []),
+        ...(pricedLines?.(home, away, statistic) ?? []),
+    ])].sort((a, b) => a - b);
     const rows = lines
         .map(line => {
             const over = prediction.probOver(line);
@@ -98,7 +106,12 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor }) => {
                     <thead>
                         <tr className="text-[10px] uppercase text-zinc-500 font-bold">
                             <th className="text-left py-1 pr-3">Line</th>
-                            {rows.map(r => <th key={r.line} className="px-2 py-1 text-center">{r.line}</th>)}
+                            {rows.map(r => (
+                                <th key={r.line}
+                                    className={`px-2 py-1 text-center ${(r.overPrice || r.underPrice) ? 'text-emerald-400' : ''}`}>
+                                    {r.line}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="tabular-nums">
