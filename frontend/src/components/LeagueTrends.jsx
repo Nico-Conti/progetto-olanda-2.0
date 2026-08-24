@@ -94,7 +94,7 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                 </div>
 
                 {/* Mobile View (Cards) */}
-                <div className="md:hidden space-y-4">
+                <div className="md:hidden space-y-4 p-4">
                     {teams.map((team, index) => {
                         const hTrend = getTrendData(stats[team].home_totals, nGames);
                         const aTrend = getTrendData(stats[team].away_totals, nGames);
@@ -223,7 +223,9 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                                         <td className="px-3 py-3 text-center text-red-300 font-mono font-medium text-base">{hAgAvg.toFixed(1)}</td>
                                         <td className="px-3 py-3 text-center text-zinc-400 font-mono font-medium text-base">{hTrend.season.toFixed(1)}</td>
                                         <td className="px-3 py-3 text-center font-black text-white font-mono text-lg bg-white/5 shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">{hTrend.recent.toFixed(1)}</td>
-                                        <td className="px-3 py-3 flex justify-center items-center h-full"><TrendBadge diff={hTrend.diff} /></td>
+                                        <td className="px-3 py-3 text-center">
+                                            <div className="flex justify-center"><TrendBadge diff={hTrend.diff} /></div>
+                                        </td>
 
                                         {/* Away Stats */}
                                         <td className="px-3 py-3 text-center text-emerald-300 font-mono font-medium text-base border-l border-white/5">{aForAvg.toFixed(1)}</td>

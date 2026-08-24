@@ -132,7 +132,7 @@ const TransitionAnimation = ({ isActive, onMidPoint, onComplete }) => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
                 /*
                    Create a "comet tail" effect:
                    stroke-dasharray: [length of dash] [length of gap]

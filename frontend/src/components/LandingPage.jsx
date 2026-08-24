@@ -135,7 +135,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
                             <div className="h-full flex items-center pl-2 border-l border-white/10">
                                 <button
                                     onClick={() => setIsLeagueModalOpen(true)}
-                                    className="flex flex-col items-center justify-center p-4 w-20 h-full bg-zinc-900/30 hover:bg-zinc-800/50 border border-white/5 hover:border-white/20 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-waterfall"
+                                    className="group flex flex-col items-center justify-center p-4 w-20 h-full bg-zinc-900/30 hover:bg-zinc-800/50 border border-white/5 hover:border-white/20 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-waterfall"
                                     style={{ animationDelay: `${(availableLeagues.length + 1) * 100}ms` }}
                                 >
                                     <div className="w-10 h-10 mb-2 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-white/30 transition-colors">
@@ -256,8 +256,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, isAnimatio
 
             {/* Footer */}
             <div
-                className="py-8 text-center text-zinc-600 text-m font-mono uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
-                style={{ 'font-family': 'Silkscreen', animationDelay: `${(availableLeagues.length + 3) * 100}ms`, animationFillMode: 'backwards' }}
+                className="py-8 text-center text-zinc-600 text-base uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
+                style={{ fontFamily: "'Silkscreen', monospace", animationDelay: `${(availableLeagues.length + 3) * 100}ms`, animationFillMode: 'backwards' }}
             >
                 Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega.
             </div>

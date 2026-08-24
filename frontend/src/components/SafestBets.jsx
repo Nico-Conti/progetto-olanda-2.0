@@ -371,7 +371,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                                             {match.prediction.totalStd.toFixed(2)}
                                         </div>
                                         <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider bg-cyan-500/10 px-2 py-0.5 rounded-full mt-1 border border-cyan-500/20">
-                                            ± {match.prediction.totalStd.toFixed(2)}
+                                            {getStatLabel(selectedStatistic)} spread
                                         </span>
                                     </div>
                                     <div className="flex flex-col items-center gap-2 w-1/3">

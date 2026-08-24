@@ -10,7 +10,7 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, 
     const isHotMatch = leagueAverage ? prediction.total > (leagueAverage * 1.15) : prediction.total > 11.5;
 
     return (
-        <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40  z-[-1]">
+        <div className="glass-panel rounded-xl p-8 flex flex-col justify-center relative overflow-hidden group border border-white/10 bg-zinc-900/40">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
 

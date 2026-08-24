@@ -297,7 +297,10 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                 </button>
 
                 {/* Configuration (Sample Size Only) */}
-                <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                {/* relative z-50: glass-panel applies backdrop-blur, which creates a
+                    stacking context, so the statistic dropdown inside would open
+                    behind the prediction hero below without this. */}
+                <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 relative z-50">
                     <h3 className="text-base font-bold text-white flex items-center gap-2 self-start md:self-auto">
                         <Calculator className="w-5 h-5 text-emerald-400" />
                         Match Analysis
@@ -624,7 +627,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
 
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
                 {/* Mobile View (Cards) */}
-                <div className="md:hidden space-y-4">
+                <div className="md:hidden space-y-4 p-4">
                     {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
                         <div
                             key={idx}
@@ -863,7 +866,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, stats: globalStats, fixtu
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="7" className="px-5 py-8 text-center text-zinc-500">
+                                    <td colSpan={showProbability ? 8 : 7} className="px-5 py-8 text-center text-zinc-500">
                                         No upcoming fixtures found for this matchday.
                                     </td>
                                 </tr>

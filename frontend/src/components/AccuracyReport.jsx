@@ -393,9 +393,9 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                                     <span className="font-bold truncate w-full text-right">{res.home}</span>
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    <img src={teamLogos[res.home]} className="w-5 h-5 object-contain" />
+                                                    <img src={teamLogos[res.home]} alt={res.home} className="w-5 h-5 object-contain" />
                                                     <span className="text-zinc-600 text-xs font-bold">vs</span>
-                                                    <img src={teamLogos[res.away]} className="w-5 h-5 object-contain" />
+                                                    <img src={teamLogos[res.away]} alt={res.away} className="w-5 h-5 object-contain" />
                                                 </div>
                                                 <div className="flex flex-col w-24">
                                                     <span className="font-bold truncate w-full">{res.away}</span>

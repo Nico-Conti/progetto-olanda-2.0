@@ -449,7 +449,7 @@ export default function App() {
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semi-bold uppercase tracking-wide transition-all ${activeTab === tab.id
+                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide transition-all ${activeTab === tab.id
                       ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                       : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}

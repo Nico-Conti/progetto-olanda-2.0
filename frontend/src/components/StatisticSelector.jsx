@@ -26,7 +26,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                 className={`
                     flex items-center justify-between gap-2 w-full
                     bg-zinc-900/80 border border-white/5 
-                    text-zinc-300 text-sm font-semi-bold uppercase tracking-wide
+                    text-zinc-300 text-sm font-semibold uppercase tracking-wide
                     rounded-full px-4 py-2 
                     focus:outline-none focus:ring-2 focus:ring-emerald-500/50
                     transition-all duration-200
@@ -57,7 +57,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                             key={option.value}
                             onClick={() => handleSelect(option.value)}
                             className={`
-                                w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semi-bold uppercase tracking-wide
+                                w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold uppercase tracking-wide
                                 transition-all duration-150
                                 ${value === option.value
                                     ? 'bg-emerald-500/10 text-emerald-400'
