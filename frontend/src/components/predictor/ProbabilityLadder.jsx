@@ -8,11 +8,11 @@ import { MIN_EFFECTIVE_FOR_EV } from '../../utils/predictTotal';
  * What the distribution engine can say that a single number cannot.
  *
  * The classic engine predicts one total and calls over/under at one hardcoded
- * line. Real bookmakers post whichever line suits the match - foul lines of
- * 20.5, 21.5, 22.5 and 24.5 were all seen on one matchday, and only 46% of
- * matches would be priced at the 9.5 corner line the app assumes. This prices
- * every line the market realistically offers, from a single fit, and where a
- * captured price exists it shows the expected value of taking it.
+ * line. Real bookmakers post whichever line suits the match - captured foul
+ * prices sit at 20.5, 21.5, 22.5 and 25.5, and only 46% of matches would be
+ * priced at the 9.5 corner line the app assumes. This prices every line the
+ * market realistically offers, from a single fit, and where a captured price
+ * exists it shows the expected value of taking it.
  *
  * Probabilities are monotone by construction - they come from one distribution,
  * so P(over 10.5) can never exceed P(over 9.5), which separately fitted per-line

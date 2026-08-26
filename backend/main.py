@@ -56,6 +56,12 @@ MATCH_COLUMNS = ",".join([
     "home_fouls", "away_fouls",
     "home_yellow_cards", "away_yellow_cards",
     "home_red_cards", "away_red_cards",
+    # Needed to compute card points correctly: diretta files a dismissal for a
+    # second yellow as one yellow AND one red, so the bookmaker's total is
+    # `yellows + 2*reds - second_bookings`. NULL on anything scraped before
+    # migration 005; the frontend treats NULL as 0, which leaves those matches
+    # at the old, marginally high value rather than discarding them.
+    "home_second_bookings", "away_second_bookings",
     "home_shots", "away_shots",
     "home_shots_on_target", "away_shots_on_target",
     "home_possession", "away_possession",

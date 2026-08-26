@@ -51,16 +51,28 @@ HEADERS = {
 }
 FOOTBALL_SPORT_ID = 1
 
-# Named market groups covering every statistic we model. Fetching these three is
-# 80 KB per fixture; asking for the whole event (idAggregata=-1) is 2.2 MB for
-# the same 21 rows, because a fixture carries ~4,000 markets and we use six of
-# them. At eight capture runs a day that is the difference between ~2 MB and
-# ~60 MB of someone else's bandwidth per fixture per day.
+# Named market groups covering every statistic we model. Fetching these four is
+# ~106 KB per fixture; asking for the whole event (idAggregata=-1) is 1.7-2.2 MB
+# for the same handful of rows, because a fixture carries ~3,400 markets and we
+# use six of them. At eight capture runs a day that is the difference between
+# ~1 MB and ~17 MB of someone else's bandwidth per fixture per day.
 #
 # Goals also appear under "Principali", which is deliberately not fetched: it
 # would duplicate every goals line for no new information.
+#
+# 206 (Cartellini) was missing until 2026-08-26, which is the entire reason the
+# capture had never produced a single card price - not, as previously assumed,
+# because the book does not post them. It does: 890 `U/O CARTELLINI (T.R.)` at
+# lines 2.5-6.5, plus TOTALE / 1X2 / NUMERO CARTELLINI. A market that is mapped
+# in MARKETS but sits in a group nobody fetches is invisible and silent, so
+# check both when a market "does not exist".
+#
+# Finding it cost two Cloudflare lockouts. Do not scan for these: see the odds
+# section of CLAUDE.md. Note 206 is adjacent to 205 - populated groups cluster,
+# and only 23 of 300 ids return anything at all.
 MARKET_GROUPS = {
     205: "Corner",
+    206: "Cartellini",            # card points - only posted near kickoff
     252: "Statistiche Partita",   # fouls, shots, shots on target
     82: "Gol",
 }
@@ -74,7 +86,16 @@ REQUEST_PAUSE = 1.0
 MARKETS = {
     975: ("total_corners", "corners"),
     13880: ("total_fouls", "fouls"),
-    31347: ("total_card_points", "yellow_cards"),
+    # 890 is `U/O INFO1 CARTELLINI (T.R.)`, posted at 2.5-6.5. The previous
+    # code here, 31347, is not a market this book offers - which is why the
+    # capture had never produced a single card price, and why that read as
+    # "cards are only posted near kickoff" like fouls. They are not: cards were
+    # on the board 13h before kickoff, among 3,790 markets on the fixture.
+    #
+    # It settles on POINTS, not on a count - yellow 1, red 2, a second yellow
+    # that becomes a red 3 - so it is mapped to `card_points`, not to
+    # `yellow_cards`. Pricing a yellow-only estimate against it is biased low.
+    890: ("total_card_points", "card_points"),
     15481: ("total_shots_on_target", "shots_on_target"),
     15859: ("total_shots", "shots"),
     7989: ("total_goals", "goals"),

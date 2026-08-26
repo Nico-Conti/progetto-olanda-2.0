@@ -81,6 +81,12 @@ def build_stats_payload(local_match):
         ("fouls", "fouls", int),
         ("yellow_cards", "yellow_cards", int),
         ("red_cards", "red_cards", int),
+        # Dismissals for a second yellow. diretta counts one of those as a
+        # yellow AND a red, so total card points are
+        # `yellows + 2*reds - second_bookings`; without this the total is
+        # overstated by one per occurrence. Absent when the timeline did not
+        # render, and absent keys are skipped rather than written as 0.
+        ("second_bookings", "second_bookings", int),
         ("shots", "shots", int),
         ("shots_on_target", "shots_on_target", int),
         ("xg", "xg", float),

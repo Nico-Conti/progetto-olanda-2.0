@@ -84,6 +84,43 @@ export const useMatchData = () => {
                     fouls: { home: match.home_fouls ?? 0, away: match.away_fouls ?? 0 },
                     yellow_cards: { home: match.home_yellow_cards ?? 0, away: match.away_yellow_cards ?? 0 },
                     red_cards: { home: match.home_red_cards ?? 0, away: match.away_red_cards ?? 0 },
+                    // The bookmaker's card market settles on POINTS, not on a
+                    // count: a yellow is 1 and a red is 2 (domusbet's published
+                    // rules). Derived here rather than stored, so it costs no
+                    // payload and every consumer - processData, predictTotal,
+                    // the backtest - sees it like any scraped statistic.
+                    //
+                    // Exact, given second_bookings. A dismissal for a second
+                    // yellow is filed by diretta as one yellow AND one red, so
+                    // `yellows + 2*reds` scores it 4 where the bookmaker scores
+                    // 3 (first yellow 1 + red 2). Subtracting the count of such
+                    // dismissals corrects exactly that, and only that.
+                    //
+                    // Verified on Cesena-Sampdoria (2026-08-23): the timeline
+                    // reads David A. yellow 43', David A. yellow-red 50',
+                    // Shpendi yellow 57', Cicconi yellow 38', and the statistics
+                    // panel says gialli 3-1, rossi 1-0 - three home yellows only
+                    // reachable by counting the 50' second booking. True points
+                    // 5, naive 6, corrected 4 + 2 - 1 = 5.
+                    //
+                    // `second_bookings` is NULL for every match scraped before
+                    // migration 005, so `?? 0` leaves those at the old, slightly
+                    // high value rather than dropping them from the model. That
+                    // is a deliberate choice: the bias is ~0.06 points a match
+                    // (33.3% of reds are second bookings, measured over 98
+                    // matches), which is far smaller than the cost of discarding
+                    // the history. It decays away as matches are rescraped.
+                    //
+                    // Off-pitch cards need no correction here: diretta tags them
+                    // "Non Dal Campo" and leaves them out of the statistics
+                    // panel, exactly as the bookmaker's rules require, so the
+                    // yellow and red columns are already on the right basis.
+                    card_points: {
+                        home: (match.home_yellow_cards ?? 0) + 2 * (match.home_red_cards ?? 0)
+                              - (match.home_second_bookings ?? 0),
+                        away: (match.away_yellow_cards ?? 0) + 2 * (match.away_red_cards ?? 0)
+                              - (match.away_second_bookings ?? 0),
+                    },
                     shots: { home: match.home_shots ?? 0, away: match.away_shots ?? 0 },
                     shots_on_target: { home: match.home_shots_on_target ?? 0, away: match.away_shots_on_target ?? 0 },
                     goals: { home: match.home_goals ?? 0, away: match.away_goals ?? 0 },

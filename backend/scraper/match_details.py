@@ -1,8 +1,14 @@
+import re
 import time
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+# A dismissal for a second yellow, as the timeline labels it, and the tag diretta
+# puts on a card shown to someone who is not on the pitch.
+SECOND_BOOKING_RE = re.compile(r"cartellino\s+giallo\s*/\s*cartellino\s+rosso", re.I)
+OFF_PITCH_RE = re.compile(r"non\s+dal\s+campo", re.I)
 
 # Status text on a match page that means "this result is final".
 FINISHED_STATUS_MARKERS = (
@@ -38,6 +44,45 @@ def scrape_basic_info(soup):
     except Exception as e:
         print(f"    Error scraping teams/score: {e}")
         return {}
+
+def scrape_second_bookings(soup):
+    """Count dismissals for a SECOND YELLOW, per side, from the match timeline.
+
+    This is what makes total cards correct rather than merely close. diretta's
+    statistics panel files such a dismissal as one yellow AND one red, so
+    `yellows + 2*reds` scores it 4 - but the bookmaker scores it 3 (the first
+    yellow 1, plus the red 2; the second yellow is not counted again). Every one
+    of them therefore inflates the naive total by exactly one, and subtracting
+    this count makes it exact:
+
+        card_points = yellows + 2*reds - second_bookings
+
+    Measured 2026-08-26 over 98 sampled red-card matches: 39 of 117 red cards
+    (33.3%) are second bookings, worth ~0.06 points per match on a base of 4.32.
+
+    Detection is by the incident TEXT. The second-booking icon carries no
+    card-specific class - only the generic `wcl-icon_*`, the same one goals and
+    substitutions use - so a `[class*="Card-ico"]` selector silently matches
+    nothing and reports zero. That is not hypothetical: it is exactly the mistake
+    that produced a confident, wrong conclusion before this was measured.
+
+    Rows tagged "Non Dal Campo" - coaches, staff, the bench, players already
+    substituted - are skipped. The statistics panel leaves those out too (so our
+    yellow and red columns are already on the bookmaker's on-pitch-only basis),
+    and subtracting something that was never added would break that agreement.
+    """
+    counts = {"home": 0, "away": 0}
+    for row in soup.select("div.smv__incident"):
+        text = " ".join(row.get_text(" ", strip=True).split())
+        if not SECOND_BOOKING_RE.search(text) or OFF_PITCH_RE.search(text):
+            continue
+        parent_classes = (row.parent.get("class") if row.parent else None) or []
+        if "smv__homeParticipant" in parent_classes:
+            counts["home"] += 1
+        elif "smv__awayParticipant" in parent_classes:
+            counts["away"] += 1
+    return {"home": str(counts["home"]), "away": str(counts["away"])}
+
 
 def scrape_stats(driver):
     """Clicks Statistics tab and extracts various match stats."""
@@ -252,8 +297,34 @@ def scrape_match_details(driver, product_url, skip_comments=False):
 
         final_data['squadre'] = scrape_basic_info(initial_soup)
 
+        # Second bookings come from the TIMELINE, which is the default tab - so
+        # they must be read here, before scrape_stats() clicks over to the
+        # statistics panel and replaces the content.
+        #
+        # Wait for the timeline first. Every match has substitutions, so a page
+        # with no participant rows at all has not finished rendering rather than
+        # having nothing to show; ~10% of pages were in that state on a first
+        # attempt when this was sampled. Recording 0 for those would look like
+        # "no second bookings" and bias the correction downward, so say so.
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.smv__participantRow"))
+            )
+            # Re-parsed: initial_soup was taken before this wait, so it can
+            # predate the timeline rendering.
+            timeline_soup = BeautifulSoup(driver.page_source, "html.parser")
+            second_bookings = scrape_second_bookings(timeline_soup)
+        except Exception:
+            print("  -> ⚠️ Timeline did not render; second_bookings unknown, storing none")
+            second_bookings = None
+
         # 3. Get Stats (Corners, Fouls, etc.)
         final_data['stats'] = scrape_stats(driver)
+        # Omitted entirely when unknown: the syncer skips absent keys, so the
+        # column keeps whatever it had instead of being overwritten with a
+        # wrong zero.
+        if second_bookings is not None:
+            final_data['stats']['second_bookings'] = second_bookings
         # Flatten for backward compatibility if needed, or keep structured.
         # For now, let's keep 'calci_d_angolo' as a top level key if other parts depend on it,
         # or just use the new structure. The user asked for extraction, so I'll provide the new structure.

@@ -15,6 +15,7 @@ export const STAT_OPTIONS = [
     { value: 'fouls', label: 'Fouls' },
     { value: 'yellow_cards', label: 'Yellow Cards' },
     { value: 'red_cards', label: 'Red Cards' },
+    { value: 'card_points', label: 'Card Points' },
     { value: 'possession', label: 'Possession' },
     // Scraped since the start but only served by /matches recently, so none of
     // these have ever reached the model. They are unmeasured - deliberately
@@ -46,7 +47,7 @@ export const resolveStatKey = (statistic) => (statistic === 'main' ? 'goals' : s
  * Stats whose per-match values are spiky enough that the median is a better
  * central estimate than the mean.
  */
-export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards'];
+export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards', 'card_points'];
 // The newly exposed statistics are deliberately absent: which of them the
 // median helps is a measurement, not a guess, and the backtest optimizer
 // already sweeps forceMean so it can find the median where it wins.
@@ -118,6 +119,11 @@ export const HALF_LIFE_DAYS = {
     fouls: 90,
     shots: 120,
     yellow_cards: 180,
+    // Inherited from yellow_cards rather than fitted: card_points is the same
+    // events on a different scale, and 96% of its mass IS the yellow count
+    // (mean 3.96 of 4.32). Inheriting is a defensible prior, not a measurement
+    // - refit it with decayComparison.mjs before treating it as one.
+    card_points: 180,
 };
 
 /** Days before a team's form is half-forgotten. Null means no measurement. */
@@ -193,6 +199,13 @@ export const STAT_CONFIG = {
     red_cards: {
         total: { default: 0.5, step: 0.5, options: [0.5] },
         individual: { default: 0.5, step: 0.5, options: [0.5] }
+    },
+    // The lines domusbet posted on 2026-08-26 for `U/O CARTELLINI (T.R.)`:
+    // 2.5 to 6.5. Same shape as yellow_cards, one point higher on average,
+    // because every red adds two.
+    card_points: {
+        total: { default: 4.5, step: 1, options: [2.5, 3.5, 4.5, 5.5, 6.5] },
+        individual: { default: 2.5, step: 1, options: [0.5, 1.5, 2.5, 3.5, 4.5] }
     },
     possession: {
         total: { default: 50.5, step: 5, options: [40.5, 45.5, 50.5, 55.5, 60.5] },

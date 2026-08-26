@@ -20,7 +20,10 @@ const MARKET_FOR_STAT = {
     goals: 'total_goals',
     shots: 'total_shots',
     shots_on_target: 'total_shots_on_target',
-    yellow_cards: 'total_card_points',
+    // NOT yellow_cards: `total_card_points` settles on the book's points scale
+    // (yellow 1, red 2), so quoting it against a yellow-only estimate prices a
+    // different quantity than the one the model predicts.
+    card_points: 'total_card_points',
 };
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
