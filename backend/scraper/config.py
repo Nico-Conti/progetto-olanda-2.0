@@ -59,6 +59,36 @@ LEAGUES = {
         "base_url": "https://www.diretta.it/calcio/brasile/serie-a-betano/",
         "season_style": "calendar",
     },
+    "ligaportugal": {
+        "name": "Liga Portugal",
+        "base_url": "https://www.diretta.it/calcio/portogallo/liga-portugal/",
+        "season_style": "split",
+    },
+    "championship": {
+        "name": "Championship",
+        "base_url": "https://www.diretta.it/calcio/inghilterra/championship/",
+        "season_style": "split",
+    },
+    "bundesliga2": {
+        "name": "2. Bundesliga",
+        "base_url": "https://www.diretta.it/calcio/germania/2-bundesliga/",
+        "season_style": "split",
+    },
+    "laliga2": {
+        "name": "LaLiga 2",
+        "base_url": "https://www.diretta.it/calcio/spagna/laliga2/",
+        "season_style": "split",
+    },
+    "ligue2": {
+        "name": "Ligue 2",
+        "base_url": "https://www.diretta.it/calcio/francia/ligue-2/",
+        "season_style": "split",
+    },
+    "superlig": {
+        "name": "Super Lig",
+        "base_url": "https://www.diretta.it/calcio/turchia/super-lig/",
+        "season_style": "split",
+    },
 }
 
 # Ordered list of slugs, used for the scraper CLI choices and the CI loop.

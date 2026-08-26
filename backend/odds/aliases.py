@@ -114,9 +114,52 @@ def build_alias_map(ours, theirs):
 
 # --- matching upcoming fixtures, where there are no results to fingerprint ----
 
+# Bookmaker exonyms that no string rule can bridge, keyed and valued on
+# `normalise()` output.
+#
+# The `threshold` in `match_fixtures` is an absolute floor, applied BEFORE the
+# assignment step: a pair scoring below it never enters `scored` at all. So the
+# fixture-set constraint only chooses among candidates that already clear the
+# bar - it disambiguates, it does not rescue. However many fixtures share the
+# day is therefore irrelevant to whether an exonym resolves.
+#
+# That is what this table is for. "digione" against "Dijon" scores 0.400, the
+# pair averages 0.492 against a 0.55 threshold, and Ligue 2 dropped all 10 of
+# that fixture's prices on 2026-08-25 - the alternatives could not have helped,
+# because the pair was never a candidate.
+#
+# Add an entry only for two names you have seen denote the same club. This is a
+# rename, not a guess - the whole design elsewhere is to drop rather than guess,
+# because an unjoinable price sits in the table looking like data.
+# The three initialisms below were found by scoring every captured fixture
+# against its best candidate on 2026-08-25: each scored under 0.25 on its own
+# and survived only because its opponent scored ~0.9, averaging just over the
+# floor. "queens-park-rangers" against "QPR" scored 0.210, and the pair as a
+# whole cleared the bar by 0.005. Pair any of them with a second awkward name
+# and the fixture drops.
+EXONYMS = {
+    "digione": "dijon",                  # Ligue 2, dropped 10 prices 2026-08-25
+    "queensparkrangers": "qpr",          # Championship, pair scored 0.555
+    "wolverhampton": "wolves",           # Championship, name scored 0.385
+    "paranaensepr": "athleticopr",       # Serie A Betano, name scored 0.233
+}
+
+
+def canonical(name):
+    """`normalise`, then fold a known bookmaker exonym onto our spelling.
+
+    Deliberately separate from `normalise`, which `build_alias_map` uses for a
+    different source (football-data.co.uk) resolved by season-record fingerprint
+    rather than by name. Widening that would change a path these entries were
+    never measured against.
+    """
+    n = normalise(name)
+    return EXONYMS.get(n, n)
+
+
 def _similarity(a, b):
     """Rough name closeness in [0, 1]. Deliberately crude, see match_fixtures."""
-    x, y = normalise(a), normalise(b)
+    x, y = canonical(a), canonical(b)
     if not x or not y:
         return 0.0
     if x == y:

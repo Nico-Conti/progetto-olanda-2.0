@@ -96,6 +96,12 @@ LEAGUE_TOURNAMENTS = {
     ("olanda", "eredivisie"): "Eredivisie",
     ("olanda", "eerste divisie"): "Eerste Divisie",
     ("brasile", "brasileiro serie a"): "Serie A Betano",
+    ("portogallo", "liga portugal"): "Liga Portugal",
+    ("inghilterra", "championship"): "Championship",
+    ("germania", "2. bundesliga"): "2. Bundesliga",
+    ("spagna", "laliga 2"): "LaLiga 2",
+    ("francia", "ligue 2"): "Ligue 2",
+    ("turchia", "super lig"): "Super Lig",
 }
 # Belt and braces: these qualifiers never appear in the senior men's league name,
 # so anything carrying one is a different competition even on an exact match.

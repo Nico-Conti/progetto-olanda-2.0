@@ -71,19 +71,39 @@ def setup_supabase_client():
 
 
 
+def is_date_cell(text):
+    """True for a cell that is a bare date - '02.01.2027' or '29.11.' - with no time.
+
+    A postponed fixture is listed with a date and no kick-off time. Without this
+    test the date cell is taken for the home team name, and the row is written as
+    "02.01.2027 vs Annecy" with a null date.
+    """
+    if not text or ":" in text or "." not in text:
+        return False
+    return all(part.isdigit() for part in text.strip().strip('.').split('.') if part)
+
+
 def parse_date(date_str, time_str, season):
     """'29.11.' + '20:00' -> an aware datetime, with the year from `season`.
 
-    The year must come from the season, not from today. This previously guessed
-    with a "+/- 6 months from now" rule, which dated a season's August fixtures
-    to the wrong year on any scrape from February onwards - that is how 20
-    Serie A 2025/26 fixtures ended up carrying 2026 dates.
+    Diretta prints dates three ways, and all three reach here: '29.11.' with the
+    year implied, '29.11.2025' with the year spelled out, and - on a postponed
+    row - a date carrying no kick-off time at all. `time_str` may therefore be
+    None, which yields midnight; such a row is always POSTPONED, so nothing
+    reads that as a real kick-off.
+
+    An explicit year on the row wins over the season. Otherwise the year must
+    come from the season, not from today. This previously guessed with a
+    "+/- 6 months from now" rule, which dated a season's August fixtures to the
+    wrong year on any scrape from February onwards - that is how 20 Serie A
+    2025/26 fixtures ended up carrying 2026 dates.
     """
     try:
-        day, month = map(int, date_str.strip('.').split('.'))
-        hour, minute = map(int, time_str.split(':'))
+        pieces = [p for p in date_str.strip().strip('.').split('.') if p]
+        day, month = int(pieces[0]), int(pieces[1])
+        year = int(pieces[2]) if len(pieces) > 2 else year_for_month_in_season(season, month)
 
-        year = year_for_month_in_season(season, month)
+        hour, minute = map(int, time_str.split(':')) if time_str else (0, 0)
 
         naive_dt = datetime.datetime(year, month, day, hour, minute)
         rome_tz = pytz.timezone('Europe/Rome')
@@ -206,6 +226,7 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                         # value from an earlier row would be reused for a row that
                         # has no time of its own.
                         raw_time = None
+                        raw_date_only = None
                         status = "SCHEDULED"
                         if scrape_type == "results":
                              status = "PLAYED" # Default for results page
@@ -255,6 +276,18 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                                 home_team = parts[0]
                                 away_team = parts[1]
                                 raw_time = parts[-1]
+                            elif is_date_cell(parts[0]):
+                                # A postponed row carries a date but no kick-off time,
+                                # so neither branch above matches and parts[0] - the
+                                # date - used to be taken as the home team. That wrote
+                                # "02.01.2027 vs Annecy" with a null match_date, and
+                                # since match_date is NOT NULL it rejected the whole
+                                # insert: Ligue 2 lost all 117 of its fixtures to this
+                                # single row on 2026-08-25.
+                                raw_date_only = parts[0]
+                                home_team = parts[1]
+                                away_team = parts[2]
+                                status = "POSTPONED"
                             else:
                                 # Maybe TBD with extra info? Treat as TBD if we can find teams
                                 # Assume first two are teams if they look like strings
@@ -280,7 +313,12 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                                     match_date = None
                             else:
                                 match_date = None
-                                
+                        elif raw_date_only:
+                            # Date known, kick-off time not. Midnight, flagged POSTPONED.
+                            match_date_obj = parse_date(raw_date_only, None, season)
+                            if match_date_obj:
+                                match_date = match_date_obj.isoformat()
+
                         if home_team and away_team:
                             # If we have teams but no date, it's likely postponed/TBD
                             # We still want to update it in DB to reflect the status change
@@ -427,6 +465,22 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
                                     print(f"    -> Error updating match {match_id}: {update_e}")
                 
                 # Batch Insert
+                if to_insert:
+                    # `fixtures.match_date` is NOT NULL and PostgREST inserts a batch
+                    # atomically, so one dateless row rejects every other row in the
+                    # same request - the failure reads as "the league did not scrape"
+                    # rather than "one fixture had no date". Drop them, loudly, and
+                    # let the other 116 land.
+                    dateless = [f for f in to_insert if not f.get("match_date")]
+                    if dateless:
+                        print(f"  -> Skipping {len(dateless)} fixture(s) with no parseable date:")
+                        for f in dateless[:5]:
+                            print(f"       {f['home_team']} vs {f['away_team']} "
+                                  f"(giornata {f['giornata']}, {f['status']})")
+                        if len(dateless) > 5:
+                            print(f"       ... and {len(dateless) - 5} more")
+                        to_insert = [f for f in to_insert if f.get("match_date")]
+
                 if to_insert:
                     print(f"  -> Inserting {len(to_insert)} new matches...")
                     try:
