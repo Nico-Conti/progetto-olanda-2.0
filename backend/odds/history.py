@@ -4,11 +4,19 @@
         --matches frontend/src/utils/__experiments__/data_fd.json \
         --odds    frontend/src/utils/__experiments__/odds_fd.json
 
-Our own database holds roughly one season - about 3,000 matches - which is thin
-for fitting anything with more than a handful of parameters. football-data.co.uk
-publishes free CSVs carrying goals, shots, shots on target, fouls, corners and
-cards for seven of our nine leagues going back well over a decade, alongside
-closing prices. That is several times the sample, at the cost of a download.
+Our own database holds roughly one season - a few thousand matches - which is
+thin for fitting anything with more than a handful of parameters.
+football-data.co.uk publishes free CSVs carrying goals, shots, shots on target,
+fouls, corners and cards for thirteen of our fifteen leagues going back well
+over a decade, alongside closing prices. That is several times the sample, at
+the cost of a download. The two absentees are Eerste Divisie and Brazil - see
+DIVISIONS in footballdata.py.
+
+Stat depth is not uniform across divisions, and thinness is silent by design:
+shape_matches omits a stat key it cannot read rather than writing a zero, so a
+division carrying goals alone still contributes rows that are simply invisible
+to a corners model. The run prints the share of matches carrying corners for
+exactly this reason - read it.
 
 What it does NOT carry is the diretta-only columns: xG, xGOT, big chances, box
 touches, crosses, GK saves, interceptions. So this dataset can test anything
@@ -32,7 +40,7 @@ from collections import defaultdict
 import requests
 
 from backend.odds.footballdata import (
-    BASE_URL, DIVISIONS, extract_rows, season_code,
+    BASE_URL, DIVISIONS, SESSION, extract_rows, preflight, season_code,
 )
 
 # football-data column pairs -> the stat keys the experiments use, matching the
@@ -129,14 +137,15 @@ def main():
     args = parser.parse_args()
 
     seasons = seasons_between(args.first, args.last)
+    preflight()
     matches, odds = [], []
 
-    print(f"{'season':11}" + "".join(c.rjust(10) for c in DIVISIONS))
+    print(f"{'season':11}" + "".join(c.rjust(10) for c in DIVISIONS), flush=True)
     for season in seasons:
         cells = []
         for code, league in DIVISIONS.items():
             try:
-                resp = requests.get(f"{BASE_URL}/{season_code(season)}/{code}.csv", timeout=60)
+                resp = SESSION.get(f"{BASE_URL}/{season_code(season)}/{code}.csv", timeout=60)
             except requests.RequestException:
                 cells.append("err")
                 continue
@@ -158,7 +167,7 @@ def main():
                     priced += 1
                 odds += got
             cells.append(f"{len(shaped)}/{priced}")
-        print(f"{season:11}" + "".join(c.rjust(10) for c in cells))
+        print(f"{season:11}" + "".join(c.rjust(10) for c in cells), flush=True)
 
     print("\nlegend: matches with stats / matches with closing odds")
     corners = sum(1 for m in matches if "corners" in m["stats"])

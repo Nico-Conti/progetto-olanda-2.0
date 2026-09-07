@@ -33,6 +33,8 @@ from collections import defaultdict
 
 import requests
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from backend.odds.aliases import build_alias_map
 
@@ -41,17 +43,56 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 BASE_URL = "https://www.football-data.co.uk/mmz4281"
 
+# The site throttles: it answers 503 with a `Retry-After` site-wide, for every
+# division at once, and a plain `requests.get` turns that into a division that
+# looks simply absent. Retry honours `Retry-After` by default, so a throttled
+# window costs time rather than a silently short dataset.
+SESSION = requests.Session()
+SESSION.headers["User-Agent"] = "Mozilla/5.0"
+SESSION.mount("https://", HTTPAdapter(max_retries=Retry(
+    total=3, backoff_factor=5, status_forcelist=(429, 500, 502, 503, 504),
+    allowed_methods=frozenset(["GET"]),
+)))
+
+
+def preflight(code="E0", season="2024/2025"):
+    """Exit loudly if the site is not answering. Call before any bulk fetch.
+
+    Retry honours `Retry-After`, and a down football-data hands out ~216s on
+    every request - which turned a 156-file dump into 3.5 hours of silent
+    sleeping on 2026-09-07 before it was killed, having printed nothing. One
+    un-retried probe costs a second and turns that into a clear failure.
+    """
+    url = f"{BASE_URL}/{season_code(season)}/{code}.csv"
+    try:
+        resp = requests.get(url, headers=SESSION.headers, timeout=30)
+    except requests.RequestException as exc:
+        sys.exit(f"football-data.co.uk unreachable: {exc}")
+    if resp.status_code != 200:
+        sys.exit(f"football-data.co.uk returned {resp.status_code} for {url} "
+                 f"(Retry-After: {resp.headers.get('Retry-After', '-')}). "
+                 f"The site is down or blocking this connection - nothing to do but wait.")
+
 # football-data division code -> our `matches.league` display name.
-# Eerste Divisie has no division here, and Brazil lives in a differently shaped
-# extra file; both are simply absent rather than silently mismatched.
+#
+# Thirteen of our fifteen leagues are here. Eerste Divisie has no division at
+# football-data at all, and Brazil lives in a differently shaped extra file
+# (BRA.csv: goals and odds, no shots/corners/fouls); both are simply absent
+# rather than silently mismatched.
 DIVISIONS = {
     "E0": "Premier League",
+    "E1": "Championship",
     "I1": "Serie A",
     "I2": "Serie B",
     "SP1": "La Liga",
+    "SP2": "LaLiga 2",
     "D1": "Bundesliga",
+    "D2": "2. Bundesliga",
     "F1": "Ligue 1",
+    "F2": "Ligue 2",
     "N1": "Eredivisie",
+    "P1": "Liga Portugal",
+    "T1": "Super Lig",
 }
 
 # Bookmaker column prefixes, best first. BFE is the Betfair Exchange, whose
@@ -81,7 +122,7 @@ def season_code(season):
 
 def fetch_division(code, season):
     url = f"{BASE_URL}/{season_code(season)}/{code}.csv"
-    resp = requests.get(url, timeout=60)
+    resp = SESSION.get(url, timeout=60)
     if resp.status_code != 200:
         return None
     text = resp.content.decode("utf-8-sig", errors="replace")
@@ -205,6 +246,7 @@ def main():
                              "waiting for migration 004 to be applied.")
     args = parser.parse_args()
 
+    preflight()
     ours = load_our_matches(args.season)
     if not ours:
         sys.exit(f"No matches stored for season {args.season}; nothing to resolve names against.")
