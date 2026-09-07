@@ -105,10 +105,10 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="text-[10px] uppercase text-zinc-500 font-bold">
-                            <th className="text-left py-1 pr-3">Line</th>
+                            <th className="text-left py-1 pr-3 whitespace-nowrap">Line</th>
                             {rows.map(r => (
                                 <th key={r.line}
-                                    className={`px-2 py-1 text-center ${(r.overPrice || r.underPrice) ? 'text-emerald-400' : ''}`}>
+                                    className={`px-2 py-1 text-center whitespace-nowrap ${(r.overPrice || r.underPrice) ? 'text-emerald-400' : ''}`}>
                                     {r.line}
                                 </th>
                             ))}

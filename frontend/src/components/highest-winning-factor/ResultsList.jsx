@@ -43,7 +43,7 @@ const ResultsList = ({
 
     return (
         <GlassPanel className="rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-black text-white flex items-center gap-2">
                         <Trophy className="w-5 h-5 text-yellow-500" />
@@ -248,11 +248,11 @@ const ResultsList = ({
                 <table className="w-full text-left">
                     <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
                         <tr>
-                            <th className="px-6 py-4 text-center w-16">Rank</th>
-                            <th className="px-6 py-4">Team</th>
-                            <th className="px-6 py-4 text-center">Record</th>
-                            <th className="px-6 py-4 text-center">Win Rate</th>
-                            <th className="px-6 py-4 text-center">Add to Slip</th>
+                            <th className="px-6 py-4 text-center w-16 whitespace-nowrap">Rank</th>
+                            <th className="px-6 py-4 whitespace-nowrap">Team</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">Record</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">Win Rate</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">Add to Slip</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">

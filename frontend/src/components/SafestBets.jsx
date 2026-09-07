@@ -121,7 +121,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                 <div className="space-y-6 relative">
 
                     <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col xl:flex-row justify-between items-center gap-4 relative z-50">
-                        <div className="flex items-center gap-3 min-w-max w-full xl:w-auto justify-center xl:justify-start border-b xl:border-b-0 border-white/5 pb-4 xl:pb-0">
+                        <div className="flex items-center gap-3 xl:min-w-max w-full xl:w-auto justify-center xl:justify-start border-b xl:border-b-0 border-white/5 pb-4 xl:pb-0">
                             <div className="p-2 bg-zinc-900 rounded-lg border border-white/10">
                                 <Shield className="w-5 h-5 text-cyan-500" />
                             </div>

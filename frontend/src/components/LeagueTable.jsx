@@ -198,17 +198,17 @@ const LeagueTable = ({
                 <table className="w-full text-left text-sm">
                     <thead className="bg-zinc-950/50 text-xs font-bold text-zinc-500 uppercase tracking-wider border-b border-white/5">
                         <tr>
-                            <th className="px-4 py-3 text-center w-12">Pos</th>
-                            <th className="px-4 py-3">Team</th>
-                            <th className="px-4 py-3 text-center">MP</th>
-                            <th className="px-4 py-3 text-center">W</th>
-                            <th className="px-4 py-3 text-center">D</th>
-                            <th className="px-4 py-3 text-center">L</th>
-                            <th className="px-4 py-3 text-center hidden md:table-cell">GF</th>
-                            <th className="px-4 py-3 text-center hidden md:table-cell">GA</th>
-                            <th className="px-4 py-3 text-center">GD</th>
-                            <th className="px-4 py-3 text-center text-white">Pts</th>
-                            <th className="px-4 py-3 text-center hidden lg:table-cell">Form</th>
+                            <th className="px-4 py-3 text-center w-12 whitespace-nowrap">Pos</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Team</th>
+                            <th className="px-4 py-3 text-center whitespace-nowrap">MP</th>
+                            <th className="px-4 py-3 text-center whitespace-nowrap">W</th>
+                            <th className="px-4 py-3 text-center whitespace-nowrap">D</th>
+                            <th className="px-4 py-3 text-center whitespace-nowrap">L</th>
+                            <th className="px-4 py-3 text-center hidden md:table-cell whitespace-nowrap">GF</th>
+                            <th className="px-4 py-3 text-center hidden md:table-cell whitespace-nowrap">GA</th>
+                            <th className="px-4 py-3 text-center whitespace-nowrap">GD</th>
+                            <th className="px-4 py-3 text-center text-white whitespace-nowrap">Pts</th>
+                            <th className="px-4 py-3 text-center hidden lg:table-cell whitespace-nowrap">Form</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">

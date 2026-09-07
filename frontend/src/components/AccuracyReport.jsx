@@ -179,7 +179,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl border border-white/10 shadow-2xl bg-zinc-950">
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                             <TrendingUp className="w-6 h-6 text-emerald-400" />
@@ -196,7 +196,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
 
                 {/* Controls */}
                 <div className="flex flex-col border-b border-white/5 bg-zinc-900/50">
-                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Sample Size */}
                         <div className="flex flex-col gap-2">
                             <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sample Size</label>
@@ -322,7 +322,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                 </div>
 
                 {/* Results */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
                     {summary && (
                         <div className="mb-6 space-y-4">
                             <div className={`glass-panel p-4 rounded-lg border ${summary.beatsBaseRate
@@ -374,14 +374,15 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                     )}
 
                     {results.length > 0 ? (
-                        <table className="w-full text-left text-zinc-300 table-fixed">
+                        <div className="overflow-x-auto -mx-6 px-6">
+                        <table className="w-full min-w-[520px] text-left text-zinc-300">
                             <thead className="text-xs text-zinc-500 uppercase border-b border-white/5 bg-zinc-950/50">
                                 <tr>
-                                    <th className="py-4 pl-4 w-[40%]">Match</th>
-                                    <th className="py-4 text-center w-[15%]">Date</th>
-                                    <th className="py-4 text-center w-[15%]">Call</th>
-                                    <th className="py-4 text-center w-[15%]">Actual</th>
-                                    <th className="py-4 text-center w-[15%]">Result</th>
+                                    <th className="py-4 pl-4 w-[40%] whitespace-nowrap">Match</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Date</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Call</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Actual</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Result</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 text-sm">
@@ -425,6 +426,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     ) : (
                         <div className="text-center text-zinc-500 py-20 flex flex-col items-center">
                             <TrendingUp className="w-12 h-12 mb-4 opacity-20" />

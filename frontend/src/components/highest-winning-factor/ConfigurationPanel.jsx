@@ -21,7 +21,7 @@ const ConfigurationPanel = ({
     const thresholdOptions = currentConfig.options.map(opt => ({ value: opt, label: opt.toString() }));
 
     return (
-        <GlassPanel className="p-6 rounded-2xl sticky top-24">
+        <GlassPanel className="p-4 sm:p-6 rounded-2xl sticky top-24">
             <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-purple-400" />
                 Configuration

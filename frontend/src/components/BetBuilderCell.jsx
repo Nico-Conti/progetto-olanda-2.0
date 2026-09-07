@@ -141,7 +141,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
         const currentStyle = getStyle(value);
 
         return (
-            <div className="flex items-center gap-2 relative" ref={dropdownRef}>
+            <div className="flex flex-wrap items-center justify-center gap-2 relative" ref={dropdownRef}>
                 <div className="relative">
                     <button
                         onClick={() => setIsOpen(!isOpen)}
@@ -227,7 +227,9 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
     }
 
     return (
-        <div className="flex items-center gap-2">
+        // Wraps rather than clipping: the row is ~335px and the fixture card is
+        // ~310px wide on a 390px screen, which cut off the line and the Add button.
+        <div className="flex flex-wrap items-center justify-center gap-2">
             {/* Team Selector */}
             <div className="flex bg-zinc-950/50 border border-white/10 rounded-lg p-0.5 w-[110px] items-stretch">
                 {['total', 'home', 'away'].map((t) => (

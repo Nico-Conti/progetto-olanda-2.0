@@ -464,14 +464,16 @@ export default function App() {
             betsCount={bets.length}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
           >
-            {/* Mobile: compact icon row */}
-            <div className="flex items-center gap-2 md:hidden">
+            {/* Mobile and tablet: compact icon row. Switches at lg, not md: the
+                desktop pill measures ~943px and md is 768px, so an iPad in
+                portrait got a header wider than its own screen. */}
+            <div className="flex items-center gap-2 lg:hidden">
               {TABS.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   title={tab.label}
-                  className={`p-2 rounded-lg border transition-all ${activeTab === tab.id
+                  className={`p-2.5 rounded-lg border transition-all ${activeTab === tab.id
                     ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
                     : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
                     }`}
@@ -483,13 +485,13 @@ export default function App() {
               <StatisticSelector
                 value={selectedStatistic}
                 onChange={(e) => setSelectedStatistic(e.target.value)}
-                className="w-[115px]"
+                className="w-[140px]"
               />
 
             </div>
 
             {/* Desktop: navigation pill + secondary actions */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
               <StatisticSelector
                 value={selectedStatistic}
                 onChange={(e) => setSelectedStatistic(e.target.value)}

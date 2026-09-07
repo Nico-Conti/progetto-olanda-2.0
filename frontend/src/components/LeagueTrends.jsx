@@ -172,24 +172,24 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>
-                                <th className="px-5 py-3 font-bold tracking-wider text-sm">Team</th>
-                                <th className="px-3 py-3 text-center border-l border-white/5 bg-emerald-500/5 text-emerald-500 font-bold" colSpan={5}>Home Stats</th>
-                                <th className="px-3 py-3 text-center border-l border-white/5 bg-blue-500/5 text-blue-500 font-bold" colSpan={5}>Away Stats</th>
+                                <th className="px-5 py-3 font-bold tracking-wider text-sm whitespace-nowrap">Team</th>
+                                <th className="px-3 py-3 text-center border-l border-white/5 bg-emerald-500/5 text-emerald-500 font-bold whitespace-nowrap" colSpan={5}>Home Stats</th>
+                                <th className="px-3 py-3 text-center border-l border-white/5 bg-blue-500/5 text-blue-500 font-bold whitespace-nowrap" colSpan={5}>Away Stats</th>
                             </tr>
                             <tr>
-                                <th className="px-5 py-3"></th>
+                                <th className="px-5 py-3 whitespace-nowrap"></th>
 
-                                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-emerald-500/5" title="Season Average For">Avg For (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5" title="Season Average Against">Avg Ag (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-zinc-400" title="Season Average Total">Avg Tot (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-400" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5">Trend</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-emerald-500/5 whitespace-nowrap" title="Season Average For">Avg For (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 whitespace-nowrap" title="Season Average Against">Avg Ag (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-zinc-400 whitespace-nowrap" title="Season Average Total">Avg Tot (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-400 whitespace-nowrap" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 whitespace-nowrap">Trend</th>
 
-                                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-blue-500/5" title="Season Average For">Avg For (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5" title="Season Average Against">Avg Ag (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-zinc-400" title="Season Average Total">Avg Tot (Sea)</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-400" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5">Trend</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider border-l border-white/5 bg-blue-500/5 whitespace-nowrap" title="Season Average For">Avg For (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 whitespace-nowrap" title="Season Average Against">Avg Ag (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-zinc-400 whitespace-nowrap" title="Season Average Total">Avg Tot (Sea)</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-400 whitespace-nowrap" title={`Average Total Last ${nGames}`}>Avg Tot (L{nGames})</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 whitespace-nowrap">Trend</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">

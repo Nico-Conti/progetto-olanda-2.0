@@ -80,7 +80,7 @@ const StatisticDistribution = ({ matches, onClose }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
             <div className="glass-panel w-full max-w-4xl h-[85vh] overflow-hidden flex flex-col rounded-xl border border-white/10 shadow-2xl bg-zinc-950">
                 {/* Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                             <BarChart2 className="w-6 h-6 text-emerald-400" />
@@ -96,7 +96,7 @@ const StatisticDistribution = ({ matches, onClose }) => {
                 </div>
 
                 {/* Controls */}
-                <div className="p-6 border-b border-white/5 bg-zinc-900/50 flex flex-col xl:flex-row gap-6 items-center justify-between shrink-0">
+                <div className="p-4 sm:p-6 border-b border-white/5 bg-zinc-900/50 flex flex-col xl:flex-row gap-6 items-center justify-between shrink-0">
                     <div className="flex flex-col md:flex-row gap-6 items-center w-full xl:w-auto">
                         <div className="flex flex-col gap-2 w-full md:w-auto">
                             <label className="text-xs font-bold text-zinc-500 uppercase">Statistic</label>

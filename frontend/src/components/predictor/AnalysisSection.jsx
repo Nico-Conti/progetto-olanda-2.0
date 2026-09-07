@@ -34,7 +34,7 @@ const AnalysisSection = ({ match, onClose, teamLogos }) => {
                 </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
                 <div className="prose prose-invert prose-sm max-w-none">
                     <h4 className="text-white font-bold uppercase text-xs tracking-wider mb-3 flex items-center gap-2">
                         <Info className="w-4 h-4 text-blue-400" />

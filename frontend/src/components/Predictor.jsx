@@ -3,7 +3,7 @@ import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, Tr
 import { VOLATILE_STATS, processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import EngineToggle from './EngineToggle';
-import { STAT_OPTIONS, resolveStatKey, STAT_CONFIG } from '../utils/statistics';
+import { STAT_OPTIONS, PRICED_STAT_OPTIONS, resolveStatKey, STAT_CONFIG } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -751,7 +751,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                         className="w-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-8 py-2 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        {STAT_OPTIONS.map(opt => (
+                                        {PRICED_STAT_OPTIONS.map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
@@ -787,19 +787,19 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>
-                                <th className="pl-5 pr-2 py-3 font-bold tracking-wider text-center w-[80px]">Date</th>
-                                <th className="pl-2 pr-5 py-3 font-bold tracking-wider text-center">Matchup</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500">Home Exp</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500">Away Exp</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white">Total Exp</th>
+                                <th className="pl-5 pr-2 py-3 font-bold tracking-wider text-center w-[80px] whitespace-nowrap">Date</th>
+                                <th className="pl-2 pr-5 py-3 font-bold tracking-wider text-center whitespace-nowrap">Matchup</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap">Home Exp</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500 whitespace-nowrap">Away Exp</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white whitespace-nowrap">Total Exp</th>
                                 {showProbability && (
-                                    <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500"
+                                    <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap"
                                         title="Probability the total goes over the configured line, from the fitted distribution.">
                                         P(Over)
                                     </th>
                                 )}
-                                <th className="px-3 py-3 text-center font-bold tracking-wider">Stat</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider">Bet Builder</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider whitespace-nowrap">Stat</th>
+                                <th className="px-3 py-3 text-center font-bold tracking-wider whitespace-nowrap">Bet Builder</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">
@@ -882,7 +882,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                                 }}
                                                 className="bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-md pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold w-[100px] cursor-pointer hover:bg-zinc-800"
                                             >
-                                                {STAT_OPTIONS.map(opt => (
+                                                {PRICED_STAT_OPTIONS.map(opt => (
                                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                 ))}
                                             </select>
