@@ -44,6 +44,43 @@ export const CONCRETE_STAT_OPTIONS = STAT_OPTIONS.filter(o => o.value !== 'main'
 export const resolveStatKey = (statistic) => (statistic === 'main' ? 'goals' : statistic);
 
 /**
+ * App statistic -> the market name the capture stores in `odds_snapshots`.
+ *
+ * This is the single source of truth for "is this priced". `useOdds` reads it to
+ * look up a quote, and PRICED_STAT_OPTIONS below derives the selector's option
+ * list from it, so a market added to or removed from the capture changes what
+ * the UI offers without a second list having to be kept in step.
+ *
+ * NOT yellow_cards: `total_card_points` settles on the book's points scale
+ * (yellow 1, red 2, a second booking 3), so quoting it against a yellow-only
+ * estimate prices a different quantity than the one the model predicts.
+ */
+export const MARKET_FOR_STAT = {
+    corners: 'total_corners',
+    fouls: 'total_fouls',
+    goals: 'total_goals',
+    shots: 'total_shots',
+    shots_on_target: 'total_shots_on_target',
+    card_points: 'total_card_points',
+};
+
+/**
+ * The statistics a prediction can actually be checked against a price.
+ *
+ * Everything else in STAT_OPTIONS - xG, possession, big chances, box touches,
+ * crosses, saves, interceptions, and the raw yellow/red counts - is modellable
+ * but unpriced, so a prediction for it can never be turned into a bet. Offering
+ * them in the selector invites a number nobody can act on.
+ *
+ * `main` survives the filter because it resolves to goals. STAT_OPTIONS itself
+ * stays complete: Predictor's league averages iterate every statistic, and
+ * getStatLabel must still name the ones that are only ever displayed.
+ */
+export const PRICED_STAT_OPTIONS = STAT_OPTIONS.filter(
+    (opt) => MARKET_FOR_STAT[resolveStatKey(opt.value)],
+);
+
+/**
  * Stats whose per-match values are spiky enough that the median is a better
  * central estimate than the mean.
  */

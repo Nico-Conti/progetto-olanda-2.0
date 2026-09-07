@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { STAT_OPTIONS } from '../utils/statistics';
+import { PRICED_STAT_OPTIONS } from '../utils/statistics';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -9,7 +9,10 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    const options = STAT_OPTIONS;
+    // Only statistics that can be checked against a captured price. A
+    // prediction for xG or possession is real but unbettable, and offering it
+    // here invites a number nobody can act on.
+    const options = PRICED_STAT_OPTIONS;
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
     useClickOutside(isOpen, dropdownRef, useCallback(() => setIsOpen(false), []));

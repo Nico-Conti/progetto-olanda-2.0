@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL } from '../config';
-import { resolveStatKey } from '../utils/statistics';
+import { MARKET_FOR_STAT, resolveStatKey } from '../utils/statistics';
 
 /**
  * Current bookmaker prices, indexed for lookup by bet.
@@ -13,18 +13,6 @@ import { resolveStatKey } from '../utils/statistics';
  * prices. A failed fetch is therefore not an error state, just an empty index.
  */
 
-/** App statistic -> the market name the capture stores. */
-const MARKET_FOR_STAT = {
-    corners: 'total_corners',
-    fouls: 'total_fouls',
-    goals: 'total_goals',
-    shots: 'total_shots',
-    shots_on_target: 'total_shots_on_target',
-    // NOT yellow_cards: `total_card_points` settles on the book's points scale
-    // (yellow 1, red 2), so quoting it against a yellow-only estimate prices a
-    // different quantity than the one the model predicts.
-    card_points: 'total_card_points',
-};
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const fixtureKey = (home, away, market) => `${norm(home)}|${norm(away)}|${market}`;
