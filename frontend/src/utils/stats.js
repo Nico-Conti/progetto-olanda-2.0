@@ -1,4 +1,4 @@
-import { VOLATILE_STATS, resolveStatKey } from './statistics.js';
+import { VOLATILE_STATS, resolveStatKey, statPair } from './statistics.js';
 
 export const processData = (matches, statistic = 'corners') => {
     const teamStats = {};
@@ -11,10 +11,12 @@ export const processData = (matches, statistic = 'corners') => {
     sortedMatches.forEach(match => {
         const homeTeam = match.squadre.home;
         const awayTeam = match.squadre.away;
-        const statObj = match.stats?.[statKey] || { home: 0, away: 0 };
-        const cHome = Number(statObj.home);
-        const cAway = Number(statObj.away);
-        const total = cHome + cAway;
+        // A match that does not carry this statistic is skipped, NOT read as a
+        // 0-0. See statPair: the old default fabricated observations, and the
+        // hazard is one-sided, so it reads as an edge rather than as noise.
+        const pair = statPair(match, statKey);
+        if (!pair) return;
+        const { home: cHome, away: cAway, total } = pair;
         const giornata = match.giornata;
 
         if (!teamStats[homeTeam]) {

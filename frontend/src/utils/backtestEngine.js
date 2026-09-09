@@ -1,4 +1,4 @@
-import { resolveStatKey } from './statistics.js';
+import { resolveStatKey, statPair } from './statistics.js';
 
 /**
  * Incremental replacement for calling `processData(matches.slice(0, i))` inside
@@ -39,10 +39,14 @@ export const addMatchToStats = (acc, match, statistic) => {
     const awayTeam = match.squadre?.away ?? match.away;
     if (!homeTeam || !awayTeam) return acc;
 
-    const statObj = match.stats?.[statKey] || { home: 0, away: 0 };
-    const cHome = Number(statObj.home);
-    const cAway = Number(statObj.away);
-    const total = cHome + cAway;
+    // Same guard as processData, whose shape this mirrors. It is not currently
+    // reachable from addMatchToPredictionModel, which already tests the same key
+    // before calling in - but the fabricating default sat here too, and leaving
+    // one copy of a bug because today's only caller happens to shield it is how
+    // it comes back.
+    const pair = statPair(match, statKey);
+    if (!pair) return acc;
+    const { home: cHome, away: cAway, total } = pair;
     const giornata = match.giornata;
 
     if (!acc[homeTeam]) acc[homeTeam] = emptyTeam();

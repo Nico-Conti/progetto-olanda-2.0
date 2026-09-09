@@ -281,3 +281,28 @@ export const STAT_CONFIG = {
         individual: { default: 7.5, step: 1, options: [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5] }
     },
 };
+
+/**
+ * The two sides of one statistic for one match, or `null` when the match does
+ * not carry it.
+ *
+ * This exists because the obvious `match.stats?.[key] || { home: 0, away: 0 }`
+ * is not a default - it is a fabricated observation. A match with no statistics
+ * entered the model as a genuine 0-0, so one real 10-corner match plus two
+ * stat-less rows gave a mean of 3.33 instead of 10, and the callers' "do we have
+ * any history?" tests counted the fabrications as history and returned a number.
+ *
+ * Both empty shapes have to be caught, and the second is easy to miss:
+ * `{ home: null, away: null }` survives a truthiness check, and `Number(null)`
+ * is 0, so it passes `Number.isFinite` as a perfectly good zero.
+ *
+ * `statKey` is expected to be resolved already - callers hold it across a loop.
+ */
+export const statPair = (match, statKey) => {
+    const s = match?.stats?.[statKey];
+    if (!s || s.home == null || s.away == null) return null;
+    const home = Number(s.home);
+    const away = Number(s.away);
+    if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
+    return { home, away, total: home + away };
+};

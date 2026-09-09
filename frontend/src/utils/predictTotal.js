@@ -34,6 +34,7 @@ import {
     halfLifeFor,
     HALF_LIFE_DAYS,
     STAT_SIGNAL,
+    statPair,
 } from './statistics.js';
 
 /** Below this many past matches there is no usable league mean, so don't blend. */
@@ -132,12 +133,7 @@ const decayedPrediction = (home, away, stats, { asOf, halfLifeDays, useGeneralSt
     };
 };
 
-const totalOf = (match, statKey) => {
-    const s = match.stats?.[statKey];
-    if (!s) return null;
-    const total = Number(s.home) + Number(s.away);
-    return Number.isFinite(total) ? total : null;
-};
+const totalOf = (match, statKey) => statPair(match, statKey)?.total ?? null;
 
 /**
  * An empty model for `statistic`, to be filled by addMatchToPredictionModel.
