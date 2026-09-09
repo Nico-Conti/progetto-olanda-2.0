@@ -7,7 +7,7 @@ import {
     sortMatchesChronologically,
     actualTotalFor,
 } from './backtestEngine.js';
-import { STAT_CONFIG, resolveStatKey } from './statistics.js';
+import { STAT_CONFIG, resolveStatKey, halfLifeFor } from './statistics.js';
 
 /**
  * Walk-forward evaluation of the prediction model.
@@ -46,11 +46,24 @@ export const defaultLineFor = (statistic) =>
  * better", so changing this order changes which strategy is selected on a tie.
  */
 const buildCombos = (statistic, margins = MARGIN_OPTIONS) => {
+    // A statistic with a fitted half-life goes down the DECAY path, which takes
+    // neither `nGames` nor an aggregator - `predictFromModel` passes them only to
+    // `calculatePrediction`, which is not reached. Sweeping them there produced 8
+    // byte-identical copies of every real combination, and since ties are broken
+    // by loop order (see above), the reported "best strategy" always named
+    // nGames 3 and forceMean false - an artefact of the loop, presented as advice
+    // for settings that cannot move the model. It also cost 8x the runtime.
+    //
+    // All four priced markets have a half-life, so in practice this collapses the
+    // grid wherever anyone is betting. Statistics without one still sweep both.
+    const decayed = halfLifeFor(statistic) != null;
+    const nGamesOptions = decayed ? [N_GAMES_OPTIONS[1]] : N_GAMES_OPTIONS;
     // Goals are not volatile enough for the median to help, so only the mean is
     // worth testing there.
-    const forceMeanOptions = resolveStatKey(statistic) === 'goals' ? [true] : FORCE_MEAN_OPTIONS;
+    const forceMeanOptions = decayed ? [false]
+        : resolveStatKey(statistic) === 'goals' ? [true] : FORCE_MEAN_OPTIONS;
     const combos = [];
-    for (const nGames of N_GAMES_OPTIONS) {
+    for (const nGames of nGamesOptions) {
         for (const forceMean of forceMeanOptions) {
             for (const useGeneralStats of USE_GENERAL_STATS_OPTIONS) {
                 for (const margin of margins) {

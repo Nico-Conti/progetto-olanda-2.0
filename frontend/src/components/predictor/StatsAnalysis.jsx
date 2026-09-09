@@ -1,14 +1,23 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
+import { halfLifeFor } from '../../utils/statistics';
 
 const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStatistic }) => {
     if (!prediction) return null;
+
+    // "Last N Games" describes the WINDOW estimator. A statistic with a fitted
+    // half-life is not built that way - every past match contributes, weighted by
+    // age - so claiming a window here asserts a mechanism the number did not come
+    // from, and `nGames` does not even reach the model. Say what it actually is.
+    const halfLife = halfLifeFor(selectedStatistic);
 
     return (
         <div className="glass-panel p-5 rounded-xl border border-white/10">
             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
-                Stats Analysis (Last {nGames === 'all' ? 'Season' : nGames} Games)
+                {halfLife
+                    ? `Stats Analysis (recency-weighted, ${halfLife}-day half-life)`
+                    : `Stats Analysis (Last ${nGames === 'all' ? 'Season' : nGames} Games)`}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Home Team Stats */}

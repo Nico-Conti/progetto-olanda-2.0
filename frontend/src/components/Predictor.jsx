@@ -3,7 +3,7 @@ import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, Tr
 import { VOLATILE_STATS, processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import EngineToggle from './EngineToggle';
-import { STAT_OPTIONS, PRICED_STAT_OPTIONS, resolveStatKey, STAT_CONFIG } from '../utils/statistics';
+import { STAT_OPTIONS, PRICED_STAT_OPTIONS, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -104,6 +104,16 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
 
     // Independent Statistic State
     const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
+
+    // Sample size and the mean/median toggle belong to the WINDOW estimator,
+    // which lost to recency decay (docs/prediction-model.md section 10). A
+    // statistic with a fitted half-life goes down the decay path, which takes
+    // neither - so the controls would sit there doing nothing, which reads as a
+    // broken model rather than a superseded setting. Every priced market has a
+    // half-life; the exploratory statistics (xG, box touches, crosses...) do not
+    // and still use them.
+    const decayedLocal = halfLifeFor(localStatistic) != null;
+    const decayedSelected = halfLifeFor(selectedStatistic) != null;
 
     // The model's homeMatches/awayMatches are in PREDICTOR units: goals are
     // forecast from box touches, so those rows read "42 - 18, total 60" under a
@@ -349,8 +359,12 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                     </h3>
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         {/* Local Statistic Selector */}
-                        <div className="w-full sm:w-auto">
-                            <EngineToggle engine={engine} onChange={onEngineChange} className="mr-2" />
+                        {/* Row, not stacked: both are block-level, so without this the
+                            statistic dropdown sits UNDER the engine toggle and the panel
+                            is two rows tall for no reason. That was masked while the
+                            sample-size control was here making it tall anyway. */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                            <EngineToggle engine={engine} onChange={onEngineChange} />
                             <StatisticSelector
                                 value={localStatistic}
                                 onChange={(e) => setLocalStatistic(e.target.value)}
@@ -371,7 +385,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                             </button>
                         </div>
 
-                        {VOLATILE_STATS.includes(localStatistic) && (
+                        {!decayedLocal && VOLATILE_STATS.includes(localStatistic) && (
                             <>
                                 <div className="hidden sm:block w-px h-4 bg-white/10"></div>
                                 <div className="flex items-center gap-2">
@@ -386,6 +400,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                             </>
                         )}
 
+                        {/* Sample size parameterises the WINDOW estimator, which lost to
+                            recency decay (docs section 10). A statistic with a fitted
+                            half-life never reaches it, so the control would do nothing. */}
+                        {!decayedLocal && (
+                        <>
                         <div className="hidden sm:block w-px h-4 bg-white/10"></div>
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
@@ -440,6 +459,8 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                 </div>
                             </div>
                         </div>
+                        </>
+                        )}
                     </div>
                 </div>
 
@@ -503,7 +524,13 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                         <Calendar className="w-5 h-5 text-emerald-400" />
                         Upcoming Fixtures & Predictions
                     </h2>
-                    <p className="text-zinc-400 text-sm mt-1">Predictions based on {nGames === 'all' ? 'Season' : `Last ${nGames || 5}`} games form</p>
+                    {/* Same point as StatsAnalysis: do not advertise a window the
+                        decayed statistics never used. */}
+                    <p className="text-zinc-400 text-sm mt-1">
+                        {decayedSelected
+                            ? 'Predictions weighted by recency'
+                            : `Predictions based on ${nGames === 'all' ? 'Season' : `Last ${nGames || 5}`} games form`}
+                    </p>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
@@ -559,7 +586,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                         </button>
                     </div>
 
-                    {VOLATILE_STATS.includes(selectedStatistic) && (
+                    {!decayedSelected && VOLATILE_STATS.includes(selectedStatistic) && (
                         <>
                             <div className="w-px h-8 bg-white/10 hidden md:block"></div>
                             <div className="flex items-center gap-2">
@@ -574,6 +601,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                         </>
                     )}
 
+                    {/* Sample size parameterises the WINDOW estimator, which lost to
+                        recency decay (docs section 10). A statistic with a fitted
+                        half-life never reaches it, so the control would do nothing. */}
+                    {!decayedSelected && (
+                    <>
                     <div className="w-px h-8 bg-white/10 hidden md:block"></div>
 
                     <div className="flex items-center gap-3">
@@ -628,6 +660,8 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                             </div>
                         </div>
                     </div>
+                    </>
+                    )}
                 </div >
             </div >
 

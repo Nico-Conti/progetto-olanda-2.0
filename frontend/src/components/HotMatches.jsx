@@ -5,6 +5,7 @@ import { expectedValue } from '../utils/countModel';
 import EngineToggle from './EngineToggle';
 import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
 import { findBestStrategy, defaultLineFor, MIN_CALLS } from '../utils/backtest';
+import { halfLifeFor } from '../utils/statistics';
 import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
 import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -169,6 +170,12 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
     // Only the count engine produces a distribution, so the two ranking modes
     // that need one fall back rather than ranking on undefined.
     const effectiveRankBy = (engine === ENGINES.COUNT && RANK_MODES[rankBy]) ? rankBy : 'total';
+
+    // Sample size and mean/median belong to the WINDOW estimator, which lost to
+    // recency decay (docs section 10). Anything with a fitted half-life takes the
+    // decay path, which is handed neither - so these controls would sit here
+    // doing nothing. Trend (useGeneralStats) is NOT dead and stays.
+    const decayed = halfLifeFor(selectedStatistic) != null;
 
     const setDisplayCount = (v) => setPrefs({ displayCount: v });
     const setSelectedDate = (v) => setPrefs({ selectedDate: v });
@@ -529,6 +536,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
                             {/* Manual Overrides (Disable if optimized) */}
                             <div className={`flex gap-3 transition-opacity ${isOptimizationActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                                {!decayed && (<>
                                 {/* Sample Size */}
                                 <Dropdown
                                     label="Sample"
@@ -552,6 +560,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                         ))}
                                     </div>
                                 </Dropdown>
+                                </>)}
 
                                 {/* Trend */}
                                 <Dropdown
@@ -582,6 +591,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                     </div>
                                 </Dropdown>
 
+                                {!decayed && (<>
                                 {/* Calc */}
                                 <Dropdown
                                     label="Calc"
@@ -610,6 +620,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                         </button>
                                     </div>
                                 </Dropdown>
+                                </>)}
                             </div>
 
                             {/* Optimize Button */}
