@@ -243,6 +243,37 @@ for (const stat of STATS) {
     console.log(`   by history: below median (${median.toFixed(1)} effective) ECE ${fmt(thin)}` +
                 ` | at or above ECE ${fmt(thick)}\n`);
 
+    // Per LINE, not pooled. ECE bins by predicted probability, and one bin holds
+    // predictions from every line at once - over 8.5 in a quiet fixture, over
+    // 11.5 in a busy one. Opposite biases at different lines land in the same bin
+    // and cancel inside the absolute value, so a pooled ECE can look clean while
+    // every individual line is wrong. The base rate is already scored per line
+    // for the same reason; this closes the other half of it.
+    {
+        const byLine = {};
+        for (const r of rows) (byLine[r.line] ??= []).push(r);
+        console.log('\n   per line - a pooled ECE can hide opposite biases that cancel');
+        console.log(`   ${'line'.padStart(6)}${'n'.padStart(8)}${'we claim'.padStart(10)}` +
+                    `${'happened'.padStart(10)}${'gap'.padStart(9)}${'ECE'.padStart(8)}` +
+                    `${'log loss'.padStart(10)}${'base'.padStart(9)}`);
+        let worst = 0, worstLine = null, weighted = 0, total = 0;
+        for (const line of lines) {
+            const rs = byLine[line];
+            if (!rs || rs.length < 30) continue;
+            const claim = rs.reduce((a, r) => a + r.prob, 0) / rs.length;
+            const hap = rs.filter(r => r.over).length / rs.length;
+            const s1 = score(rs);
+            weighted += rs.length * Math.abs(hap - claim); total += rs.length;
+            if (Math.abs(hap - claim) > Math.abs(worst)) { worst = hap - claim; worstLine = line; }
+            console.log(`   ${String(line).padStart(6)}${String(rs.length).padStart(8)}` +
+                        `${pct(claim).padStart(10)}${pct(hap).padStart(10)}` +
+                        `${(((hap - claim) * 100 >= 0 ? '+' : '') + ((hap - claim) * 100).toFixed(1) + 'pp').padStart(9)}` +
+                        `${pct(s1.ece, 2).padStart(8)}${s1.ll.toFixed(4).padStart(10)}${s1.baseLL.toFixed(4).padStart(9)}`);
+        }
+        console.log(`   mean |gap| across lines, n-weighted: ${pct(weighted / total, 2)}` +
+                    `   worst line ${worstLine} at ${((worst * 100 >= 0 ? '+' : '') + (worst * 100).toFixed(1))}pp`);
+    }
+
     const sw = sweep(stat, points, lines);
     if (sw.length) {
         const best = sw.reduce((a, b) => (b.ll < a.ll ? b : a));
