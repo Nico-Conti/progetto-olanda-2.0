@@ -25,14 +25,17 @@ import {
 } from '../backtestEngine.js';
 import { VOLATILE_STATS, STAT_CONFIG } from '../statistics.js';
 
-const DATA = new URL('./data.json', import.meta.url);
+// DATA_FILE points this at the football-data dump (./data_fd.json) instead of
+// our scraped season, same as decayComparison.mjs.
+const DATA = new URL(process.env.DATA_FILE ?? './data.json', import.meta.url);
 if (!fs.existsSync(DATA)) {
-    console.error('data.json not found - run dumpSeason.py first (see README.md).');
+    console.error(`${DATA.pathname} not found - run dumpSeason.py first (see README.md).`);
     process.exit(1);
 }
 const data = JSON.parse(fs.readFileSync(DATA));
 
 const STATS = ['corners', 'goals', 'shots', 'fouls', 'yellow_cards'];
+const N_LEAGUES = new Set(data.map(m => m.league)).size;
 const aggFor = (stat) => (VOLATILE_STATS.includes(stat) ? getMedian : getAvg);
 const lineFor = (stat) => STAT_CONFIG[stat]?.total?.default ?? 0;
 const pct = (x) => `${(100 * x).toFixed(1)}%`;
@@ -109,7 +112,7 @@ function blend() {
 // --- holdout: does that weight survive out-of-sample? -----------------------
 function holdout() {
     console.log('\n== Leave-one-league-out ==');
-    console.log('Weight fitted on 7 leagues, scored on the 8th.\n');
+    console.log(`Weight fitted on ${N_LEAGUES - 1} leagues, scored on the remaining one.\n`);
     console.log(`${'stat'.padEnd(14)}${'fitted w'.padEnd(26)}${'MAE w=1'.padStart(9)}${'MAE oos'.padStart(9)}${'gain'.padStart(8)}`);
 
     for (const stat of STATS) {
@@ -207,7 +210,7 @@ if (requested && !REPORTS[requested]) {
     console.error(`Unknown report "${requested}". Available: ${Object.keys(REPORTS).join(', ')}`);
     process.exit(1);
 }
-console.log(`${data.length} matches | ${new Set(data.map(m => m.league)).size} leagues | season ${data[0]?.season}`);
+console.log(`${data.length} matches | ${N_LEAGUES} leagues | season ${data[0]?.season}`);
 for (const [name, fn] of Object.entries(REPORTS)) {
     if (name === 'ou') continue; // alias of margin
     if (!requested || requested === name || (requested === 'ou' && name === 'margin')) fn();

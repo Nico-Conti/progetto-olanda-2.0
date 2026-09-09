@@ -30,12 +30,12 @@ import { createStatsAccumulator, addMatchToStats } from '../backtestEngine.js';
 import {
     createPredictionModel, addMatchToPredictionModel, predictFromModel,
 } from '../predictTotal.js';
-import { STAT_CONFIG, VOLATILE_STATS } from '../statistics.js';
+import { STAT_CONFIG, VOLATILE_STATS, HALF_LIFE_DAYS } from '../statistics.js';
 import { getAvg, getMedian } from '../stats.js';
 
 // DATA_FILE selects the dataset: our Supabase dump (data.json, ~3k matches with
 // every scraped statistic) or the football-data.co.uk history (data_fd.json,
-// ~30k matches but only seven statistics).
+// ~58k matches but only seven statistics).
 const DATA = new URL(process.env.DATA_FILE ?? './data.json', import.meta.url);
 if (!fs.existsSync(DATA)) {
     console.error(`${DATA.pathname} not found - run dumpSeason.py or backend.odds.history first.`);
@@ -57,6 +57,30 @@ const FEATURES = ALL_FEATURES.filter(s => AVAILABLE.has(s));
 const TARGETS = ['corners', 'goals', 'fouls', 'shots', 'yellow_cards'].filter(s => AVAILABLE.has(s));
 const LAMBDAS = [0.01, 0.1, 1, 3, 10, 30, 100, 300, 1000, 3000];
 const N_GAMES = 5;
+
+/**
+ * DECAY=1 builds the features the way the app actually predicts.
+ *
+ * Without it, every feature and the baseline come from `calculatePrediction` /
+ * `predictFromModel` with no `asOf` - and CLAUDE.md is explicit that recency
+ * decay then silently does not apply. So sections 7, 8 and 9 compare a
+ * multivariate WINDOW model against a single-predictor WINDOW model, neither of
+ * which ships. Section 10 already found that decay subsumed the predictor swap;
+ * this exists to ask whether it subsumes the multivariate gain too.
+ *
+ * Three things change together, or the comparison is not fair:
+ *   - each feature comes from a decayed model, asked with `asOf`
+ *   - the shipped baseline is asked with `asOf` as well
+ *   - the walk runs per LEAGUE rather than per league-season, so history carries
+ *     across the summer, which is the whole point of decay. Rows keep their
+ *     league|season tag so the folds are unchanged.
+ *
+ * Only five statistics have a fitted half-life. The rest are features, never
+ * targets, and have never been measured; they get FEATURE_HALF_LIFE, which is an
+ * assumption and is why it is named rather than inlined.
+ */
+const DECAY = process.env.DECAY === '1';
+const FEATURE_HALF_LIFE = 180;
 
 const totalOf = (m, s) => {
     const x = m.stats?.[s];
@@ -178,6 +202,70 @@ const apply = (model, x) =>
  * computed from matches played before it only.
  */
 function buildRows(target) {
+    return DECAY ? buildRowsDecayed(target) : buildRowsWindowed(target);
+}
+
+/** Features and baseline from decayed models, asked with `asOf`. See DECAY. */
+function buildRowsDecayed(target) {
+    const byLeague = {};
+    for (const m of data) {
+        if (m.date && FEATURES.every(s => m.stats?.[s]) && totalOf(m, target) !== null) {
+            (byLeague[m.league] ??= []).push(m);
+        }
+    }
+    const aggregate = VOLATILE_STATS.includes(target) ? getMedian : getAvg;
+    const out = [];
+
+    for (const matches of Object.values(byLeague)) {
+        matches.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // A feature is the two-team estimate of s in s's own units, so the
+        // predictor is forced to s - inheriting PREDICTOR_MODEL here would make
+        // the "goals" feature mean box touches and quietly duplicate a column.
+        const feat = Object.fromEntries(FEATURES.map(s => {
+            const fm = createPredictionModel(s, {
+                halfLifeDays: HALF_LIFE_DAYS[s] ?? FEATURE_HALF_LIFE,
+            });
+            fm.predictor = s;
+            fm.weight = 1;
+            return [s, fm];
+        }));
+        const shipped = createPredictionModel(target);
+        if (!AVAILABLE.has(shipped.predictor)) {
+            shipped.predictor = target;
+            shipped.weight = 1;
+        }
+        const pastTargets = [];
+
+        for (const m of matches) {
+            const home = m.squadre.home, away = m.squadre.away;
+            if (pastTargets.length > 3) {
+                const x = [];
+                let ok = true;
+                for (const s of FEATURES) {
+                    const p = predictFromModel(feat[s], home, away, { nGames: N_GAMES, asOf: m.date });
+                    if (!p || !(p.total > 0)) { ok = false; break; }
+                    x.push(p.total);
+                }
+                if (ok) {
+                    x.push(aggregate(pastTargets));
+                    const base = predictFromModel(shipped, home, away,
+                                                  { nGames: N_GAMES, asOf: m.date });
+                    out.push({
+                        group: `${m.league}|${m.season}`, season: m.season, league: m.league,
+                        home, away, x, y: totalOf(m, target),
+                        shipped: base && base.total > 0 ? base.total : null,
+                    });
+                }
+            }
+            for (const s of FEATURES) addMatchToPredictionModel(feat[s], m);
+            addMatchToPredictionModel(shipped, m);
+            pastTargets.push(totalOf(m, target));
+        }
+    }
+    return out.filter(r => r.shipped !== null);
+}
+
+function buildRowsWindowed(target) {
     const groups = {};
     for (const m of data) {
         if (FEATURES.every(s => m.stats?.[s]) && totalOf(m, target) !== null) {
@@ -755,7 +843,9 @@ function market() {
     }
 }
 
-console.log(`${data.length} matches | features: ${FEATURES.length} implied totals + league mean`);
+console.log(`${data.length} matches | features: ${FEATURES.length} implied totals + league mean` +
+            (DECAY ? '\nfeatures carry recency decay (asOf), walked per league'
+                   : '\nfeatures are the pre-decay window model - set DECAY=1 for the shipped estimator'));
 for (const t of TARGETS) {
     const configured = createPredictionModel(t);
     if (!AVAILABLE.has(configured.predictor)) {
@@ -763,10 +853,108 @@ for (const t of TARGETS) {
                     `baseline falls back to ${t} at w=1`);
     }
 }
+
+/**
+ * How few features keep the win?
+ *
+ * The gain above is real but the app cannot afford it as written: the feature
+ * for statistic s is the two-team implied total in s, so predicting one target
+ * needs an accumulator for ALL of them. That is exactly the eager build CLAUDE.md
+ * records removing for costing 6.1s on open. If three features keep most of the
+ * gain, the port costs about what one model costs today; if it needs thirteen,
+ * it is not shippable.
+ *
+ * Features are ranked INSIDE each training fold and the model refitted on the
+ * survivors, so the subset is never chosen on the fold being scored. The penalty
+ * is picked on an inner 80/20 split of the training rows, for the same reason.
+ *
+ *   node multivariateComparison.mjs reduced
+ */
+const CAPS = [1, 2, 3, 4, 6, 0];   // 0 = every feature
+
+function reduced() {
+    console.log('\n== How few features keep the win? ==');
+    console.log('log loss at the default line, leave-one-league-season-out.');
+    console.log('"leagueMean" is always kept - it is the shrinkage anchor, not a statistic.\n');
+
+    for (const target of TARGETS) {
+        const line = STAT_CONFIG[target].total.default;
+        const rows = buildRows(target);
+        const groups = [...new Set(rows.map(r => r.group))];
+        const folds = groups.filter(g => rows.filter(r => r.group === g).length >= 100);
+        if (folds.length < 3) continue;
+
+        const meanIdx = COLS.length - 1;             // leagueMean, always retained
+        const pickLambda = (train, idx) => {
+            const cut = Math.floor(train.length * 0.8);
+            const a = train.slice(0, cut).map(r => ({ ...r, x: idx.map(i => r.x[i]) }));
+            const b = train.slice(cut).map(r => ({ ...r, x: idx.map(i => r.x[i]) }));
+            if (!a.length || !b.length) return 100;
+            let best = null;
+            for (const lambda of LAMBDAS) {
+                const m = fitLogistic(a, lambda, line);
+                let ll = 0;
+                for (const r of b) {
+                    const q = applyLogistic(m, r.x);
+                    ll += r.y > line ? -Math.log(Math.max(q, 1e-9)) : -Math.log(Math.max(1 - q, 1e-9));
+                }
+                if (!best || ll / b.length < best.ll) best = { lambda, ll: ll / b.length };
+            }
+            return best.lambda;
+        };
+
+        const results = [];
+        for (const cap of CAPS) {
+            let ll = 0, n = 0;
+            const kept = {};
+            for (const test of folds) {
+                const train = rows.filter(r => r.group !== test);
+                const testRows = rows.filter(r => r.group === test);
+                if (train.length < 500) continue;
+
+                // Rank on the training rows only.
+                const full = fitLogistic(train, pickLambda(train, COLS.map((_, i) => i)), line);
+                const ranked = COLS.map((name, i) => ({ i, name, w: Math.abs(full.beta[i + 1]) }))
+                    .filter(f => f.i !== meanIdx)
+                    .sort((a, b) => b.w - a.w);
+                const idx = cap === 0
+                    ? COLS.map((_, i) => i)
+                    : [...ranked.slice(0, cap).map(f => f.i).sort((a, b) => a - b), meanIdx];
+                for (const i of idx) if (i !== meanIdx) kept[COLS[i]] = (kept[COLS[i]] ?? 0) + 1;
+
+                const cut = (r) => ({ ...r, x: idx.map(i => r.x[i]) });
+                const m = fitLogistic(train.map(cut), pickLambda(train, idx), line);
+                for (const r of testRows) {
+                    const q = applyLogistic(m, idx.map(i => r.x[i]));
+                    ll += r.y > line ? -Math.log(Math.max(q, 1e-9)) : -Math.log(Math.max(1 - q, 1e-9));
+                    n++;
+                }
+            }
+            if (!n) continue;
+            const top = Object.entries(kept).sort((a, b) => b[1] - a[1]).slice(0, 6)
+                .map(([k, v]) => `${k}(${v}/${folds.length})`).join(' ');
+            results.push({ cap, ll: ll / n, n, top });
+        }
+        if (!results.length) continue;
+
+        const all = results.find(r => r.cap === 0);
+        console.log(`${target} @ ${line}   ${results[0].n} held-out matches, ${folds.length} folds`);
+        console.log(`  ${'features'.padEnd(12)}${'log loss'.padStart(10)}${'vs all'.padStart(9)}   chosen`);
+        for (const r of results) {
+            const label = r.cap === 0 ? `all ${FEATURES.length}` : `top ${r.cap}`;
+            const d = r.ll - all.ll;
+            console.log(`  ${label.padEnd(12)}${r.ll.toFixed(4).padStart(10)}` +
+                        `${((d >= 0 ? '+' : '') + d.toFixed(4)).padStart(9)}   ${r.cap === 0 ? '' : r.top}`);
+        }
+        console.log('');
+    }
+}
+
 const only = process.argv[2];
 if (only === 'market') market();
 else if (only === 'counts') counts();
 else if (only === 'perleague') perLeague();
+else if (only === 'reduced') reduced();
 else {
     for (const t of TARGETS) run(t);
     counts();

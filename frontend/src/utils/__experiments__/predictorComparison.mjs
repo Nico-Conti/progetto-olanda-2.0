@@ -24,7 +24,7 @@ import { VOLATILE_STATS, STAT_CONFIG } from '../statistics.js';
 
 // DATA_FILE lets the same reports run over a different dataset - our own
 // Supabase dump (data.json, ~3k matches, every scraped statistic) or the
-// football-data.co.uk history (data_fd.json, ~30k matches but only the seven
+// football-data.co.uk history (data_fd.json, ~58k matches but only the seven
 // statistics that source publishes).
 const DATA = new URL(process.env.DATA_FILE ?? './data.json', import.meta.url);
 if (!fs.existsSync(DATA)) {

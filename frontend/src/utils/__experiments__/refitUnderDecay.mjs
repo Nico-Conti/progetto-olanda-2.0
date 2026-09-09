@@ -68,7 +68,7 @@ function tally(target, predictor) {
             const p = predictFromModel(model, m.squadre.home, m.squadre.away, { asOf: m.date });
             if (p && p.total > 0 && model.pastTargets.length > 3) {
                 rows.push({
-                    season: m.season, pred: p.total,
+                    season: m.season, group: `${m.league}|${m.season}`, pred: p.total,
                     mean: aggregate(model.pastTargets), actual: totalOf(m, target),
                 });
             }
@@ -79,7 +79,35 @@ function tally(target, predictor) {
 }
 
 console.log(`${data.length} matches\n`);
-console.log(`${'target'.padEnd(14)}${'half-life'.padStart(10)}${'N'.padStart(8)}` +
+
+/**
+ * Two fold schemes, because the two datasets cannot use the same one.
+ *
+ *   forward   train on every earlier season, score the next. No lookahead, which
+ *             is the right question for a betting model - but it needs 4+ seasons
+ *             and only data_fd.json has them.
+ *   league    leave one league-season out, as predictorComparison.mjs does. Works
+ *             on our own ~1.2 seasons by turning them into 29 groups, at the cost
+ *             of letting the fit see the future. See docs section 8: that makes it
+ *             a question about which parameters are STABLE, not about what could
+ *             have been bet. Read a win here as a hypothesis, not a result.
+ *
+ * FOLDS=forward|league overrides the default.
+ */
+const SEASONS = [...new Set(data.map(m => m.season))];
+const SCHEME = process.env.FOLDS ?? (SEASONS.length > 3 ? 'forward' : 'league');
+if (SCHEME === 'forward' && SEASONS.length <= 3) {
+    console.error(`FOLDS=forward needs 4+ seasons; this file has ${SEASONS.length} ` +
+                  `(${[...SEASONS].sort().join(', ')}).`);
+    process.exit(1);
+}
+// A held-out group smaller than this decides nothing and adds noise - the opening
+// weeks of 2026/27 are ~20 matches per league.
+const MIN_FOLD = 100;
+console.log(`folds: ${SCHEME === 'forward'
+    ? 'forward in time by season (no lookahead)'
+    : 'leave-one-league-season-out (the fit sees the future - see docs section 8)'}\n`);
+console.log(`${'target'.padEnd(14)}${'half-life'.padStart(10)}${'folds'.padStart(6)}${'N'.padStart(8)}` +
             `${'shipped'.padStart(9)}${'refit'.padStart(8)}${'gain'.padStart(8)}   chosen (predictor @ weight)`);
 
 for (const [target, candidates] of Object.entries(CANDIDATES)) {
@@ -89,18 +117,29 @@ for (const [target, candidates] of Object.entries(CANDIDATES)) {
 
     // rows[predictor] -> per-match predictions, shared across all weights
     const byPredictor = Object.fromEntries(usable.map(p => [p, tally(target, p)]));
-    const seasons = [...new Set(Object.values(byPredictor).flat().map(r => r.season))].sort();
+    const all = Object.values(byPredictor).flat();
+    // `forward` trains on everything strictly earlier; `league` trains on every
+    // group but the held-out one. Only the membership test differs.
+    const key = SCHEME === 'forward' ? 'season' : 'group';
+    const sizes = {};
+    for (const r of byPredictor[target] ?? []) sizes[r[key]] = (sizes[r[key]] ?? 0) + 1;
+    const units = [...new Set(all.map(r => r[key]))].sort();
+    const folds = SCHEME === 'forward'
+        ? units.slice(3)
+        : units.filter(u => sizes[u] >= MIN_FOLD);
+    const isTraining = (r, test) =>
+        SCHEME === 'forward' ? r[key] < test : r[key] !== test;
 
-    let ok = 0, n = 0, shippedOk = 0;
+    let ok = 0, n = 0, shippedOk = 0, shippedN = 0;
     const chosen = new Set();
 
-    for (const test of seasons.slice(3)) {
+    for (const test of folds) {
         let best = null;
         for (const predictor of usable) {
             for (const w of WEIGHTS) {
                 let hit = 0, cnt = 0;
                 for (const r of byPredictor[predictor]) {
-                    if (r.season >= test) continue;
+                    if (!isTraining(r, test)) continue;
                     const blended = w * r.pred + (1 - w) * r.mean;
                     if ((blended > line) === (r.actual > line)) hit++;
                     cnt++;
@@ -114,21 +153,30 @@ for (const [target, candidates] of Object.entries(CANDIDATES)) {
         chosen.add(`${best.predictor}@${best.w}`);
 
         for (const r of byPredictor[best.predictor]) {
-            if (r.season !== test) continue;
+            if (r[key] !== test) continue;
             const blended = best.w * r.pred + (1 - best.w) * r.mean;
             if ((blended > line) === (r.actual > line)) ok++;
             n++;
         }
-        // Baseline: the target's own history, unblended - the pre-decay default.
+        // Baseline: the target's own history, unblended - what ships today.
+        // It needs its OWN denominator. `tally` drops a match whose predictor is
+        // missing and waits for four past targets, so each predictor qualifies a
+        // different set of rows; scoring these hits against the chosen
+        // predictor's `n` compares two different denominators. That read as
+        // goals at 63.0% here against 55.0% on the identical file under forward
+        // folds - own-history accuracy cannot depend on the fold scheme.
         for (const r of byPredictor[target] ?? []) {
-            if (r.season !== test) continue;
+            if (r[key] !== test) continue;
             if ((r.pred > line) === (r.actual > line)) shippedOk++;
+            shippedN++;
         }
     }
-    if (!n) continue;
+    if (!n || !shippedN) continue;
 
-    const gain = 100 * (ok - shippedOk) / n;
-    console.log(`${target.padEnd(14)}${String(HALF_LIFE[target] + 'd').padStart(10)}${String(n).padStart(8)}` +
-                `${(100 * shippedOk / n).toFixed(1).padStart(8)}%${(100 * ok / n).toFixed(1).padStart(7)}%` +
+    const shippedAcc = shippedOk / shippedN;
+    const gain = 100 * (ok / n - shippedAcc);
+    console.log(`${target.padEnd(14)}${String(HALF_LIFE[target] + 'd').padStart(10)}` +
+                `${String(folds.length).padStart(6)}${String(n).padStart(8)}` +
+                `${(100 * shippedAcc).toFixed(1).padStart(8)}%${(100 * ok / n).toFixed(1).padStart(7)}%` +
                 `${((gain >= 0 ? '+' : '') + gain.toFixed(1) + 'pp').padStart(8)}   ${[...chosen].join(', ')}`);
 }

@@ -1,11 +1,16 @@
 /**
  * Should recency be a window or a slope, and does carrying seasons over help?
  *
- * The shipped estimator averages a team's last five matches equally: match five
- * counts fully, match six counts nothing. It also never sees the previous
- * season, because every caller filters history to the current one. The result is
- * visible every August - on 2026-08-22, five of nine leagues had no predictions
- * at all and 65% of upcoming fixtures showed a dash.
+ * NOTE: decay WON this comparison and now ships. The window rows below are the
+ * pre-decay baseline, kept so the gain stays attributable - they are not what
+ * the app does. Re-running this refits HALF_LIFE_DAYS; it does not re-argue
+ * window-vs-decay.
+ *
+ * The old estimator averaged a team's last five matches equally: match five
+ * counted fully, match six counted nothing. It also never saw the previous
+ * season, because every caller filtered history to the current one. The result
+ * was visible every August - on 2026-08-22, five of nine leagues had no
+ * predictions at all and 65% of upcoming fixtures showed a dash.
  *
  * Exponential decay replaces the cliff with a slope and lets last season's
  * matches carry a small weight, which fixes the cold start as a side effect.
@@ -19,7 +24,7 @@ import {
     buildPredictionModel, createPredictionModel,
     addMatchToPredictionModel, predictFromModel,
 } from '../predictTotal.js';
-import { STAT_CONFIG } from '../statistics.js';
+import { STAT_CONFIG, HALF_LIFE_DAYS } from '../statistics.js';
 
 const DATA = new URL(process.env.DATA_FILE ?? './data.json', import.meta.url);
 if (!fs.existsSync(DATA)) {
@@ -43,7 +48,7 @@ const totalOf = (m, s) => {
 /**
  * Three estimators, so the gain can be attributed rather than just observed:
  *
- *   window-reset  the shipped model - last 5 matches, history wiped each August
+ *   window-reset  the pre-decay baseline - last 5 matches, history wiped each August
  *   window-carry  last 5 matches, but carried across the summer
  *   decay         exponential recency weighting, carried across the summer
  *
@@ -55,7 +60,7 @@ const totalOf = (m, s) => {
  * broken baseline flatter the decay numbers.
  */
 const MODES = [
-    { key: 'window-reset', label: 'last 5, per season (shipped)', reset: true },
+    { key: 'window-reset', label: 'last 5, per season (pre-decay)', reset: true },
     { key: 'window-carry', label: 'last 5, carried over', reset: false },
     ...HALF_LIVES.map(hl => ({ key: `decay-${hl}`, label: `decay ${hl}d, carried over`, halfLife: hl })),
 ];
@@ -105,7 +110,10 @@ for (const target of TARGETS) {
     console.log(`  ${'estimator'.padEnd(22)}${'covered'.padStart(9)}${'accuracy'.padStart(10)}${'MAE'.padStart(9)}`);
 
     const score = (mode) => {
-        const label = mode.label;
+        // Mark the half-life the app actually runs, so a winner one rung away
+        // reads as "this curve is flat" rather than "change the app".
+        const label = mode.label +
+            (mode.halfLife === HALF_LIFE_DAYS[target] ? '  <- shipped' : '');
         let ok = 0, n = 0, seen = 0, ae = 0;
         walkLeague(target, mode, (m, p) => {
             seen++;
@@ -122,17 +130,24 @@ for (const target of TARGETS) {
     };
 
     let baseline = null, carry = null, winner = null;
+    const byHalfLife = {};
     for (const mode of MODES) {
         const r = score(mode);
         if (mode.key === 'window-reset') baseline = r;
         if (mode.key === 'window-carry') carry = r;
+        if (mode.halfLife) byHalfLife[mode.halfLife] = r;
         if (mode.halfLife && (!winner || r.acc > winner.acc)) winner = { mode, ...r };
     }
     best[target] = winner;
     const pp = (x) => `${x >= 0 ? '+' : ''}${(100 * x).toFixed(1)}pp`;
+    const shipped = HALF_LIFE_DAYS[target];
     console.log(`  -> carryover alone ${pp(carry.acc - baseline.acc)}; ` +
                 `best decay ${winner.mode.halfLife}d ${pp(winner.acc - baseline.acc)} ` +
-                `(${pp(winner.acc - carry.acc)} beyond carryover)\n`);
+                `(${pp(winner.acc - carry.acc)} beyond carryover)` +
+                (winner.mode.halfLife === shipped ? '; shipped value wins'
+                    : byHalfLife[shipped]
+                        ? `; shipped ${shipped}d costs ${pp(winner.acc - byHalfLife[shipped].acc)}`
+                        : `; shipped ${shipped}d not in the sweep`) + '\n');
 }
 
 // --- 2. the cold start: what happens in the opening weeks --------------------
