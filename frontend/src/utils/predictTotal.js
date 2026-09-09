@@ -338,11 +338,24 @@ export const predictFromModel = (model, home, away, options = {}) => {
         total,
         expHome: raw.expHome * scale * factor,
         expAway: raw.expAway * scale * factor,
+        // The four rates are the estimator's own inputs, so they are in PREDICTOR
+        // units as well - StatsAnalysis was labelling box touches "Avg goals in
+        // favour" and showing ~23. The same factor the totals get keeps
+        // expHome === (hFor + aAg) / 2 true once converted, so the panel agrees
+        // with the headline instead of contradicting it.
+        hFor: raw.hFor * scale * factor,
+        hAg: raw.hAg * scale * factor,
+        aFor: raw.aFor * scale * factor,
+        aAg: raw.aAg * scale * factor,
         // Blending against a constant scales the spread by w; SafestBets ranks on
         // this, and a common factor leaves that ranking untouched.
         totalStd: raw.totalStd * scale * w,
         expHomeStd: raw.expHomeStd * scale * w,
         expAwayStd: raw.expAwayStd * scale * w,
+        // Nothing reads these two today, but leaving them in predictor units
+        // beside four rates that are not is exactly how this bug happened.
+        hForStd: raw.hForStd * scale * w,
+        aForStd: raw.aForStd * scale * w,
         // What actually produced the number, for the UI to disclose.
         derivedFrom: model.predictor,
         blendWeight: model.weight,
