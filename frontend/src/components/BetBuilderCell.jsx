@@ -279,9 +279,12 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                     }`}
                     title={currentPrice > 1
                         ? `Bookmaker price for ${option === 'O' ? 'over' : 'under'} ${value}`
-                        : 'No price captured for this line'}
+                        : currentPrice === undefined
+                            ? 'Loading prices'
+                            : 'No price captured for this line'}
                 >
-                    {currentPrice > 1 ? currentPrice.toFixed(2) : '—'}
+                    {currentPrice > 1 ? currentPrice.toFixed(2)
+                        : currentPrice === undefined ? '·' : '—'}
                 </span>
             )}
 

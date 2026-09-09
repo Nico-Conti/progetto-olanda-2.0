@@ -72,12 +72,22 @@ export const useOdds = () => {
         return map;
     }, [rows]);
 
-    /** The stored price for one fixture/statistic/line/side, or null. */
+    /**
+     * The stored price for one fixture/statistic/line/side.
+     *
+     * `undefined` while the fetch is still in flight, `null` once we know there
+     * is no price. The distinction matters: `/odds` is 2.4 MB and Render's free
+     * tier sleeps, so a cold load waits ~57s - during which every row used to
+     * render a definitive em dash titled "No price captured for this line",
+     * which is a claim about the bookmaker rather than about us still loading.
+     */
     const priceFor = useMemo(() => (home, away, statistic, line, over) => {
         const market = MARKET_FOR_STAT[resolveStatKey(statistic)];
         if (!market || line == null) return null;
-        return index.get(keyOf(home, away, market, line, over ? 'over' : 'under')) ?? null;
-    }, [index]);
+        const hit = index.get(keyOf(home, away, market, line, over ? 'over' : 'under'));
+        if (hit != null) return hit;
+        return loading ? undefined : null;
+    }, [index, loading]);
 
     /** Lines with a captured price for this fixture/statistic, ascending. */
     const pricedLines = useMemo(() => (home, away, statistic) => {

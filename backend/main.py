@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 from dotenv import load_dotenv
 
@@ -95,13 +95,17 @@ MATCH_ANALYSIS_COLUMNS = ",".join([
 ])
 
 
-def fetch_all_data(table_name, order_col=None, desc=False, columns="*"):
+def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None):
+    """Every row, paged. `gte` is an optional (column, value) floor, pushed to
+    PostgREST so the rows are never fetched rather than filtered here."""
     all_rows = []
     chunk_size = 1000
     current_offset = 0
     
     while True:
         query = supabase.table(table_name).select(columns)
+        if gte:
+            query = query.gte(gte[0], gte[1])
         if order_col:
             query = query.order(order_col, desc=desc)
         
@@ -193,12 +197,26 @@ ODDS_COLUMNS = ",".join([
 ])
 
 
+# A fixture that kicked off recently is still on screen, and dropping its price
+# mid-match would read as a regression. Six hours covers a match plus stoppage.
+ODDS_LOOKBACK_HOURS = 6
+
+
 @app.get("/odds")
 def get_odds():
-    """Current bookmaker prices, one row per fixture/market/line/selection."""
+    """Current bookmaker prices for fixtures that have not finished.
+
+    The table keeps every capture for closing-line value - 102,138 rows on
+    2026-09-08 and growing by ~350 every three hours - but the app only ever
+    looks up a fixture it is about to show. Serving the whole history cost
+    2.4 MB and ~50 round trips on every page load, for roughly 3,000 useful
+    rows, and `fetch_all_data` silently stops at 50,000 anyway.
+    """
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(hours=ODDS_LOOKBACK_HOURS)).isoformat()
     try:
         rows = fetch_all_data("odds_snapshots", "captured_at", desc=True,
-                              columns=ODDS_COLUMNS)
+                              columns=ODDS_COLUMNS, gte=("match_date", cutoff))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
