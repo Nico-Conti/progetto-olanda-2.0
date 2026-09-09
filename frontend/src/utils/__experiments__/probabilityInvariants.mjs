@@ -26,6 +26,7 @@ import {
 } from '../predictTotal.js';
 import { STAT_CONFIG } from '../statistics.js';
 import { probOver } from '../countModel.js';
+import { getAvg, getMedian } from '../stats.js';
 
 const DATA = new URL(process.env.DATA_FILE ?? './data.json', import.meta.url);
 if (!fs.existsSync(DATA)) {
@@ -94,6 +95,21 @@ for (const stat of STATS) {
         rows.push({ total: count.total, p: count.probOver(line) });
     }
     if (!rows.length) { console.log(`${stat}: no usable matchups`); continue; }
+
+    // 1b. The incrementally maintained aggregates must equal the batch ones.
+    // `leagueAggregate` keeps a running sum and a sorted mirror of pastTargets
+    // rather than re-sorting per fold (that cost 9.2s on corners). Cheaper is
+    // only worth having if it is the same number.
+    const n = model.pastTargets.length;
+    check(model.sortedTargets.length === n, `${stat}: sorted mirror out of step (${model.sortedTargets.length} vs ${n})`);
+    check(Math.abs(model.pastTargetSum / n - getAvg(model.pastTargets)) < 1e-9,
+        `${stat}: running mean drifted from getAvg`);
+    const mid = n >> 1;
+    const incrementalMedian = n % 2 !== 0
+        ? model.sortedTargets[mid]
+        : (model.sortedTargets[mid - 1] + model.sortedTargets[mid]) / 2;
+    check(incrementalMedian === getMedian(model.pastTargets),
+        `${stat}: incremental median ${incrementalMedian} != getMedian ${getMedian(model.pastTargets)}`);
 
     // 2. Priced off the unshrunk total for everything outside PROB_SHRINK. Both
     // directions matter: a leak silently changes statistics nothing measured

@@ -22,7 +22,7 @@
  * It was measured against a hardcoded 9.5 corner line, and only 46% of matches
  * would actually be priced there. See the caveats in section 4.
  */
-import { calculatePrediction, getAvg, getMedian } from './stats.js';
+import { calculatePrediction } from './stats.js';
 import { addMatchToStats } from './backtestEngine.js';
 import { fitDispersion, probOver, distribution, POISSON_LIMIT } from './countModel.js';
 import {
@@ -187,14 +187,50 @@ export const PROB_SHRINK = { corners: 0.3, yellow_cards: 0.5 };
  * you get a pair that was never scored: neither the shipped model nor the tested
  * one.
  */
+/**
+ * The league mean/median over everything folded in so far, in O(1).
+ *
+ * `getMedian` copies and sorts the whole list. Read once per fold - building a
+ * model with `trackResiduals` predicts each match before adding it - that is
+ * O(n^2 log n), and it is not theoretical: it put 9.2 SECONDS on the count
+ * engine's corners model over 5,844 matches, which is most of the time it takes
+ * to open the Predictor.
+ *
+ * A length-keyed memo cannot fix it. For a statistic that is its own predictor
+ * (every one but goals) `predictFromModel` returns early and never reads this,
+ * so there is exactly one distinct length per fold and every lookup misses.
+ *
+ * So the aggregates are maintained as history is folded in: a running sum for
+ * the mean, and a sorted mirror of `pastTargets` for the median. Binary-insert
+ * moves memory rather than comparing, which is orders of magnitude cheaper than
+ * re-sorting. The values are identical - same multiset, same definitions as
+ * getAvg/getMedian, including 0 for an empty list.
+ */
+const insertSorted = (sorted, value) => {
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (sorted[mid] < value) lo = mid + 1; else hi = mid;
+    }
+    sorted.splice(lo, 0, value);
+};
+
+const leagueAggregate = (model) => {
+    const n = model.pastTargets.length;
+    if (!n) return 0;
+    if (!VOLATILE_STATS.includes(model.target)) return model.pastTargetSum / n;
+    const sorted = model.sortedTargets;
+    const mid = n >> 1;
+    return n % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
 const shrinkTotal = (model, total) => {
     const w = PROB_SHRINK[model.target] ?? 1;
     // The guard predictFromModel's own blend uses. With no history there is no
     // mean worth shrinking toward, and getAvg([]) is 0 - which would drag the
     // centre to near zero rather than leave it alone.
     if (w === 1 || model.pastTargets.length < MIN_HISTORY_FOR_BLEND) return total;
-    const aggregate = VOLATILE_STATS.includes(model.target) ? getMedian : getAvg;
-    return w * total + (1 - w) * aggregate(model.pastTargets);
+    return w * total + (1 - w) * leagueAggregate(model);
 };
 
 /**
@@ -257,6 +293,9 @@ export const createPredictionModel = (statistic, options = {}) => {
         sumTarget: 0,
         sumPredictor: 0,
         pastTargets: [],
+        // Maintained alongside pastTargets so leagueAggregate is O(1). See there.
+        sortedTargets: [],
+        pastTargetSum: 0,
     };
 };
 
@@ -293,6 +332,8 @@ export const addMatchToPredictionModel = (model, match) => {
 
     if (target !== null) {
         model.pastTargets.push(target);
+        model.pastTargetSum += target;
+        insertSorted(model.sortedTargets, target);
         // Only pair the two sums over matches where both exist, or the ratio
         // drifts whenever one statistic is missing and the other is not.
         if (predictor !== null) {
@@ -366,8 +407,7 @@ export const predictFromModel = (model, home, away, options = {}) => {
     // mean worth blending toward, so fall back to the unblended prediction
     // rather than dragging it toward zero.
     const canBlend = model.pastTargets.length >= MIN_HISTORY_FOR_BLEND;
-    const aggregate = VOLATILE_STATS.includes(model.target) ? getMedian : getAvg;
-    const leagueMean = canBlend ? aggregate(model.pastTargets) : scaledTotal;
+    const leagueMean = canBlend ? leagueAggregate(model) : scaledTotal;
     const w = canBlend ? model.weight : 1;
     const total = w * scaledTotal + (1 - w) * leagueMean;
 
