@@ -2,11 +2,28 @@ import { useMemo } from 'react';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Has this fixture already been played, according to the scraped stats? */
+/**
+ * Has this fixture already been played, according to the scraped stats?
+ *
+ * The season check is load-bearing. `stats` is built from
+ * `modelSeasonsForLeague` - the season being played AND the previous one, so
+ * recency decay has something to carry across the summer - so without it this
+ * finds LAST season's fixture and concludes today's has already been played.
+ *
+ * Measured 2026-09-09: it hid 1,074 upcoming fixtures, of which only 4 had
+ * genuinely been played this season. Twente v Telstar on 2026-09-09 never
+ * reached Hot Matches - despite ranking 5th of 13 by expected value - because
+ * Twente had hosted Telstar on 2025-11-06.
+ *
+ * CLAUDE.md records this exact failure being found and fixed once before,
+ * elsewhere. Any test comparing a fixture against history must check the season.
+ */
 const isAlreadyPlayed = (fixture, stats) => {
     if (!stats || !stats[fixture.home]) return false;
     return stats[fixture.home].all_matches.some(
-        m => m.opponent === fixture.away && m.location === 'Home'
+        m => m.opponent === fixture.away
+            && m.location === 'Home'
+            && m.season === fixture.season
     );
 };
 
