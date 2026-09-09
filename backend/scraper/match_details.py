@@ -85,7 +85,18 @@ def scrape_second_bookings(soup):
 
 
 def scrape_stats(driver):
-    """Clicks Statistics tab and extracts various match stats."""
+    """Clicks the Statistics tab and extracts the match stats.
+
+    Returns `{}` - NOT zeros - when the panel cannot be reached or read. The
+    values below are defaults for a row the panel genuinely does not list (a
+    match with no red cards shows no "Espulsioni" row, and reading that as 0-0
+    is correct), but they were also being returned when the click failed, which
+    stored a fabricated 0-0 for a match nobody had looked at. That is invisible
+    downstream: `statPair` skips a MISSING statistic, and these were real zeros.
+
+    Measured 2026-09-09: 10 such rows were in the table, 7 of them written by the
+    previous day's cron - see the selector note below for why the rate jumped.
+    """
     stats_data = {
         "corners": {"home": "0", "away": "0"},
         "fouls": {"home": "0", "away": "0"},
@@ -109,8 +120,18 @@ def scrape_stats(driver):
         attempts = 0
         while not clicked and attempts < 3:
             try:
+                # diretta moved this tab from a hash fragment to a real path:
+                # it is now <a href=".../riassunto/statistiche/?mid=..."> with the
+                # label in a <span class="wcl-tab_...">. Both old selectors match
+                # ZERO elements on today's pages, so every scrape silently fell
+                # through to the zero defaults. The trailing slash matters - it
+                # is what separates this tab from `statistiche-giocatore/`, the
+                # per-player one. Old forms kept as fallbacks; they cost nothing.
                 stats_btn = WebDriverWait(driver, 15).until( # Increased to 15s
-                    EC.element_to_be_clickable((By.XPATH, "//button[text()='Statistiche'] | //a[contains(@href, '#match-summary/match-statistics')]"))
+                    EC.element_to_be_clickable((By.XPATH,
+                        "//a[contains(@href, '/riassunto/statistiche/')]"
+                        " | //button[text()='Statistiche']"
+                        " | //a[contains(@href, '#match-summary/match-statistics')]"))
                 )
                 driver.execute_script("arguments[0].scrollIntoView(true);", stats_btn)
                 time.sleep(1) # Specific wait to ensure stability after scroll
@@ -122,16 +143,24 @@ def scrape_stats(driver):
                 time.sleep(2)
         
         if not clicked:
-             print("    -> ⚠️ Could not click 'Statistiche' button after retries.")
-             return stats_data # Return empty/zeros if we can't click
+             print("    -> ⚠️ Could not click 'Statistiche' after retries; reporting NO stats.")
+             return {}
 
 
-        # 2. Wait for a specific stats element to load to ensure DOM update
-        WebDriverWait(driver, 15).until( # Increased to 15s
-            EC.presence_of_element_located((By.CLASS_NAME, "wcl-row_2oCpS"))
+        # 2. Wait for a specific stats element to load to ensure DOM update.
+        #
+        # Keyed on data-testid, NOT on a class. diretta's `wcl-*` class names
+        # carry a build hash (`wcl-row_2oCpS`, `wcl-category_Ydwqh`) and rotate
+        # on deploys - that is what broke this, and substituting today's hashes
+        # would only schedule the same outage for the next deploy. The testids
+        # have survived the rename that killed the classes.
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, '[data-testid="wcl-statistics"]'))
         )
         
         # 3. Parse content
+        parsed = 0
         soup = BeautifulSoup(driver.page_source, "html.parser")
         
         # 4. Iterate through rows and map categories
@@ -155,31 +184,46 @@ def scrape_stats(driver):
             "Palle intercettate": "interceptions"
         }
 
-        for div in soup.select('div.wcl-row_2oCpS > div.wcl-category_Ydwqh'):
-            category_element = div.select_one('div.wcl-category_6sT1J')
+        # One row per statistic:
+        #   <div data-testid="wcl-statistics">
+        #     <div class="wcl-labelRow_...">
+        #       <div><div class="wcl-value_...">0.85</div></div>        home
+        #       <div class="wcl-label_...">
+        #         <span data-testid="wcl-scores-simple-text-01">Goal previsti (xG)</span>
+        #       <div><div class="wcl-value_...">1.83</div></div>        away
+        #
+        # The page lists some statistics twice - once in a summary block and
+        # once in the full one - with identical values, so a later row simply
+        # overwrites the earlier with the same numbers.
+        for row in soup.select('[data-testid="wcl-statistics"]'):
+            category_element = row.select_one('[data-testid="wcl-scores-simple-text-01"]')
             if not category_element:
                 continue
 
-            category_text = category_element.text.strip()
-            
-            # Check if this category is one we want
-            key = None
-            if category_text in stat_map:
-                key = stat_map[category_text]
-            
+            category_text = category_element.get_text(strip=True)
+            key = stat_map.get(category_text)
+
             if key:
-                values = div.select('div[data-testid="wcl-statistics-value"]')
+                # `wcl-value` still carries a hash, so match on the prefix. Home
+                # first, away second, which is the document order.
+                values = row.select('[class*="wcl-value"]')
                 if len(values) >= 2:
                     stats_data[key] = {
-                        "home": values[0].text.strip(),
-                        "away": values[1].text.strip()
+                        "home": values[0].get_text(strip=True),
+                        "away": values[1].get_text(strip=True)
                     }
-                
+                    parsed += 1
+
     except Exception as e:
         print(f"    -> ⚠️ Failed to scrape stats: {e}")
-        # pass # Do not silence unexpected errors completely during debug
+        return {}
 
-        
+    # A panel that yielded not one row did not render, whatever the click
+    # reported. Returning the defaults here is the same fabrication as above.
+    if not parsed:
+        print("    -> ⚠️ Statistics panel produced no rows; reporting NO stats.")
+        return {}
+
     return stats_data
 
 def scrape_comments(driver):
@@ -319,7 +363,18 @@ def scrape_match_details(driver, product_url, skip_comments=False):
             second_bookings = None
 
         # 3. Get Stats (Corners, Fouls, etc.)
-        final_data['stats'] = scrape_stats(driver)
+        #
+        # No stats at all means the page did not render, not a match played
+        # without corners - so the match is skipped rather than stored, exactly
+        # like the status safeguard above. Storing it would be worse than losing
+        # it: the row would look complete, would never be revisited (the scraper
+        # skips what is already in the DB), and every zero would enter the pooled
+        # model as a real observation.
+        stats = scrape_stats(driver)
+        if not stats:
+            print("  -> ⚠️ Skipping match: no statistics read (would store a fabricated 0-0)")
+            return None
+        final_data['stats'] = stats
         # Omitted entirely when unknown: the syncer skips absent keys, so the
         # column keeps whatever it had instead of being overwritten with a
         # wrong zero.
