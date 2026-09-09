@@ -95,6 +95,10 @@ DIVISIONS = {
     "N1": "Eredivisie",
     "P1": "Liga Portugal",
     "T1": "Super Lig",
+    # Belgium, added 2026-09-09 with the scraped league. B1 is a main-set
+    # division, so it carries shots, corners and fouls rather than the
+    # goals-only shape of the extra files (see BRA.csv).
+    "B1": "Jupiler League",
 }
 
 # Bookmaker column prefixes, best first. BFE is the Betfair Exchange, whose

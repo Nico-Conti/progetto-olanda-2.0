@@ -123,6 +123,9 @@ LEAGUE_TOURNAMENTS = {
     ("spagna", "laliga 2"): "LaLiga 2",
     ("francia", "ligue 2"): "Ligue 2",
     ("turchia", "super lig"): "Super Lig",
+    # domusbet calls it "Pro League", diretta calls it "Jupiler League"; the
+    # key is how THIS book spells it (categoryId=33, tournamentId=38).
+    ("belgio", "pro league"): "Jupiler League",
 }
 # Belt and braces: these qualifiers never appear in the senior men's league name,
 # so anything carrying one is a different competition even on an exact match.

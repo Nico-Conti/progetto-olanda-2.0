@@ -89,6 +89,15 @@ LEAGUES = {
         "base_url": "https://www.diretta.it/calcio/turchia/super-lig/",
         "season_style": "split",
     },
+    # Belgium, added 2026-09-09. diretta spells it `jupiler-league`, NOT
+    # `jupiler-pro-league` (307) or `pro-league` (404); the archive URL
+    # `belgio/jupiler-league-2025-2026/risultati/` was verified 200 before this
+    # went in, because a wrong guess here 404s only when a season import runs.
+    "jupiler": {
+        "name": "Jupiler League",
+        "base_url": "https://www.diretta.it/calcio/belgio/jupiler-league/",
+        "season_style": "split",
+    },
 }
 
 # Ordered list of slugs, used for the scraper CLI choices and the CI loop.
