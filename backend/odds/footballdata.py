@@ -41,7 +41,9 @@ from backend.odds.aliases import build_alias_map
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-BASE_URL = "https://www.football-data.co.uk/mmz4281"
+# No `www.`: on 2026-09-08 the www vhost answered 503 with a `Retry-After` on
+# every path while the apex host served every CSV normally - same nginx, same IP.
+BASE_URL = "https://football-data.co.uk/mmz4281"
 
 # The site throttles: it answers 503 with a `Retry-After` site-wide, for every
 # division at once, and a plain `requests.get` turns that into a division that
