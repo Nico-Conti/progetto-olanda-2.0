@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+import threading
 from datetime import datetime, timedelta, timezone
 import os
 from dotenv import load_dotenv
@@ -16,7 +17,39 @@ load_dotenv()
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+
+# One client PER THREAD, not one shared by all of them.
+#
+# FastAPI runs `def` endpoints in a threadpool, and the frontend fetches
+# matches/fixtures/teams/leagues with Promise.all, so several of these run at the
+# same instant on different threads. A single shared client means a single shared
+# HTTP/2 connection, and HTTP/2 keeps a per-connection HPACK table for header
+# compression: two threads writing headers onto it at once desynchronise that
+# table and the server answers GOAWAY.
+#
+# The symptom is nasty because it is invisible serially. Measured 2026-09-09: six
+# consecutive curls to /fixtures all returned 200, while firing the same five
+# endpoints in parallel produced
+#     ConnectionTerminated error_code:ErrorCodes.COMPRESSION_ERROR, last_stream_id:9
+# on whichever ones lost the race - all reporting the SAME stream id, because one
+# connection died and took every request on it with it. In the browser that
+# rejects the Promise.all, so `matchData` stays empty and the app renders its
+# "nothing to show" state, which reads as a bug in whatever screen you happen to
+# be on rather than as a failed fetch.
+#
+# A thread-local client gives each threadpool thread its own connection and no
+# shared compression state, and keeps the parallel fetch that the payload work
+# was built around. Threads are reused, so this constructs a handful of clients,
+# not one per request.
+_clients = threading.local()
+
+
+def get_supabase() -> Client:
+    client = getattr(_clients, "client", None)
+    if client is None:
+        client = create_client(url, key)
+        _clients.client = client
+    return client
 
 from contextlib import asynccontextmanager
 @asynccontextmanager
@@ -103,7 +136,7 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
     current_offset = 0
     
     while True:
-        query = supabase.table(table_name).select(columns)
+        query = get_supabase().table(table_name).select(columns)
         if gte:
             query = query.gte(gte[0], gte[1])
         if order_col:
@@ -232,7 +265,7 @@ def get_odds():
 @app.get("/leagues")
 def get_leagues():
     try:
-        response = supabase.table("League").select("*").execute()
+        response = get_supabase().table("League").select("*").execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
