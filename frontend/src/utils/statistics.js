@@ -59,9 +59,27 @@ export const MARKET_FOR_STAT = {
     corners: 'total_corners',
     fouls: 'total_fouls',
     goals: 'total_goals',
-    shots: 'total_shots',
-    shots_on_target: 'total_shots_on_target',
     card_points: 'total_card_points',
+    // shots and shots_on_target are DELIBERATELY absent. The book posts both,
+    // but it does not settle them on the quantity we count - measured
+    // 2026-09-09 against 848 and 729 closing quotes:
+    //
+    //   shots            line mean 25.5, our totals mean 29.0, over-rate 69.1%
+    //   shots on target  line mean  8.7, our totals mean  9.7, over-rate 60.4%
+    //   corners          line mean  9.7, our totals mean 10.0, over-rate 50.5%
+    //
+    // Corners is what a correctly joined market looks like: the book centres its
+    // line on the quantity, so the over-rate lands at ~50%. Ours run 3.5 and 1.0
+    // high, and diretta's "Tiri totali" is on-target + off-target + blocked, so
+    // the book is plainly counting something narrower.
+    //
+    // The tell is that the MARKET is miscalibrated too - 21.0% and 8.0% ECE
+    // against our outcomes, and flat-betting every side of both returned +9.6%
+    // and +5.3%, which is impossible against a book with overround. A bookmaker
+    // is not 21% wrong about its own market; our outcome is not its outcome.
+    //
+    // Restore these only after confirming what the book settles on, and then
+    // re-measure - do not guess an offset from 28 fixtures.
 };
 
 /**
