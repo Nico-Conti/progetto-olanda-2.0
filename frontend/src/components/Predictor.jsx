@@ -787,19 +787,19 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                     <table className="w-full text-left text-zinc-300">
                         <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>
-                                <th className="pl-5 pr-2 py-3 font-bold tracking-wider text-center w-[80px] whitespace-nowrap">Date</th>
-                                <th className="pl-2 pr-5 py-3 font-bold tracking-wider text-center whitespace-nowrap">Matchup</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap">Home Exp</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500 whitespace-nowrap">Away Exp</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider bg-white/5 text-white whitespace-nowrap">Total Exp</th>
+                                <th className="pl-5 lg:pl-3 pr-2 py-3 font-bold tracking-wider text-center w-[80px] whitespace-nowrap">Date</th>
+                                <th className="pl-2 pr-5 lg:pr-3 py-3 font-bold tracking-wider text-center whitespace-nowrap">Matchup</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap">Home Exp</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500 whitespace-nowrap">Away Exp</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-white/5 text-white whitespace-nowrap">Total Exp</th>
                                 {showProbability && (
-                                    <th className="px-3 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap"
+                                    <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap"
                                         title="Probability the total goes over the configured line, from the fitted distribution.">
                                         P(Over)
                                     </th>
                                 )}
-                                <th className="px-3 py-3 text-center font-bold tracking-wider whitespace-nowrap">Stat</th>
-                                <th className="px-3 py-3 text-center font-bold tracking-wider whitespace-nowrap">Bet Builder</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider whitespace-nowrap">Stat</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider whitespace-nowrap">Bet Builder</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">
@@ -815,7 +815,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                     }}
                                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
                                 >
-                                    <td className="pl-5 pr-0 py-4 whitespace-nowrap font-medium text-zinc-400 text-center w-[80px]">
+                                    <td className="pl-5 lg:pl-3 pr-0 py-4 whitespace-nowrap font-medium text-zinc-400 text-center w-[80px]">
                                         {(() => {
                                             if (!match.date) return 'TBD';
                                             const d = new Date(match.date);
@@ -824,7 +824,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                                 : match.date;
                                         })()}
                                     </td>
-                                    <td className="pl-0 pr-5 py-4 relative text-center">
+                                    <td className="pl-0 pr-5 lg:pr-3 py-4 relative text-center">
                                         <div className="flex items-center gap-3 justify-center">
                                             <div className="flex items-center gap-2 w-[150px] justify-end">
                                                 <span
@@ -855,11 +855,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-3 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction ? match.prediction.expHome.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
-                                    <td className="px-3 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction ? match.prediction.expAway.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
-                                    <td className="px-3 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction ? match.prediction.total.toFixed(1) : '-'}</td>
+                                    <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction ? match.prediction.expHome.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                    <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction ? match.prediction.expAway.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                    <td className="px-3 lg:px-2 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction ? match.prediction.total.toFixed(1) : '-'}</td>
                                     {showProbability && (
-                                        <td className="px-3 py-4 text-center font-black bg-emerald-500/5 tabular-nums">
+                                        <td className="px-3 lg:px-2 py-4 text-center font-black bg-emerald-500/5 tabular-nums">
                                             {match.prediction?.probOver && lineFor(match.selectedStat) != null ? (
                                                 <>
                                                     <span className="text-emerald-400">
@@ -872,7 +872,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                             ) : <span className="text-zinc-600">-</span>}
                                         </td>
                                     )}
-                                    <td className="px-3 py-4 text-center">
+                                    <td className="px-3 lg:px-2 py-4 text-center">
                                         <div className="relative inline-block">
                                             <select
                                                 value={match.selectedStat}
@@ -889,7 +889,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
                                         </div>
                                     </td>
-                                    <td className="px-3 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <td className="px-3 lg:px-2 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                                         <BetBuilderCell
                                             game={`${match.home} vs ${match.away}`}
                                             priceFor={priceFor}

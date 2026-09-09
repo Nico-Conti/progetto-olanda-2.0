@@ -227,11 +227,13 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
     }
 
     return (
-        // Wraps rather than clipping: the row is ~335px and the fixture card is
-        // ~310px wide on a 390px screen, which cut off the line and the Add button.
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        // The row is ~335px. On a 390px screen the fixture card is ~310px, so it
+        // must wrap or the line and the Add button get clipped away entirely.
+        // From `lg` up there is room, and it belongs on one line as it always
+        // was - `flex-wrap` alone applied the phone fix to every width.
+        <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-2 lg:gap-1.5">
             {/* Team Selector */}
-            <div className="flex bg-zinc-950/50 border border-white/10 rounded-lg p-0.5 w-[110px] items-stretch">
+            <div className="flex bg-zinc-950/50 border border-white/10 rounded-lg p-0.5 w-[110px] lg:w-[92px] items-stretch">
                 {['total', 'home', 'away'].map((t) => (
                     <button
                         key={t}
@@ -256,14 +258,14 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
             <div className="flex bg-zinc-950/50 border border-white/10 rounded-lg p-0.5">
                 <button
                     onClick={() => setOption('O')}
-                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${option === 'O' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'
+                    className={`px-2 lg:px-1.5 py-1 text-[10px] font-bold rounded transition-colors ${option === 'O' ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'
                         }`}
                 >
                     O
                 </button>
                 <button
                     onClick={() => setOption('U')}
-                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${option === 'U' ? 'bg-red-500/20 text-red-400' : 'text-zinc-500 hover:text-zinc-300'
+                    className={`px-2 lg:px-1.5 py-1 text-[10px] font-bold rounded transition-colors ${option === 'U' ? 'bg-red-500/20 text-red-400' : 'text-zinc-500 hover:text-zinc-300'
                         }`}
                 >
                     U
@@ -272,7 +274,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
 
             {priceFor && stat !== 'main' && team === 'total' && (
                 <span
-                    className={`min-w-[42px] text-center px-1.5 py-1 rounded text-[11px] font-mono font-black tabular-nums ${
+                    className={`min-w-[42px] lg:min-w-[36px] text-center px-1.5 lg:px-1 py-1 rounded text-[11px] font-mono font-black tabular-nums ${
                         currentPrice > 1
                             ? 'bg-white/10 text-white'
                             : 'text-zinc-600'
@@ -291,7 +293,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
             <select
                 value={value || ''}
                 onChange={(e) => setValue(parseFloat(e.target.value))}
-                className="bg-zinc-950/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1.5 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold text-center cursor-pointer w-[55px]"
+                className="bg-zinc-950/50 border border-white/10 text-white text-xs rounded-lg px-2 py-1.5 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold text-center cursor-pointer w-[55px] lg:w-[46px] lg:px-1"
             >
                 {options.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
