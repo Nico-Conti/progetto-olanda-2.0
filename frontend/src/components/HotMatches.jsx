@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, Sparkles, BrainCircuit, X, Play } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
-import { expectedValue } from '../utils/countModel';
+import { expectedValue, devig } from '../utils/countModel';
 import EngineToggle from './EngineToggle';
 import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
 import { findBestStrategy, defaultLineFor, MIN_CALLS } from '../utils/backtest';
@@ -279,9 +279,17 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                         if (p == null) continue;
                         const overPrice = priceFor(match.home, match.away, selectedStatistic, l, true);
                         const underPrice = priceFor(match.home, match.away, selectedStatistic, l, false);
+                        // What the market itself thinks, for the card to show beside
+                        // our number. Devigged when both sides are priced, because a
+                        // raw 1/price still carries the book's margin and would
+                        // overstate how far apart we are. Falls back to the raw
+                        // implied probability when only one side was captured.
+                        const dv = (overPrice > 1 && underPrice > 1) ? devig(overPrice, underPrice) : null;
                         const candidatesEv = [
-                            { ev: overPrice ? expectedValue(p, overPrice) : null, side: 'Over', line: l, price: overPrice },
-                            { ev: underPrice ? expectedValue(1 - p, underPrice) : null, side: 'Under', line: l, price: underPrice },
+                            { ev: overPrice ? expectedValue(p, overPrice) : null, side: 'Over', line: l, price: overPrice,
+                              prob: p, market: dv ? dv.over : (overPrice > 1 ? 1 / overPrice : null) },
+                            { ev: underPrice ? expectedValue(1 - p, underPrice) : null, side: 'Under', line: l, price: underPrice,
+                              prob: 1 - p, market: dv ? dv.under : (underPrice > 1 ? 1 / underPrice : null) },
                         ];
                         for (const c of candidatesEv) {
                             if (c.ev != null && (bestEv == null || c.ev > bestEv.ev)) bestEv = c;
@@ -761,6 +769,22 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                             {match.bestEv.side} {match.bestEv.line}
                                             <span className="text-zinc-600 normal-case font-mono"> @ {match.bestEv.price.toFixed(2)}</span>
                                         </span>
+                                        {/* The claim behind the EV, in probability units.
+                                            EV = price x (our p - the price's implied p), so a
+                                            long price multiplies the disagreement: the same 8pp
+                                            gap reads as +12% EV at 1.50 and +30% at 3.82. Showing
+                                            both makes the size of the actual disagreement legible
+                                            instead of hiding it behind the multiplier. */}
+                                        {match.bestEv.market != null && (
+                                            <span
+                                                title={`We make it ${(100 * match.bestEv.prob).toFixed(0)}%, the market ${(100 * match.bestEv.market).toFixed(0)}% (margin removed). EV is that gap multiplied by the price, so long prices inflate it.`}
+                                                className="font-mono tabular-nums text-zinc-500 normal-case"
+                                            >
+                                                {(100 * match.bestEv.prob).toFixed(0)}%
+                                                <span className="text-zinc-700"> vs </span>
+                                                {(100 * match.bestEv.market).toFixed(0)}%
+                                            </span>
+                                        )}
                                         <span className={`font-mono font-black tabular-nums ${!match.prediction.confident ? 'text-zinc-600'
                                             : match.bestEv.ev > 0.02 ? 'text-emerald-400'
                                                 : match.bestEv.ev < -0.02 ? 'text-red-400/70' : 'text-zinc-400'}`}>
