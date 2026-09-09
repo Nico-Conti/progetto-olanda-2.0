@@ -163,6 +163,45 @@ export const DEFAULT_ENGINE = ENGINES.CLASSIC;
 const MIN_RESIDUALS = 30;
 
 /**
+ * Shrinkage applied to the total INSIDE the probability path only, per statistic.
+ *
+ * Section 18 calibrated the shipped `withDistribution` probabilities for the
+ * first time and found corners overconfident at BOTH extremes while accurate in
+ * the middle - the signature of a centre that swings too far, not of a wrong
+ * spread. Corners lost to the per-line base rate outright (0.5982 against
+ * 0.5883), and it is the default statistic with the best odds coverage.
+ *
+ * These are the weights chosen on the chronological FIRST HALF of history and
+ * confirmed on the second, not the in-sample optima (0.4 and 0.6). Shots is
+ * absent on purpose: it looked like the second-best case in sample (-0.0047) and
+ * got worse out of sample (+0.0034). Goals and fouls gain nothing. Absent means
+ * 1 - no shrinkage.
+ *
+ * `prediction.total` is deliberately NOT shrunk: displayed totals, rankings and
+ * the classic engine must not move.
+ */
+export const PROB_SHRINK = { corners: 0.3, yellow_cards: 0.5 };
+
+/**
+ * The centre a distribution is priced against - `total` for most statistics,
+ * pulled toward the league mean for the two where that was measured to help.
+ *
+ * Both the probability path and the residual recording must go through this. Fit
+ * the dispersion on unshrunk errors and then price a shrunk centre with it and
+ * you get a pair that was never scored: neither the shipped model nor the tested
+ * one.
+ */
+const shrinkTotal = (model, total) => {
+    const w = PROB_SHRINK[model.target] ?? 1;
+    // The guard predictFromModel's own blend uses. With no history there is no
+    // mean worth shrinking toward, and getAvg([]) is 0 - which would drag the
+    // centre to near zero rather than leave it alone.
+    if (w === 1 || model.pastTargets.length < MIN_HISTORY_FOR_BLEND) return total;
+    const aggregate = VOLATILE_STATS.includes(model.target) ? getMedian : getAvg;
+    return w * total + (1 - w) * aggregate(model.pastTargets);
+};
+
+/**
  * Effective matches each side needs before a prediction is trusted for money.
  *
  * A prediction is *shown* on far less than this - a rough number is better than
@@ -240,7 +279,12 @@ export const addMatchToPredictionModel = (model, match) => {
             asOf: match.date, engine: ENGINES.CLASSIC,
         });
         if (prior && prior.total > 0) {
-            model.residuals.push({ mu: prior.total, actual: target });
+            // Shrunk, because that is the centre the probabilities are priced
+            // against - the dispersion has to be fitted on the errors of the
+            // number it will actually be used with. Identity for every statistic
+            // outside PROB_SHRINK. `pastTargets` excludes this match, so the mean
+            // is the one a prediction made now would have seen.
+            model.residuals.push({ mu: shrinkTotal(model, prior.total), actual: target });
             model.dispersion = null;   // invalidated by the new observation
         }
     }
@@ -388,6 +432,8 @@ const effectiveHistory = (prediction) => {
 const withDistribution = (model, prediction) => {
     if (!prediction || !(prediction.total > 0)) return prediction;
     const r = dispersionFor(model);
+    // The centre for the probabilities only; `prediction.total` is left as it is.
+    const mu = shrinkTotal(model, prediction.total);
     const effective = effectiveHistory(prediction);
     const fitted = model.residuals.length >= MIN_RESIDUALS;
     return {
@@ -405,12 +451,12 @@ const withDistribution = (model, prediction) => {
         // presenting a default as a finding.
         dispersionFitted: fitted,
         residualCount: model.residuals.length,
-        probOver: (line) => probOver(prediction.total, line, r),
+        probOver: (line) => probOver(mu, line, r),
         probUnder: (line) => {
-            const p = probOver(prediction.total, line, r);
+            const p = probOver(mu, line, r);
             return p == null ? null : 1 - p;
         },
-        distribution: () => distribution(prediction.total, r),
+        distribution: () => distribution(mu, r),
     };
 };
 
