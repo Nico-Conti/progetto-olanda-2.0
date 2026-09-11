@@ -54,19 +54,38 @@ def season_records(matches):
     return {team: tuple(r) for team, r in acc.items()}
 
 
+# football-data spellings that no rule can bridge, keyed and valued on
+# `normalise()` output. Deliberately separate from EXONYMS below, which is for a
+# different source resolved a different way.
+#
+# The fingerprint (pass 2) covers almost everything, but it needs both sides to
+# describe the SAME set of matches. Where they do not it cannot help, and a
+# league whose two-legged play-offs football-data omits is exactly that case:
+# Belgium's records differ by those rows, so `Oud-Heverlee Leuven` fell through
+# every pass and took ~41 matches of statistics with it.
+#
+# Add an entry only for two names you have seen denote the same club. This is a
+# rename, not a guess.
+FD_RENAMES = {
+    "oudheverleeleuven": "leuven",   # Jupiler League, cost 41 matches 2026-09-10
+}
+
+
 def build_alias_map(ours, theirs):
     """Map their team names onto ours for one league-season.
 
     Returns (alias_map, unresolved), where unresolved lists their names that
-    could not be pinned to exactly one of ours. Resolution runs in three passes,
+    could not be pinned to exactly one of ours. Resolution runs in four passes,
     each only over what the previous ones left:
 
       1. exact name match
       2. identical season record, where that record is unique on both sides
       3. normalised name match (accents and punctuation removed)
+      4. an explicit FD_RENAMES entry
 
     Pass 2 is the one that does the real work. Pass 3 only mops up cases where
     two clubs happen to share a record, which the fingerprint cannot separate.
+    Pass 4 exists because pass 2 needs both sides to cover the same fixtures.
     """
     our_names = {m[k] for m in ours for k in ("home", "away") if m.get(k)}
     their_names = {m[k] for m in theirs for k in ("home", "away") if m.get(k)}
@@ -104,6 +123,17 @@ def build_alias_map(ours, theirs):
         if their_name in alias:
             continue
         candidates = our_by_norm.get(normalise(their_name), [])
+        if len(candidates) == 1:
+            alias[their_name] = candidates[0]
+            claimed.add(candidates[0])
+
+    for their_name in their_names:
+        if their_name in alias:
+            continue
+        target = FD_RENAMES.get(normalise(their_name))
+        if not target:
+            continue
+        candidates = [n for n in our_names if normalise(n) == target and n not in claimed]
         if len(candidates) == 1:
             alias[their_name] = candidates[0]
             claimed.add(candidates[0])
