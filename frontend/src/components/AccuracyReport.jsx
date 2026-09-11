@@ -5,7 +5,7 @@ import {
     predictFromModel,
 } from '../utils/predictTotal';
 import { defaultLineFor, MARGIN_OPTIONS, MIN_CALLS } from '../utils/backtest';
-import { resolveStatKey, STAT_CONFIG } from '../utils/statistics';
+import { resolveStatKey, statPair, STAT_CONFIG } from '../utils/statistics';
 import { sortMatchesChronologically } from '../utils/backtestEngine';
 import { ChevronDown, Play, AlertCircle, CheckCircle, TrendingUp, X, Sparkles } from 'lucide-react';
 
@@ -54,9 +54,14 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                 asOf: targetMatch.date,
             });
 
-            if (prediction && prediction.total > 0) {
-                const actualHome = Number(targetMatch.stats[statKey].home);
-                const actualAway = Number(targetMatch.stats[statKey].away);
+            // statPair, not a raw read: a statistic the match does not have comes
+            // back as {home: null, away: null}, and `Number(null)` is 0 - which
+            // would score a backfilled fixture as a real 0-0 and count it as a
+            // hit or miss it never was.
+            const actual = statPair(targetMatch, statKey);
+            if (prediction && prediction.total > 0 && actual) {
+                const actualHome = Number(actual.home);
+                const actualAway = Number(actual.away);
                 const actualTotal = actualHome + actualAway;
                 const diff = actualTotal - prediction.total;
 

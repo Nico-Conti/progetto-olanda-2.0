@@ -80,10 +80,29 @@ export const useMatchData = () => {
                     away: match.away_team || 'Unknown'
                 },
                 stats: {
-                    corners: { home: match.home_corners ?? 0, away: match.away_corners ?? 0 },
-                    fouls: { home: match.home_fouls ?? 0, away: match.away_fouls ?? 0 },
-                    yellow_cards: { home: match.home_yellow_cards ?? 0, away: match.away_yellow_cards ?? 0 },
-                    red_cards: { home: match.home_red_cards ?? 0, away: match.away_red_cards ?? 0 },
+                    // NULL stays NULL. `?? 0` here was harmless while every stored
+                    // match had every column, and became a live mispricing the
+                    // moment the football-data backfill started inserting rows
+                    // with real gaps: it turns "not measured" into a measured
+                    // zero, which is the one thing `statPair` cannot see - it
+                    // guards a MISSING key, and this guaranteed the key is always
+                    // present.
+                    //
+                    // Belgium's 312 backfilled matches carry no box_touches, so
+                    // every one of them entered the goals model as 0 box touches.
+                    // Westerlo v St. Liege came out at 0.66 expected goals
+                    // against a true ~3.5, P(under 0.5) at 52% against ~3%, and
+                    // +417% EV at a price of 10.00 - top of Hot Matches. The
+                    // error is one-sided and systematic, so it reads as an edge
+                    // rather than as noise. Exactly the failure section 7fb9579
+                    // fixed, arriving through the mapping instead of the scrape.
+                    //
+                    // `second_bookings` keeps its `?? 0` below, and that stays
+                    // deliberate - see the note on card_points.
+                    corners: { home: match.home_corners ?? null, away: match.away_corners ?? null },
+                    fouls: { home: match.home_fouls ?? null, away: match.away_fouls ?? null },
+                    yellow_cards: { home: match.home_yellow_cards ?? null, away: match.away_yellow_cards ?? null },
+                    red_cards: { home: match.home_red_cards ?? null, away: match.away_red_cards ?? null },
                     // The bookmaker's card market settles on POINTS, not on a
                     // count: a yellow is 1 and a red is 2 (domusbet's published
                     // rules). Derived here rather than stored, so it costs no
@@ -116,27 +135,31 @@ export const useMatchData = () => {
                     // panel, exactly as the bookmaker's rules require, so the
                     // yellow and red columns are already on the right basis.
                     card_points: {
-                        home: (match.home_yellow_cards ?? 0) + 2 * (match.home_red_cards ?? 0)
+                        home: match.home_yellow_cards == null || match.home_red_cards == null
+                            ? null
+                            : match.home_yellow_cards + 2 * match.home_red_cards
                               - (match.home_second_bookings ?? 0),
-                        away: (match.away_yellow_cards ?? 0) + 2 * (match.away_red_cards ?? 0)
+                        away: match.away_yellow_cards == null || match.away_red_cards == null
+                            ? null
+                            : match.away_yellow_cards + 2 * match.away_red_cards
                               - (match.away_second_bookings ?? 0),
                     },
-                    shots: { home: match.home_shots ?? 0, away: match.away_shots ?? 0 },
-                    shots_on_target: { home: match.home_shots_on_target ?? 0, away: match.away_shots_on_target ?? 0 },
-                    goals: { home: match.home_goals ?? 0, away: match.away_goals ?? 0 },
-                    possession: { home: match.home_possession ?? 0, away: match.away_possession ?? 0 },
+                    shots: { home: match.home_shots ?? null, away: match.away_shots ?? null },
+                    shots_on_target: { home: match.home_shots_on_target ?? null, away: match.away_shots_on_target ?? null },
+                    goals: { home: match.home_goals ?? null, away: match.away_goals ?? null },
+                    possession: { home: match.home_possession ?? null, away: match.away_possession ?? null },
                     // Scraped and stored since the start, but only exposed by
                     // /matches recently. Keys are named after the DB columns:
                     // `blocked_shots` holds diretta's "Palle intercettate"
                     // (interceptions), which the syncer writes there on purpose
                     // - see backend/services/supabase_syncer.py:92.
-                    xg: { home: match.home_xg ?? 0, away: match.away_xg ?? 0 },
-                    xgot: { home: match.home_xgot ?? 0, away: match.away_xgot ?? 0 },
-                    big_chances: { home: match.home_big_chances ?? 0, away: match.away_big_chances ?? 0 },
-                    box_touches: { home: match.home_box_touches ?? 0, away: match.away_box_touches ?? 0 },
-                    crosses: { home: match.home_crosses ?? 0, away: match.away_crosses ?? 0 },
-                    goalkeeper_saves: { home: match.home_goalkeeper_saves ?? 0, away: match.away_goalkeeper_saves ?? 0 },
-                    blocked_shots: { home: match.home_blocked_shots ?? 0, away: match.away_blocked_shots ?? 0 },
+                    xg: { home: match.home_xg ?? null, away: match.away_xg ?? null },
+                    xgot: { home: match.home_xgot ?? null, away: match.away_xgot ?? null },
+                    big_chances: { home: match.home_big_chances ?? null, away: match.away_big_chances ?? null },
+                    box_touches: { home: match.home_box_touches ?? null, away: match.away_box_touches ?? null },
+                    crosses: { home: match.home_crosses ?? null, away: match.away_crosses ?? null },
+                    goalkeeper_saves: { home: match.home_goalkeeper_saves ?? null, away: match.away_goalkeeper_saves ?? null },
+                    blocked_shots: { home: match.home_blocked_shots ?? null, away: match.away_blocked_shots ?? null },
                 },
                 giornata: match.giornata || 0,
                 league: match.league, // Include league for filtering
