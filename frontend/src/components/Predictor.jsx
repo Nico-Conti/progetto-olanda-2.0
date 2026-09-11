@@ -4,7 +4,6 @@ import { VOLATILE_STATS, processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import EngineToggle from './EngineToggle';
 import { STAT_OPTIONS, PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
-import SlipMarketTable from './SlipMarketTable';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -217,9 +216,15 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
         const predictions = unplayed.map(match => {
             const matchId = `${match.home}-${match.away}`;
             const stat = matchStatistics[matchId] || selectedStatistic;
-            const modelToUse = getModel(stat) ?? getModel(selectedStatistic);
+            // A market we only price has nothing to build a model from, and
+            // asking for one would fold an empty history into a prediction. The
+            // row renders a dash where the expected values go, exactly as a
+            // fixture with too little history already does.
+            const modelToUse = isSlipOnly(stat)
+                ? null
+                : (getModel(stat) ?? getModel(selectedStatistic));
 
-            const pred = predictFromModel(modelToUse, match.home, match.away, {
+            const pred = modelToUse && predictFromModel(modelToUse, match.home, match.away, {
                 nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
                 asOf: match.date ?? new Date(), engine,
             });
@@ -280,16 +285,14 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     }, [availableMatchdays, selectedMatchday]);
 
     // Filter matches by selected matchday
-    // The selected market, when it is one we price but do not predict. Truthy
-    // object rather than a boolean so the notice can name it.
-    const slipOnly = isSlipOnly(selectedStatistic)
-        ? SLIP_ONLY_OPTIONS.find(o => o.value === selectedStatistic)
-        : null;
-
-    // Slip-only prices are not on the first paint; ask for them when one is picked.
+    // Slip-only prices are not on the first paint - ask for each market the
+    // moment a row selects it. loadMarket is a no-op after the first call.
     useEffect(() => {
-        if (slipOnly && loadMarket) loadMarket(selectedStatistic);
-    }, [slipOnly, selectedStatistic, loadMarket]);
+        if (!loadMarket) return;
+        for (const stat of new Set(Object.values(matchStatistics ?? {}))) {
+            if (isSlipOnly(stat)) loadMarket(stat);
+        }
+    }, [matchStatistics, loadMarket]);
 
     const displayedMatches = useMemo(() => {
         if (!selectedMatchday) return [];
@@ -713,20 +716,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                 </div>
             )}
 
-            {/* A market we only have prices for gets its own table. The one below
-                is prediction-shaped - Home Exp, Away Exp, Total Exp, P(Over) - and
-                would show four empty columns on every row for a market with no
-                model behind it. */}
-            {slipOnly ? (
-                <SlipMarketTable
-                    matches={displayedMatches}
-                    market={selectedStatistic}
-                    marketLabel={slipOnly.label}
-                    outcomesFor={outcomesFor}
-                    addToBet={addToBet}
-                    bets={bets}
-                />
-            ) : (
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
                 {/* Mobile View (Cards) */}
                 <div className="md:hidden space-y-4 p-4">
@@ -811,7 +800,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                         className="w-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-8 py-2 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        {PRICED_STAT_OPTIONS.map(opt => (
+                                        {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
@@ -822,6 +811,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     <BetBuilderCell
                                         game={`${match.home} vs ${match.away}`}
                                         priceFor={priceFor}
+                                            outcomesFor={outcomesFor}
                                         home={match.home}
                                         away={match.away}
                                         teamLogos={teamLogos}
@@ -942,7 +932,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                                 }}
                                                 className="bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-md pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold w-[100px] cursor-pointer hover:bg-zinc-800"
                                             >
-                                                {PRICED_STAT_OPTIONS.map(opt => (
+                                                {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
                                                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                 ))}
                                             </select>
@@ -953,6 +943,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                         <BetBuilderCell
                                             game={`${match.home} vs ${match.away}`}
                                             priceFor={priceFor}
+                                            outcomesFor={outcomesFor}
                                             home={match.home}
                                             away={match.away}
                                             teamLogos={teamLogos}
@@ -977,7 +968,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                     </table>
                 </div>
             </div >
-            )}
 
             {/* Custom Matchup Selector */}
             < div className="glass-panel p-6 rounded-xl border border-white/10 mt-8" >

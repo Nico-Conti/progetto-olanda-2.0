@@ -1,8 +1,16 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, Check, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { isSlipOnly, SELECTION_LABELS } from '../utils/statistics';
 
-const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor }) => {
+const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor, outcomesFor }) => {
+    // A market we only price has no line ladder and no over/under: a multigol
+    // band IS the selection. Show what was captured and let it be added
+    // directly, rather than pretending there is a total to step through.
+    const slipOutcomes = isSlipOnly(stat) && outcomesFor
+        ? outcomesFor(home, away, stat)
+        : null;
+
     const [team, setTeam] = useState(existingBet ? (existingBet.team || 'total') : 'total');
     const [option, setOption] = useState(existingBet ? existingBet.option : 'O');
     const [value, setValue] = useState(existingBet ? existingBet.value : null);
@@ -222,6 +230,42 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                         </>
                     )}
                 </button>
+            </div>
+        );
+    }
+
+    if (slipOutcomes) {
+        const inSlip = (sel) => (bets ?? []).some(
+            b => b.game === game && b.stat === stat && b.option === sel,
+        );
+        return (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-[340px]">
+                {slipOutcomes.length === 0 ? (
+                    // About us, not about the book: these markets are only
+                    // collected by an occasional --slip-markets run.
+                    <span className="text-[10px] text-zinc-600">no prices captured</span>
+                ) : slipOutcomes.map((o, i) => {
+                    const on = inSlip(o.selection);
+                    return (
+                        <button
+                            key={i}
+                            onClick={() => (on
+                                ? onRemove?.(game, stat, 'total')
+                                : onAdd(game, o.selection, o.line, stat, 'total'))}
+                            title={on ? 'In your slip' : 'Add to slip'}
+                            className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-colors ${
+                                on
+                                    ? 'bg-emerald-500 border-emerald-400 text-white'
+                                    : 'bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                            }`}
+                        >
+                            {SELECTION_LABELS[o.selection] ?? o.selection}
+                            <span className={`ml-1.5 font-mono ${on ? 'text-white' : 'text-emerald-400'}`}>
+                                {o.price.toFixed(2)}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
         );
     }

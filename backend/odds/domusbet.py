@@ -424,7 +424,15 @@ def slip_rows(event, market, league, season, home, away, kickoff):
         ce = esito.get("ce")
         selection = names.get(ce, str(ce))
         if band:
-            selection = f"{band[0]}-{band[1]} {selection}"
+            # Only the band HAPPENING is worth storing. ce=2 is "not 1-2", which
+            # nobody plays and which the book prices at a flat 1.01 placeholder
+            # anyway. ce=1 is the yes side - unambiguous from monotonicity, since
+            # a wider band is strictly likelier and the price falls accordingly
+            # (1-2 at 1.89, 1-3 at 1.34, 1-4 at 1.13, 1-5 at 1.06).
+            if ce != 1:
+                continue
+            # "yes" is implied once the no side is gone, so the band alone names it.
+            selection = f"{band[0]}-{band[1]}"
         rows.append({
             "league": league, "season": season, "home": home, "away": away,
             "kickoff": kickoff, "market": name, "stat": None, "line": line,
@@ -653,6 +661,56 @@ def write_rows(rows):
     return written
 
 
+# Slip-only prices are kept for UPCOMING fixtures only.
+#
+# The asymmetry with the modelled markets is the whole point, and getting it
+# backwards would be expensive in opposite directions:
+#
+#   * the modelled prices (MARKETS) must NEVER be pruned. They only become
+#     evidence once the match is played - priceComparison.mjs joins each one to
+#     the outcome to score CLV and ROI - and a price that existed three hours
+#     ago cannot be re-fetched. Deleting on kickoff would destroy the dataset at
+#     the exact moment it turns useful.
+#   * the slip-only ones (SLIP_MARKETS) are the mirror image. Nothing models
+#     them: no STAT_SIGNAL entry, no fitted half-life, no EV, and both
+#     priceComparison.mjs and marketBlend.mjs skip any market with no
+#     MARKET_FOR_STAT entry. They exist so a slip can be built for a fixture
+#     that has not kicked off, and `get_odds` already floors on
+#     ODDS_LOOKBACK_HOURS, so after kickoff they have no reader at all - while
+#     costing ~33,000 rows per sweep against the modelled markets' ~350.
+#
+# Without this the slip capture cannot be automated: at 33k rows a run it would
+# outgrow the entire table in a day. With it the slip rows reach a steady state
+# of roughly one capture window instead of accumulating forever.
+SLIP_PRUNE_AFTER_HOURS = 6   # same grace as ODDS_LOOKBACK_HOURS in backend/main.py
+
+
+def prune_slip(hours=SLIP_PRUNE_AFTER_HOURS):
+    """Delete slip-only prices for fixtures that have already been played."""
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        sys.exit("Missing SUPABASE_URL / SUPABASE_KEY")
+    # Derived from SLIP_MARKETS rather than written out, so a market added there
+    # is pruned automatically. A hand-kept second list is how the three league
+    # lists in this project drifted apart.
+    markets = sorted({name for name, _shape in SLIP_MARKETS.values()})
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(hours=hours)).isoformat()
+    headers = {"apikey": key, "Authorization": f"Bearer {key}",
+               "Prefer": "return=minimal,count=exact"}
+    params = {"match_date": f"lt.{cutoff}", "market": f"in.({','.join(markets)})"}
+    resp = SESSION.delete(f"{url}/rest/v1/odds_snapshots", headers=headers,
+                          params=params, timeout=120)
+    if resp.status_code >= 400:
+        sys.exit(f"Prune failed ({resp.status_code}): {resp.text[:300]}")
+    # PostgREST reports the affected count in Content-Range as `*/N`.
+    count = (resp.headers.get("content-range") or "*/?").split("/")[-1]
+    print(f"pruned {count} slip-only rows for fixtures played before {cutoff[:16]}",
+          flush=True)
+    print(f"   markets: {', '.join(markets)}")
+    return count
+
+
 def coverage():
     """Which of our markets are actually posted right now, by kickoff day."""
     leagues = our_leagues()
@@ -679,6 +737,11 @@ def main():
     group.add_argument("--tournaments", action="store_true", help="list football tournaments")
     group.add_argument("--coverage", action="store_true", help="which markets are posted now")
     group.add_argument("--capture", action="store_true", help="collect prices")
+    group.add_argument("--prune-slip", action="store_true",
+                       help="delete slip-only prices (multigol, GG/NG, combos) for "
+                            "fixtures already played. Never touches the modelled "
+                            "markets: those are the closing-line history and only "
+                            "become useful after the match.")
     parser.add_argument("--slip-markets", action="store_true",
                         help="also collect the markets we do not model (1X2, GG/NG, "
                              "multigol, combos) so a slip can be built from them. Off "
@@ -712,6 +775,10 @@ def main():
 
     if args.coverage:
         coverage()
+        return
+
+    if args.prune_slip:
+        prune_slip()
         return
 
     # The fixture list is fetched BEFORE the capture, not after it.
