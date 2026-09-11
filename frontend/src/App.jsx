@@ -283,7 +283,7 @@ export default function App() {
   // measured `classic` model - a new engine is opted into, never imposed.
   const { engine, setEngine } = usePredictionEngine();
   // Bookmaker prices, if any have been captured. Optional throughout.
-  const { priceFor, priceForBet, pricedLines, betslipUrl } = useOdds();
+  const { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl } = useOdds();
   // One copy of the model knobs for every screen that predicts. Held here, not
   // per screen: three private copies gave the same fixture different expected
   // values depending on which view you were standing in.
@@ -382,6 +382,8 @@ export default function App() {
             onEngineChange={setEngine}
             priceFor={priceFor}
             pricedLines={pricedLines}
+            outcomesFor={outcomesFor}
+            loadMarket={loadMarket}
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
@@ -569,6 +571,9 @@ export default function App() {
                   onEngineChange={setEngine}
                   priceFor={priceFor}
                   pricedLines={pricedLines}
+                  outcomesFor={outcomesFor}
+                  loadMarket={loadMarket}
+            loadMarket={loadMarket}
                   stats={predictorStats}
                   // The prediction MODEL is built on every league, exactly as Hot
                   // Matches and Safest Bets build theirs. One pooled model measured

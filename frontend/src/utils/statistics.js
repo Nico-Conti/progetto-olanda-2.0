@@ -99,6 +99,42 @@ export const PRICED_STAT_OPTIONS = STAT_OPTIONS.filter(
 );
 
 /**
+ * Markets we have PRICES for and no prediction.
+ *
+ * Captured by `domusbet.py --slip-markets` purely so a slip can be built and
+ * handed over; nothing here is modelled, and that is the point of keeping them
+ * in their own list rather than in STAT_OPTIONS. A statistic in STAT_OPTIONS is
+ * something the model can be asked about - `getStatLabel`, the league averages
+ * and `getModel` all iterate those - and putting an unmodelled market among them
+ * would invite exactly the wrong question.
+ *
+ * `value` doubles as the `market` column in odds_snapshots, so no mapping table
+ * is needed and the two cannot drift apart.
+ *
+ * Combos are deliberately absent: their outcomes come back as the book's own
+ * codes (`ce`) with no labels anywhere in domusbet's bootstrap, so they would
+ * render as "selection 1". They belong here once there is a table of real names.
+ */
+export const SLIP_ONLY_OPTIONS = [
+    { value: 'gg_ng', label: 'Both Teams to Score' },
+    { value: 'multigol', label: 'Multigoal' },
+    { value: 'multigol_1h', label: 'Multigoal 1st Half' },
+    { value: 'multigol_2h', label: 'Multigoal 2nd Half' },
+    { value: 'multigol_home', label: 'Multigoal Home' },
+    { value: 'multigol_away', label: 'Multigoal Away' },
+];
+
+const SLIP_ONLY = new Set(SLIP_ONLY_OPTIONS.map((o) => o.value));
+
+/** True for a market that carries prices but no prediction. */
+export const isSlipOnly = (statistic) => SLIP_ONLY.has(statistic);
+
+/** Human name for a selection code, where the book's own is unusable. */
+export const SELECTION_LABELS = {
+    gg: 'Both score', ng: 'Not both', yes: 'Yes', no: 'No',
+};
+
+/**
  * Stats whose per-match values are spiky enough that the median is a better
  * central estimate than the mean.
  */

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { PRICED_STAT_OPTIONS } from '../utils/statistics';
+import { PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly } from '../utils/statistics';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -12,7 +12,10 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
     // Only statistics that can be checked against a captured price. A
     // prediction for xG or possession is real but unbettable, and offering it
     // here invites a number nobody can act on.
-    const options = PRICED_STAT_OPTIONS;
+    // Predicted markets first, then the ones we only have prices for. Same
+    // selector because it is where people already choose what to bet on; the
+    // table and a notice make the difference plain once one is picked.
+    const options = [...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS];
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
     useClickOutside(isOpen, dropdownRef, useCallback(() => setIsOpen(false), []));
@@ -69,6 +72,13 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                         >
                             <span className="flex items-center gap-2">
                                 {option.label}
+                            {isSlipOnly(option.value) && (
+                                /* Priced but not predicted - say so where the choice is
+                                   made, not only after it has been made. */
+                                <span className="ml-2 text-[9px] uppercase font-bold tracking-wider text-amber-400/80">
+                                    no model
+                                </span>
+                            )}
                                 <SignalBadge statistic={option.value} />
                                 <DerivedBadge statistic={option.value} />
                             </span>

@@ -391,11 +391,17 @@ def slip_rows(event, market, league, season, home, away, kickoff):
         return []
     name, shape = entry
 
+    band = None
     if shape == "range":
         band = unpack_range(market)
         if not band:
             return []
-        line = f"{band[0]}-{band[1]}"
+        # NOT into `line`: that column is numeric, and "1-2" fails the insert -
+        # which PostgREST rejects atomically, so one band takes the whole batch
+        # with it (32,923 prices lost to `invalid input syntax for type numeric`
+        # on the first attempt). A band is not a line anyway; it is part of which
+        # outcome this is, so it belongs with the selection.
+        line = None
     elif shape == "line":
         info1 = (market.get("ia") or {}).get("info1")
         if not info1:
@@ -416,10 +422,13 @@ def slip_rows(event, market, league, season, home, away, kickoff):
         if price < 1.01:
             continue
         ce = esito.get("ce")
+        selection = names.get(ce, str(ce))
+        if band:
+            selection = f"{band[0]}-{band[1]} {selection}"
         rows.append({
             "league": league, "season": season, "home": home, "away": away,
             "kickoff": kickoff, "market": name, "stat": None, "line": line,
-            "selection": names.get(ce, str(ce)), "price": price,
+            "selection": selection, "price": price,
             "source": "domusbet", "pal": event.get("p"), "avv": event.get("a"),
             "selection_ref": selection_ref(event, market, esito),
         })

@@ -3,7 +3,8 @@ import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, Tr
 import { VOLATILE_STATS, processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import EngineToggle from './EngineToggle';
-import { STAT_OPTIONS, PRICED_STAT_OPTIONS, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
+import { STAT_OPTIONS, PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
+import SlipMarketTable from './SlipMarketTable';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
 import AnalysisSection from './predictor/AnalysisSection';
@@ -16,7 +17,7 @@ import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 
 
-const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
+const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
     // league's own and still drives the league averages, the backtest and the
     // distribution, all of which are claims about THIS league.
@@ -279,6 +280,17 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
     }, [availableMatchdays, selectedMatchday]);
 
     // Filter matches by selected matchday
+    // The selected market, when it is one we price but do not predict. Truthy
+    // object rather than a boolean so the notice can name it.
+    const slipOnly = isSlipOnly(selectedStatistic)
+        ? SLIP_ONLY_OPTIONS.find(o => o.value === selectedStatistic)
+        : null;
+
+    // Slip-only prices are not on the first paint; ask for them when one is picked.
+    useEffect(() => {
+        if (slipOnly && loadMarket) loadMarket(selectedStatistic);
+    }, [slipOnly, selectedStatistic, loadMarket]);
+
     const displayedMatches = useMemo(() => {
         if (!selectedMatchday) return [];
         return upcomingMatches.filter(m => m.matchday === selectedMatchday);
@@ -701,6 +713,20 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                 </div>
             )}
 
+            {/* A market we only have prices for gets its own table. The one below
+                is prediction-shaped - Home Exp, Away Exp, Total Exp, P(Over) - and
+                would show four empty columns on every row for a market with no
+                model behind it. */}
+            {slipOnly ? (
+                <SlipMarketTable
+                    matches={displayedMatches}
+                    market={selectedStatistic}
+                    marketLabel={slipOnly.label}
+                    outcomesFor={outcomesFor}
+                    addToBet={addToBet}
+                    bets={bets}
+                />
+            ) : (
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
                 {/* Mobile View (Cards) */}
                 <div className="md:hidden space-y-4 p-4">
@@ -951,6 +977,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, modelSetting
                     </table>
                 </div>
             </div >
+            )}
 
             {/* Custom Matchup Selector */}
             < div className="glass-panel p-6 rounded-xl border border-white/10 mt-8" >

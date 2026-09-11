@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 # Note: We need to ensure the services directory is in the python path or imported correctly.
 # Since main.py is in backend/, and services is in backend/services/, this relative import works.
 from backend.services.gemini_analyzer import analyze_match_comments
+from backend.odds.domusbet import MARKETS as DOMUSBET_MARKETS
 from supabase import create_client, Client
 
 load_dotenv()
@@ -142,9 +143,10 @@ MATCH_ANALYSIS_COLUMNS = ",".join([
 ])
 
 
-def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None):
-    """Every row, paged. `gte` is an optional (column, value) floor, pushed to
-    PostgREST so the rows are never fetched rather than filtered here."""
+def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None, in_=None):
+    """Every row, paged. `gte` is an optional (column, value) floor and `in_` an
+    optional (column, values) whitelist, both pushed to PostgREST so the rows are
+    never fetched rather than filtered here."""
     all_rows = []
     chunk_size = 1000
     current_offset = 0
@@ -153,6 +155,8 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
         query = get_supabase().table(table_name).select(columns)
         if gte:
             query = query.gte(gte[0], gte[1])
+        if in_:
+            query = query.in_(in_[0], list(in_[1]))
         if order_col:
             query = query.order(order_col, desc=desc)
         # ALWAYS end on a unique column. Offset paging over an unordered - or
@@ -258,8 +262,14 @@ ODDS_COLUMNS = ",".join([
 ODDS_LOOKBACK_HOURS = 6
 
 
+# The markets a prediction exists for. Everything else in `odds_snapshots` is
+# captured only so a slip can be built from it, and is served on request rather
+# than to everyone - see get_odds.
+MODELLED_MARKETS = sorted({name for name, _stat in DOMUSBET_MARKETS.values()})
+
+
 @app.get("/odds")
-def get_odds():
+def get_odds(market: str | None = None):
     """Current bookmaker prices for fixtures that have not finished.
 
     The table keeps every capture for closing-line value - 102,138 rows on
@@ -270,9 +280,16 @@ def get_odds():
     """
     cutoff = (datetime.now(timezone.utc)
               - timedelta(hours=ODDS_LOOKBACK_HOURS)).isoformat()
+    # Default to the modelled markets only. The slip-only ones (multigol, GG/NG,
+    # combos) are 75% of the table for upcoming fixtures - 28,995 rows of 38,675
+    # measured on 2026-09-11 - and nobody sees them until they pick one from the
+    # selector. Serving them to everyone would undo e22929c, which took this
+    # endpoint from 2.4 MB and ~51 round trips down to 99 KB.
+    wanted = [market] if market else MODELLED_MARKETS
     try:
         rows = fetch_all_data("odds_snapshots", "captured_at", desc=True,
-                              columns=ODDS_COLUMNS, gte=("match_date", cutoff))
+                              columns=ODDS_COLUMNS, gte=("match_date", cutoff),
+                              in_=("market", wanted))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
