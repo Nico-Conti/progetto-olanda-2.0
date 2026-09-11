@@ -180,7 +180,11 @@ def fetch_all_records(base_url, table, headers, select="*", batch_size=PAGE_SIZE
     while True:
         try:
             # Construct URL with limit and offset
-            req_url = f"{base_url}/rest/v1/{table}?select={select}&limit={batch_size}&offset={offset}{filters}"
+            # `order=id` is not cosmetic: offset paging over an unordered result
+            # set is undefined, and Postgres duplicated 53 of these rows onto two
+            # pages while dropping 53 others entirely. See fetch_all_data.
+            req_url = (f"{base_url}/rest/v1/{table}?select={select}&order=id"
+                       f"&limit={batch_size}&offset={offset}{filters}")
             resp = requests.get(req_url, headers=headers)
             resp.raise_for_status()
             

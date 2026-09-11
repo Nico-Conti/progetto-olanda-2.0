@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import threading
@@ -59,6 +60,19 @@ async def lifespan(app: FastAPI):
     # Shutdown logic if needed
 
 app = FastAPI(title="Progetto Olanda 2.0 Backend", lifespan=lifespan)
+
+# Compress before CORS so every response goes out gzipped.
+#
+# Render's proxy compresses on the way out, so production was already getting
+# this and plain uvicorn was not: measured 2026-09-10, /matches was 393,005
+# bytes deployed and 5,102,065 bytes on localhost - 13x - with /fixtures
+# (963 KB) and /matches/analysis (807 KB) raw on top. That is the whole reason
+# the first load feels slower on a dev machine than in production, and it read
+# like a backend that had got slower.
+#
+# minimum_size skips the small payloads (/leagues, /keep-alive) where framing
+# would cost more than it saves.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configure CORS
 app.add_middleware(
@@ -141,7 +155,13 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
             query = query.gte(gte[0], gte[1])
         if order_col:
             query = query.order(order_col, desc=desc)
-        
+        # ALWAYS end on a unique column. Offset paging over an unordered - or
+        # merely tie-heavy - result set is undefined: Postgres may return a row
+        # on two pages and another on none. Measured on `matches` 2025/2026:
+        # 5,053 rows fetched, 5,000 distinct, 53 duplicated and 53 never seen,
+        # which reached the app as missing matches on every load.
+        query = query.order("id")
+
         # Using limit doesn't offset, range is cleaner here: range includes end index
         result = query.range(current_offset, current_offset + chunk_size - 1).execute()
         
