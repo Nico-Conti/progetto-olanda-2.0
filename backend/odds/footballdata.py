@@ -99,6 +99,13 @@ DIVISIONS = {
     # division, so it carries shots, corners and fouls rather than the
     # goals-only shape of the extra files (see BRA.csv).
     "B1": "Jupiler League",
+    # Scotland, added 2026-09-09. SC0 is a main-set division and carries the full
+    # stat block, so its past seasons can be backfilled by footballdata_stats.
+    #
+    # Norway is deliberately absent: it exists only as `new/NOR.csv`, which is
+    # the BRA.csv shape - country/league/season, goals and 1x2 odds, no corners,
+    # shots, fouls or cards. Nothing here can read it and nothing would gain.
+    "SC0": "Premiership",
 }
 
 # Bookmaker column prefixes, best first. BFE is the Betfair Exchange, whose

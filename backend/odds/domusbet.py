@@ -126,6 +126,10 @@ LEAGUE_TOURNAMENTS = {
     # domusbet calls it "Pro League", diretta calls it "Jupiler League"; the
     # key is how THIS book spells it (categoryId=33, tournamentId=38).
     ("belgio", "pro league"): "Jupiler League",
+    # Read from the live tournament list, not guessed: Scozia categoryId=22
+    # tournamentId=54, Norvegia categoryId=5 tournamentId=5.
+    ("scozia", "premiership"): "Premiership",
+    ("norvegia", "eliteserien"): "Eliteserien",
 }
 # Belt and braces: these qualifiers never appear in the senior men's league name,
 # so anything carrying one is a different competition even on an exact match.

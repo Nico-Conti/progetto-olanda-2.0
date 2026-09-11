@@ -98,6 +98,23 @@ LEAGUES = {
         "base_url": "https://www.diretta.it/calcio/belgio/jupiler-league/",
         "season_style": "split",
     },
+    # Scotland and Norway, added 2026-09-09. Both were on the 2026-08-25 shortlist
+    # of leagues domusbet posts corners for; Belgium was taken first.
+    #
+    # `scozia/premiership` (`premier-league` is a 307), and `premiership-2025-2026`
+    # was verified to be a real archive page, not a soft 404.
+    "premiership": {
+        "name": "Premiership",
+        "base_url": "https://www.diretta.it/calcio/scozia/premiership/",
+        "season_style": "split",
+    },
+    # Norway runs Mar->Dec, so it is "calendar" like Brazil: the season in
+    # progress is labelled 2026 and archives as `eliteserien-2025`.
+    "eliteserien": {
+        "name": "Eliteserien",
+        "base_url": "https://www.diretta.it/calcio/norvegia/eliteserien/",
+        "season_style": "calendar",
+    },
 }
 
 # Ordered list of slugs, used for the scraper CLI choices and the CI loop.
