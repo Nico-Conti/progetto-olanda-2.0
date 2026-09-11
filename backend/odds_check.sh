@@ -40,6 +40,12 @@ function flush_run() {
     if (!started) return
     if (err != "")            { status = "FAILED";  detail = err }
     else if (mode !~ /--write/) { status = "dry";   detail = (info ? info : "no write requested") }
+    # A capture that wrote NOTHING is not ok. On 2026-09-09 domusbet dropped the
+    # `seo` field that every team name was read from, so every price was dropped
+    # as unmatched and `wrote 0 rows` was reported as ok on every run for two
+    # days. Those windows cannot be backfilled. A real capture writes hundreds of
+    # rows; zero means the prices are being discarded.
+    else if (wrote ~ /wrote 0 rows/) { status = "EMPTY"; detail = wrote " - ran but stored NOTHING (team names not resolving?)" }
     else if (wrote != "")     { status = "ok";      detail = wrote }
     else                      { status = "unknown"; detail = "no write line - killed before it finished?" }
     printf "%s\t%s\t%s\t%s\n", stamp, mode, status, detail
@@ -82,6 +88,11 @@ echo
 
 LAST_STATUS=$(echo "$SUMMARY" | tail -1 | cut -f3)
 case "$LAST_STATUS" in
+    EMPTY)
+        echo "last run: EMPTY - it ran and stored nothing. Check the 'resolved to our"
+        echo "  team names' line: 0 resolved means the fixture join is broken, and every"
+        echo "  window lost this way is lost permanently."
+        exit 1 ;;
     ok)  echo "last run: ok"
          [ "$AGE" -gt "$STALE_MINUTES" ] && { echo "but nothing has run for ${AGE} min - windows are being missed."; exit 2; }
          exit 0 ;;

@@ -275,6 +275,41 @@ def season_for(kickoff_iso, league):
     return f"{start}/{start + 1}"
 
 
+def event_teams(event):
+    """Home and away as domusbet names them, for the alias match at ingest.
+
+    These used to come out of the `seo` field as a URL slug ("lecce-vs-monza").
+    That field DISAPPEARED from getTorneoCentrale around 2026-09-09 and the
+    KeyError was swallowed by a bare `except`, so every fixture resolved to
+    ("", "") and every price was dropped as unmatched. Capture wrote 0 rows for
+    two days while `odds_check.sh` reported `ok` on every run - the last stored
+    price was 2026-09-09 13:03. Those windows are gone; prices cannot be
+    backfilled.
+
+    `dsl.IT` carries the same thing as "Lecce - Monza". Display names rather than
+    slugs, which the alias match does not care about: `normalise()` strips spaces
+    and hyphens alike, so "Queens Park Rangers" and "queens-park-rangers" both
+    reach `queensparkrangers` and the EXONYMS table still applies.
+
+    Returning ("", "") on a shape we do not recognise is deliberate - those rows
+    drop as unmatched, which is the documented behaviour for a price that cannot
+    be joined. But it must be LOUD at the call site rather than silent, which is
+    what cost two days here.
+    """
+    dsl = event.get("dsl") or {}
+    name = dsl.get("IT") or dsl.get("ORIGINAL_FROM_DB") or ""
+    home, sep, away = name.partition(" - ")
+    if sep:
+        return home.strip(), away.strip()
+    # If the book ever puts `seo` back, take it rather than dropping the fixture.
+    try:
+        slug = json.loads(event["seo"])["DEFAULT"]["IT"].split("/")[-1]
+        h, _, a = slug.partition("-vs-")
+        return h, a
+    except Exception:
+        return "", ""
+
+
 def selection_ref(event, market, esito):
     """This selection as domusbet's own betslip link spells it.
 
@@ -301,11 +336,7 @@ def parse(event, payload, league):
     """Odds rows for the markets we model. Ignores everything else."""
     if not payload:
         return []
-    try:
-        slug = json.loads(event["seo"])["DEFAULT"]["IT"].split("/")[-1]
-        home, _, away = slug.partition("-vs-")
-    except Exception:
-        home = away = ""
+    home, away = event_teams(event)
 
     kickoff = parse_kickoff(event.get("ts", ""))
     season = season_for(kickoff, league)
