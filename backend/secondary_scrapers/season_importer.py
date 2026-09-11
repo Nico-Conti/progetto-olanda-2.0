@@ -68,6 +68,28 @@ def _int(node):
     return int(raw) if raw.lstrip("-").isdigit() else None
 
 
+def _participant(row, side):
+    """The team name, without the badges diretta puts in the same cell.
+
+    The participant cell holds more than the name. A two-legged tie carries the
+    aggregate qualifier ("Qualificato: Lommel SK", "Vincitore: Lommel SK") and
+    some rows carry a trailing marker, so `get_text()` over the whole cell
+    returned "Lommel SKVincitore: Lommel SK", "Beerschot VAQualificato: Beerschot
+    VA" and "Leuven2". Seven of Belgium's 320 rows imported under a name like
+    that: unjoinable against fixtures, odds and crests, and a phantom team in
+    every league aggregate.
+
+    The name itself is its own node. Key on the testid, never on the `wcl-*`
+    class beside it - those carry a build hash (`wcl-name_jjfMf`) and rotate on
+    deploys, which is what made the statistics panel fail silently in September.
+    """
+    cell = row.select_one(f".event__{side}Participant")
+    if not cell:
+        return None
+    name = cell.select_one('[data-testid="wcl-scores-simple-text-01"]')
+    return _text(name) or _text(cell)
+
+
 def scrape_season_results(driver, slug, season):
     """Every played match of a season, read off the results list page."""
     url = season_results_url(slug, season)
@@ -98,21 +120,39 @@ def scrape_season_results(driver, slug, season):
     league_name = resolve_league_name(slug)
     matches = []
     giornata = None
+    in_league_round = True
+    skipped_rounds = []
     skipped = 0
 
     for row in rows:
         classes = row.get("class", [])
 
         if "event__round" in classes:
-            digits = re.sub(r"\D", "", row.get_text(strip=True))
+            header = row.get_text(strip=True)
+            digits = re.sub(r"\D", "", header)
             giornata = int(digits) if digits else None
+            # A header with no matchday number in it is not a league round. On
+            # these pages that section is the promotion/relegation play-off, and
+            # most of its ties are between two clubs from the DIVISION BELOW:
+            # Beerschot VA v Patro Eisden landed in `matches` as a Jupiler
+            # League row, and Arbroath v Dunfermline as a Premiership one.
+            # Fourteen such rows arrived with the 2026-09-10 backfills. They put
+            # phantom clubs in the standings on 2 to 6 appearances, gave them no
+            # crest (they are not in either league's squad list), and fed
+            # second-tier football into `leagueMean`.
+            in_league_round = giornata is not None
+            if not in_league_round:
+                skipped_rounds.append(header)
             continue
 
         if "event__match" not in classes:
             continue
 
-        home = _text(row.select_one(".event__homeParticipant"))
-        away = _text(row.select_one(".event__awayParticipant"))
+        if not in_league_round:
+            continue
+
+        home = _participant(row, "home")
+        away = _participant(row, "away")
         home_goals = _int(row.select_one(".event__score--home"))
         away_goals = _int(row.select_one(".event__score--away"))
 
@@ -141,6 +181,9 @@ def scrape_season_results(driver, slug, season):
         })
 
     print(f"     parsed {len(matches)} played matches" + (f" ({skipped} rows without a score)" if skipped else ""))
+    if skipped_rounds:
+        print(f"     skipped {len(skipped_rounds)} non-matchday section(s): "
+              f"{', '.join(sorted(set(skipped_rounds)))}")
     return matches
 
 
@@ -186,7 +229,10 @@ def sync_season(matches, dry_run=False, insert_missing=False):
 
         if dry_run:
             action = "UPDATE" if match_id else ("INSERT" if insert_missing else "SKIP  ")
-            print(f"     [{action}] g{m['giornata']:>2} {m['home_team']} {m['home_goals']}-{m['away_goals']} {m['away_team']}  {m['match_date']}")
+            # giornata can be None: a round header with no digits in it ("Play-off",
+            # which Belgium's season ends with) leaves it unset, and `:>2` on None
+            # is a TypeError that kills the whole dry run.
+            print(f"     [{action}] g{str(m['giornata'] or '-'):>2} {m['home_team']} {m['home_goals']}-{m['away_goals']} {m['away_team']}  {m['match_date']}")
             if match_id:
                 updated += 1
             elif insert_missing:
