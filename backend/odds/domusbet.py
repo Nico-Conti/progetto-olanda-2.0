@@ -76,6 +76,60 @@ MARKET_GROUPS = {
     252: "Statistiche Partita",   # fouls, shots, shots on target
     82: "Gol",
 }
+
+# Markets captured ONLY so a slip can be built and handed to domusbet. Nothing
+# here is modelled, nothing carries an EV, and none of it belongs in STAT_SIGNAL.
+#
+# The group ids came from the app's own bootstrap - `xs_macrogruppi` in
+# localStorage, read by driving the site once - NOT by scanning ids, which has
+# been tried twice and ends in an escalating Cloudflare lockout. Football is
+# sport 1 and has 28 prematch groups; these three are the ones that carry
+# anything a person actually plays.
+SLIP_GROUPS = {
+    1: "Principali",     # 1X2, Doppia Chance, GG/NG
+    230: "MultiGol",
+    277: "Combo",
+}
+
+# code -> (market name, how to read the line)
+#
+#   "range" - a multigol band. `h` is BIT-PACKED, info2 << 16 | info1, which is
+#             why the totals path sees "nonsense like 655.71": 131073 is 1-2 and
+#             196610 is 2-3. Read `ia`, never `h / 100`. Two outcomes, ce=1 the
+#             band happening and ce=2 it not.
+#   "line"  - a combo against a goals line, `info1` times 100 as usual.
+#   "plain" - no line at all.
+#
+# Outcome NAMES are the open piece: `eqs[].dsl` is null and the labels are not in
+# the bootstrap either, so a combo's `ce` is stored as the book's own code. That
+# is enough to build a slip - `selection_ref` carries it to domusbet - but not
+# enough to render "1X + Over 2.5" in our own UI without a hand-written table.
+# Multigol and GG/NG ARE named, because their outcomes are unambiguous.
+SLIP_MARKETS = {
+    18:    ("gg_ng", "plain"),
+    9946:  ("multigol", "range"),
+    13650: ("multigol_1h", "range"),
+    13651: ("multigol_2h", "range"),
+    13652: ("multigol_home", "range"),
+    13653: ("multigol_away", "range"),
+    425:   ("combo_1x2_ggng", "plain"),
+    688:   ("combo_1x_ggng", "plain"),
+    689:   ("combo_12_ggng", "plain"),
+    690:   ("combo_x2_ggng", "plain"),
+    15965: ("combo_1x2_ou", "line"),
+    22297: ("combo_1x_ou", "line"),
+    22298: ("combo_x2_ou", "line"),
+    22299: ("combo_12_ou", "line"),
+    12562: ("combo_ou_ggng", "line"),
+}
+
+# Outcome names where they are unambiguous. Anything absent keeps the book's own
+# code rather than being guessed at.
+SLIP_SELECTIONS = {
+    "range": {1: "yes", 2: "no"},
+    "gg_ng": {1: "gg", 2: "ng"},
+}
+
 ALL_MARKETS = -1                  # only used by --coverage, which wants everything
 REQUEST_PAUSE = 1.0
 
@@ -310,6 +364,68 @@ def event_teams(event):
         return "", ""
 
 
+def unpack_range(market):
+    """The multigol band as (low, high), read from `ia` rather than from `h`.
+
+    `h` packs the two ends into one integer - info2 << 16 | info1 - so 131073 is
+    the 1-2 band and 196610 is 2-3. Dividing that by 100 is exactly the "nonsense
+    like 655.71" the totals path already guards against; these markets have to
+    read `ia` instead.
+    """
+    ia = market.get("ia") or {}
+    lo, hi = ia.get("info1"), ia.get("info2")
+    if lo is None or hi is None or hi < lo:
+        return None
+    return lo, hi
+
+
+def slip_rows(event, market, league, season, home, away, kickoff):
+    """Rows for a market we capture only so a slip can be built from it.
+
+    Deliberately separate from `parse`'s totals path. These carry no statistic,
+    never reach a model, and must never be mistaken for something with an EV -
+    `stat` is None precisely so a caller that assumes one fails loudly.
+    """
+    entry = SLIP_MARKETS.get(market.get("cs"))
+    if not entry:
+        return []
+    name, shape = entry
+
+    if shape == "range":
+        band = unpack_range(market)
+        if not band:
+            return []
+        line = f"{band[0]}-{band[1]}"
+    elif shape == "line":
+        info1 = (market.get("ia") or {}).get("info1")
+        if not info1:
+            return []
+        line = info1 / 100
+        if not (0 < line < 100):
+            return []
+    else:
+        line = None
+
+    names = SLIP_SELECTIONS.get(name) or SLIP_SELECTIONS.get(shape) or {}
+    rows = []
+    for esito in market.get("eqs") or []:
+        price = (esito.get("q") or 0) / 100
+        # Same rule as the totals path: a price under 1.01 is a suspended or
+        # placeholder selection, not a quote. Combo markets are full of 1.01
+        # padding, so this does most of the filtering here.
+        if price < 1.01:
+            continue
+        ce = esito.get("ce")
+        rows.append({
+            "league": league, "season": season, "home": home, "away": away,
+            "kickoff": kickoff, "market": name, "stat": None, "line": line,
+            "selection": names.get(ce, str(ce)), "price": price,
+            "source": "domusbet", "pal": event.get("p"), "avv": event.get("a"),
+            "selection_ref": selection_ref(event, market, esito),
+        })
+    return rows
+
+
 def selection_ref(event, market, esito):
     """This selection as domusbet's own betslip link spells it.
 
@@ -342,6 +458,9 @@ def parse(event, payload, league):
     season = season_for(kickoff, league)
     rows = []
     for market in payload.get("scs") or []:
+        if market.get("cs") in SLIP_MARKETS:
+            rows += slip_rows(event, market, league, season, home, away, kickoff)
+            continue
         entry = MARKETS.get(market.get("cs"))
         if not entry:
             continue
@@ -383,7 +502,15 @@ def within_window(event, hours):
     return now <= when <= now + datetime.timedelta(hours=hours)
 
 
-def capture(limit_leagues=None, hours=72):
+def capture(limit_leagues=None, hours=72, slip_markets=False):
+    """Prices for the modelled markets, plus optionally the slip-only ones.
+
+    `slip_markets` is OFF for the three-hourly cron on purpose. Prices move and
+    have to be re-read; the slip markets are wanted for their IDENTIFIERS, and a
+    combo's (cs, h, ce) does not move at all. Re-fetching three more groups per
+    fixture eight times a day would triple the capture for data that is stable -
+    run it occasionally instead.
+    """
     leagues = our_leagues()
     if limit_leagues:
         leagues = {k: v for k, v in leagues.items() if k in limit_leagues}
@@ -393,7 +520,8 @@ def capture(limit_leagues=None, hours=72):
         evs = [e for e in events(cat, tour) if within_window(e, hours)]
         rows_here, with_fouls = [], 0
         for ev in evs:
-            payload = event_markets(ev["p"], ev["a"])
+            groups = {**MARKET_GROUPS, **SLIP_GROUPS} if slip_markets else None
+            payload = event_markets(ev["p"], ev["a"], groups)
             got = parse(ev, payload, league)
             rows_here += got
             if any(r["market"] == "total_fouls" for r in got):
@@ -542,6 +670,11 @@ def main():
     group.add_argument("--tournaments", action="store_true", help="list football tournaments")
     group.add_argument("--coverage", action="store_true", help="which markets are posted now")
     group.add_argument("--capture", action="store_true", help="collect prices")
+    parser.add_argument("--slip-markets", action="store_true",
+                        help="also collect the markets we do not model (1X2, GG/NG, "
+                             "multigol, combos) so a slip can be built from them. Off "
+                             "by default: these are wanted for their identifiers, which "
+                             "do not move, so they do not need the price cadence.")
     parser.add_argument("--league", action="append", help="limit to these leagues")
     parser.add_argument("--no-resolve", action="store_true",
                         help="keep the bookmaker's team names instead of ours")
@@ -604,7 +737,7 @@ def main():
                 sys.exit(msg + " Refusing to write unjoinable rows.")
             print(msg + " Continuing with the bookmaker's own names.")
 
-    rows = capture(args.league, args.within)
+    rows = capture(args.league, args.within, slip_markets=args.slip_markets)
 
     if fixtures:
         rows, dropped = resolve_team_names(rows, fixtures)
