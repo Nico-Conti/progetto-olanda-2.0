@@ -72,7 +72,10 @@ def scrape_second_bookings(soup):
     and subtracting something that was never added would break that agreement.
     """
     counts = {"home": 0, "away": 0}
-    for row in soup.select("div.smv__incident"):
+    # Class alone, not `div.` - see the note on the wait in scrape_match_details.
+    # This one still is a div, which is exactly why it is worth changing now:
+    # the sibling selector was identical until diretta made the rows <li>.
+    for row in soup.select(".smv__incident"):
         text = " ".join(row.get_text(" ", strip=True).split())
         if not SECOND_BOOKING_RE.search(text) or OFF_PITCH_RE.search(text):
             continue
@@ -351,8 +354,20 @@ def scrape_match_details(driver, product_url, skip_comments=False):
         # attempt when this was sampled. Recording 0 for those would look like
         # "no second bookings" and bias the correction downward, so say so.
         try:
+            # Match on the CLASS ALONE, never `div.` - diretta moved these rows
+            # from <div> to <li> between 2026-09-07 and 2026-09-10 while keeping
+            # every class name, so `div.smv__participantRow` matched 0 of the 18
+            # rows on the page. The wait then timed out on every match in every
+            # league and the key was omitted, which reads exactly like the ~10%
+            # of pages that genuinely have not rendered: 33 of 33 Scottish
+            # matches stored no second bookings, and `card_points` silently went
+            # back to the biased `yellows + 2*reds`.
+            #
+            # `smv__*` are semantic class names and are safe to key on - it is
+            # the hashed `wcl-*_2oCpS` ones that rotate. The element type is not
+            # safe: it carries no meaning and changed without warning.
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.smv__participantRow"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".smv__participantRow"))
             )
             # Re-parsed: initial_soup was taken before this wait, so it can
             # predate the timeline rendering.

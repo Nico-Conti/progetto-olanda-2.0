@@ -121,7 +121,15 @@ def scrape_league(driver, supabase, league_name, url, season, scrape_type="fixtu
     try:
         # Wait for the main table to load
         print("  -> Waiting for match table...")
-        WebDriverWait(driver, 30).until(
+        # 90s, not 30s. Visited on its own a league page renders in under 5s, but
+        # the SECOND navigation in a session is far slower: measured 2026-09-09,
+        # the Scottish calendario took 41.6s to put its rows in the DOM after the
+        # results pass, against the 5s sleep + 30s wait this allowed. It timed out
+        # on a page that already held 110 matches, three runs in a row, and the
+        # league lost every fixture while the process still exited 0.
+        # Costs nothing when the page is quick - presence_of_element_located
+        # returns the moment the row appears.
+        WebDriverWait(driver, 90).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, ".sportName, .event__match, #live-table"))
         )
         print("  -> Match table found.")
