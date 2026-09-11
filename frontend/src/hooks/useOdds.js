@@ -51,6 +51,20 @@ export const useOdds = () => {
     }, [rows]);
 
     /**
+     * The same key, pointing at domusbet's own id for the selection instead of
+     * its price. Kept as a sibling index rather than folded into `index` so the
+     * price path stays a plain number lookup.
+     */
+    const refIndex = useMemo(() => {
+        const map = new Map();
+        for (const r of rows) {
+            if (!r.selection_ref) continue;
+            map.set(keyOf(r.home_team, r.away_team, r.market, r.line, r.selection), r.selection_ref);
+        }
+        return map;
+    }, [rows]);
+
+    /**
      * Which lines a fixture actually has a price at, per market.
      *
      * The book does not restrict itself to the lines `STAT_CONFIG` lists: on
@@ -109,5 +123,49 @@ export const useOdds = () => {
         return priceFor(home, away, bet.stat, Number(bet.value), bet.option === 'O');
     }, [priceFor]);
 
-    return { priceFor, priceForBet, pricedLines, loading, count: rows.length };
+    /** domusbet's id for a slip entry, resolved exactly as its price is. */
+    const refForBet = useMemo(() => (bet) => {
+        if (!bet || bet.stat === 'main' || bet.team !== 'total') return null;
+        const [home, away] = String(bet.game ?? '').split(' vs ');
+        if (!home || !away) return null;
+        const market = MARKET_FOR_STAT[resolveStatKey(bet.stat)];
+        if (!market || bet.value == null) return null;
+        return refIndex.get(keyOf(home, away, market, Number(bet.value),
+                                  bet.option === 'O' ? 'over' : 'under')) ?? null;
+    }, [refIndex]);
+
+    /**
+     * The slip as a domusbet link, or null if no leg can be linked.
+     *
+     * Their web app loads a betslip from the URL, so the whole accumulator can be
+     * handed over in one click:
+     *
+     *   /betslip?selectionsData=<leg>|<leg>&lingua=IT&systemCode=DOMUSBET
+     *
+     * `|` is the separator and the only one that works - `;`, `,` and `-` each
+     * load the FIRST leg and silently drop the rest, which would hand someone a
+     * single bet while the slip on screen showed five.
+     *
+     * Returns `linked` and `total` so the caller can say so out loud when only
+     * some legs carry an id. Rows captured before migration 007 have no
+     * `selection_ref`, and 1X2 is not a market we capture at all.
+     *
+     * Deliberately NOT `playDirectly`: that parameter exists and places the bet
+     * outright. This opens the slip and stops, leaving the confirmation - and the
+     * repriced odds, which move between capture and arrival - with the person.
+     */
+    const betslipUrl = useMemo(() => (bets) => {
+        const legs = (bets ?? []).map(refForBet).filter(Boolean);
+        if (!legs.length) return null;
+        const params = new URLSearchParams({
+            selectionsData: legs.join('|'), lingua: 'IT', systemCode: 'DOMUSBET',
+        });
+        return {
+            url: `https://www.domusbet.it/betslip?${params}`,
+            linked: legs.length,
+            total: (bets ?? []).length,
+        };
+    }, [refForBet]);
+
+    return { priceFor, priceForBet, pricedLines, betslipUrl, loading, count: rows.length };
 };

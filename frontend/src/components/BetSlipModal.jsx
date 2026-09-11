@@ -1,8 +1,8 @@
 import React from 'react';
-import { X, Trash2, Printer, Trophy } from 'lucide-react';
+import { X, Trash2, Printer, Trophy, ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 
-const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor }) => {
+const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, betslipUrl }) => {
     /**
      * The accumulator: every selection must land, so the payout multiplies.
      *
@@ -24,6 +24,19 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor }) =>
         }
         return { multiplier, priced, total: bets.length };
     }, [bets, priceFor]);
+
+    /**
+     * The same slip as a domusbet link, when their ids are known for it.
+     *
+     * Null unless at least one leg carries a `selection_ref`, which is every
+     * price captured since migration 007. Legs without one cannot be linked, so
+     * `linked`/`total` are reported rather than quietly handing over a shorter
+     * slip than the one on screen.
+     */
+    const handover = useMemo(
+        () => (bets?.length && betslipUrl ? betslipUrl(bets) : null),
+        [bets, betslipUrl],
+    );
 
     if (!isOpen) return null;
 
@@ -158,6 +171,29 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor }) =>
                                     €10 returns €{(10 * combined.multiplier).toFixed(2)}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Hand the slip to domusbet, who will load it from the URL.
+                    Opens their slip for confirmation - it deliberately does not
+                    place the bet, and the price there is theirs at that moment,
+                    not the one captured up to three hours ago. */}
+                {handover && (
+                    <div className="px-4 pt-3">
+                        <a
+                            href={handover.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all bg-cyan-500 hover:bg-cyan-400 text-white shadow-[0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-center gap-2"
+                        >
+                            <ExternalLink className="w-4 h-4" />
+                            Open on domusbet
+                        </a>
+                        <div className="text-[10px] text-zinc-500 mt-1.5 text-center">
+                            {handover.linked === handover.total
+                                ? `all ${handover.total} selections — odds are re-read by domusbet`
+                                : `${handover.linked} of ${handover.total} selections — the rest were captured without a bookmaker id`}
                         </div>
                     </div>
                 )}

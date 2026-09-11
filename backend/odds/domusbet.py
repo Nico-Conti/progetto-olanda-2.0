@@ -275,6 +275,28 @@ def season_for(kickoff_iso, league):
     return f"{start}/{start + 1}"
 
 
+def selection_ref(event, market, esito):
+    """This selection as domusbet's own betslip link spells it.
+
+    Their web app loads a slip straight from a URL - `/betslip?selectionsData=`
+    with legs joined by `|` - and one leg is
+
+        <pal>_<avv>_<marketCode>_<handicap>_<esito>_<isLive>
+
+    `handicap` is `market["h"]`, the line already times 100, which is exactly what
+    the URL wants - so it is taken raw rather than from the divided `line`.
+    Verified 2026-09-11: a three-leg URL built this way produced the right treble
+    with all three fixtures in the slip. Note `|` is the only separator that
+    works; `;`, `,` and `-` silently load the first leg alone.
+
+    Stored assembled rather than as five columns - nothing needs the parts.
+    """
+    return "_".join(str(x) for x in (
+        event.get("p"), event.get("a"), market.get("cs"), market.get("h"),
+        esito.get("ce"), "true" if event.get("lv") else "false",
+    ))
+
+
 def parse(event, payload, league):
     """Odds rows for the markets we model. Ignores everything else."""
     if not payload:
@@ -310,6 +332,7 @@ def parse(event, payload, league):
                 "kickoff": kickoff, "market": market_name, "stat": stat, "line": line,
                 "selection": selection, "price": price,
                 "source": "domusbet", "pal": event.get("p"), "avv": event.get("a"),
+                "selection_ref": selection_ref(event, market, esito),
             })
     return rows
 
@@ -436,12 +459,26 @@ def write_rows(rows):
         "match_date": r["kickoff"], "market": r["market"], "line": r["line"],
         "selection": r["selection"], "price": r["price"],
         "source": "domusbet", "bookmaker": "domusbet", "is_closing": False,
+        # domusbet's own id for this selection, so the app can hand the slip back
+        # to them as a link. Needs migration 007.
+        "selection_ref": r.get("selection_ref"),
     } for r in rows]
     written = 0
     for i in range(0, len(payload), 500):
         chunk = payload[i:i + 500]
         resp = SESSION.post(f"{url}/rest/v1/odds_snapshots", headers=headers,
                             json=chunk, timeout=120)
+        # `selection_ref` needs migration 007. Without it PostgREST rejects the
+        # whole batch, and a capture window cannot be backfilled - so drop the
+        # column and write the prices rather than lose them. Loudly: the betslip
+        # hand-off stays unavailable until the migration is run.
+        if resp.status_code >= 400 and "selection_ref" in resp.text:
+            print("  ⚠️  odds_snapshots has no `selection_ref` column - run "
+                  "migrations/007_add_selection_ref.sql. Writing prices without it.",
+                  file=sys.stderr, flush=True)
+            chunk = [{k: v for k, v in r.items() if k != "selection_ref"} for r in chunk]
+            resp = SESSION.post(f"{url}/rest/v1/odds_snapshots", headers=headers,
+                                json=chunk, timeout=120)
         if resp.status_code >= 400:
             sys.exit(f"Write failed ({resp.status_code}): {resp.text[:300]}")
         written += len(chunk)

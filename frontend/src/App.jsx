@@ -283,7 +283,7 @@ export default function App() {
   // measured `classic` model - a new engine is opted into, never imposed.
   const { engine, setEngine } = usePredictionEngine();
   // Bookmaker prices, if any have been captured. Optional throughout.
-  const { priceFor, priceForBet, pricedLines } = useOdds();
+  const { priceFor, priceForBet, pricedLines, betslipUrl } = useOdds();
   // One copy of the model knobs for every screen that predicts. Held here, not
   // per screen: three private copies gave the same fixture different expected
   // values depending on which view you were standing in.
@@ -322,6 +322,7 @@ export default function App() {
         onClose={() => setIsBetSlipOpen(false)}
         bets={bets}
         priceFor={priceForBet}
+        betslipUrl={betslipUrl}
         onRemove={removeFromBet}
         onClear={clearBets}
       />

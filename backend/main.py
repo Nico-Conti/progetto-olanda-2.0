@@ -247,6 +247,9 @@ def get_fixtures():
 ODDS_COLUMNS = ",".join([
     "league", "season", "home_team", "away_team", "match_date",
     "market", "line", "selection", "price", "bookmaker", "captured_at",
+    # domusbet's own identifier for the selection, so the bet slip can be handed
+    # back to them as a link. NULL on everything captured before migration 007.
+    "selection_ref",
 ])
 
 
