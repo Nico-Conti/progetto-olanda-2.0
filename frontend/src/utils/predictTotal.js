@@ -179,6 +179,32 @@ const MIN_RESIDUALS = 30;
 export const PROB_SHRINK = { corners: 0.3, yellow_cards: 0.5 };
 
 /**
+ * Statistics whose CENTRE is corrected by its own measured bias.
+ *
+ * Section 18 named two offsets it could not explain: fouls overstates P(over) by
+ * a flat +1.7-2.6pp across the mid-range, shots understates it by -2.6-3.2pp.
+ * Neither is curvature and PROB_SHRINK does not touch either. `biasCorrection.mjs`
+ * found the cause - the MEAN is biased, and the signs match exactly: over 6,866
+ * matches fouls is predicted 0.337 too high and shots 0.397 too low. A one-sided
+ * offset is what manufactures EV, because it makes one side of every line look
+ * valuable, so this removes phantom edge rather than adding real edge.
+ *
+ * Only these three. Validated at three chronological split points (0.4/0.5/0.6),
+ * and the verdict is the same at every one of them:
+ *
+ *   fouls    0.5269 / 0.5304 / 0.5363   against 0.5282 / 0.5318 / 0.5379
+ *   shots    0.5805 / 0.5814 / 0.5837   against 0.5819 / 0.5833 / 0.5862
+ *   goals    0.4496 / 0.4514 / 0.4556   against 0.4498 / 0.4517 / 0.4560
+ *
+ * corners and yellow_cards are deliberately absent: correcting them is WORSE
+ * than leaving them alone at all three splits (corners 0.5882 against 0.5876,
+ * and so on). Their bias is small - +0.059 and -0.078 - so the correction is
+ * estimating noise. Do not add a statistic here without re-running that sweep;
+ * one split is how section 19 nearly shipped a weight that reversed.
+ */
+export const MEAN_BIAS = ['fouls', 'shots', 'goals'];
+
+/**
  * The centre a distribution is priced against - `total` for most statistics,
  * pulled toward the league mean for the two where that was measured to help.
  *
@@ -222,6 +248,62 @@ const leagueAggregate = (model) => {
     const sorted = model.sortedTargets;
     const mid = n >> 1;
     return n % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+/**
+ * The model's own mean residual, or 0 for a statistic that is not corrected.
+ *
+ * Read from `model.residuals`, which are out-of-sample by construction -
+ * addMatchToPredictionModel records what it WOULD have predicted before folding
+ * each match in. Gated on MIN_RESIDUALS for the same reason the dispersion is:
+ * a bias measured on a handful of errors is a rumour.
+ *
+ * This is deliberately re-derived on every model rather than being a fitted
+ * constant in the source. A hardcoded number would be frozen at whenever it was
+ * measured, and the bias DRIFTS - fouls ran +0.19, -0.42, -0.40, +0.23 across
+ * the four seasons in the dump. Re-deriving tracks that for free.
+ */
+const meanBias = (model) => {
+    if (!MEAN_BIAS.includes(model.target)) return 0;
+    if (model.residuals.length < MIN_RESIDUALS) return 0;
+    let sum = 0;
+    for (const r of model.residuals) sum += r.actual - r.mu;
+    return sum / model.residuals.length;
+};
+
+/**
+ * Moves a finished prediction onto the corrected centre, identities intact.
+ *
+ * Implemented as a common factor rather than an addition on `total` alone,
+ * because four other numbers have to stay consistent with it: `expHome +
+ * expAway === total`, and `expHome === (hFor + aAg) / 2`, which StatsAnalysis
+ * reads. Scaling all of them by the same factor preserves both - the same
+ * device the predictor rescale below already uses, and the identity 046ce99
+ * existed to restore.
+ *
+ * The spreads are deliberately NOT scaled: a bias correction shifts the centre,
+ * it does not narrow or widen the distribution around it.
+ */
+const applyMeanBias = (model, prediction) => {
+    const bias = meanBias(model);
+    if (!prediction || bias === 0 || !(prediction.total > 0)) return prediction;
+    const corrected = prediction.total + bias;
+    // A correction large enough to invert the estimate is not a correction.
+    if (!(corrected > 0)) return prediction;
+    const f = corrected / prediction.total;
+    return {
+        ...prediction,
+        total: corrected,
+        expHome: prediction.expHome * f,
+        expAway: prediction.expAway * f,
+        hFor: prediction.hFor * f,
+        hAg: prediction.hAg * f,
+        aFor: prediction.aFor * f,
+        aAg: prediction.aAg * f,
+        // What was applied, so the residual recorder can take it back off and
+        // the invariants can check it landed only where it was measured.
+        meanBias: bias,
+    };
 };
 
 const shrinkTotal = (model, total) => {
@@ -319,7 +401,12 @@ export const addMatchToPredictionModel = (model, match) => {
             // number it will actually be used with. Identity for every statistic
             // outside PROB_SHRINK. `pastTargets` excludes this match, so the mean
             // is the one a prediction made now would have seen.
-            model.residuals.push({ mu: shrinkTotal(model, prior.total), actual: target });
+            // UNCORRECTED, deliberately. meanBias() is computed FROM these
+            // residuals, so recording them against the corrected centre would
+            // make the estimate self-referential and collapse it toward zero
+            // over successive folds. Take the correction back off first.
+            const rawTotal = prior.total - (prior.meanBias ?? 0);
+            model.residuals.push({ mu: shrinkTotal(model, rawTotal), actual: target });
             model.dispersion = null;   // invalidated by the new observation
         }
     }
@@ -352,8 +439,16 @@ export const addMatchToPredictionModel = (model, match) => {
  */
 export const dispersionFor = (model) => {
     if (model.dispersion !== null) return model.dispersion;
+    // Fitted around the corrected centre. Pairing a moved mean with a spread
+    // measured around the old one is neither the shipped model nor a tested one -
+    // the same trap CLAUDE.md documents for shrinkage. `bias` is 0 for every
+    // statistic outside MEAN_BIAS, so this is identity for them.
+    const bias = meanBias(model);
     model.dispersion = model.residuals.length >= MIN_RESIDUALS
-        ? fitDispersion(model.residuals, { minSamples: MIN_RESIDUALS })
+        ? fitDispersion(
+            bias === 0 ? model.residuals
+                       : model.residuals.map(r => ({ mu: r.mu + bias, actual: r.actual })),
+            { minSamples: MIN_RESIDUALS })
         : POISSON_LIMIT;
     return model.dispersion;
 };
@@ -395,7 +490,10 @@ export const predictFromModel = (model, home, away, options = {}) => {
         );
 
     if (model.predictor === model.target && model.weight === 1) {
-        return engine === ENGINES.COUNT ? withDistribution(model, raw) : raw;
+        // Self-predicted statistics return here - fouls and shots among them -
+        // so the correction has to be applied on BOTH paths, not just below.
+        const corrected = applyMeanBias(model, raw);
+        return engine === ENGINES.COUNT ? withDistribution(model, corrected) : corrected;
     }
     if (!raw || !(raw.total > 0)) return raw;
 
@@ -440,7 +538,8 @@ export const predictFromModel = (model, home, away, options = {}) => {
         derivedFrom: model.predictor,
         blendWeight: model.weight,
     };
-    return engine === ENGINES.COUNT ? withDistribution(model, blended) : blended;
+    const corrected = applyMeanBias(model, blended);
+    return engine === ENGINES.COUNT ? withDistribution(model, corrected) : corrected;
 };
 
 /**
@@ -469,6 +568,10 @@ const withDistribution = (model, prediction) => {
     if (!prediction || !(prediction.total > 0)) return prediction;
     const r = dispersionFor(model);
     // The centre for the probabilities only; `prediction.total` is left as it is.
+    // The shrink is for the probabilities only; `prediction.total` keeps whatever
+    // the estimator said. The mean-bias correction is NOT applied here - it is
+    // already inside `prediction.total`, having been applied to the estimate
+    // itself, so adding it again would double it.
     const mu = shrinkTotal(model, prediction.total);
     const effective = effectiveHistory(prediction);
     const fitted = model.residuals.length >= MIN_RESIDUALS;
