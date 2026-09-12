@@ -186,7 +186,6 @@ export const getStatLabel = (statistic) =>
  *   corners         0.23 /  2.9       0.17 /  0.1
  *   goals           0.15 /  1.9       0.08 / -1.1
  *   yellow_cards    0.19 / -2.7       0.17 / +0.6
- *   card_points        (absent)       0.23 / +5.2
  *
  * `lift` is the top-3-by-predicted-total actual average minus that round's
  * average. `edge` is accuracy minus the base rate **at margin 0** - calling
@@ -197,17 +196,30 @@ export const getStatLabel = (statistic) =>
  * Strength thresholds, from `edge`, stated so the next re-measurement does not
  * have to guess: >=10 strong, 3-10 moderate, 1-3 weak, <1 none.
  *
- * card_points earns its first entry here. Its half-life was fitted separately on
- * 50,219 football-data matches - 180d, the value it had been INHERITING from
- * yellow_cards, now measured rather than assumed - and its signal on the 2,816
- * of our matches that carry exact `second_bookings`. football-data cannot supply
- * that correction: it files a second-yellow dismissal as 2 yellows + 1 red
- * exactly as diretta does, measured 126 of 142, so its cards carry the same +1
- * bias and only its VOLUME is useful.
+ * Every `edge` here is measured at `STAT_CONFIG`'s default line, and that line
+ * is near each statistic's median - which is the most flattering place a badge
+ * could possibly be scored, because the majority-side base it is compared
+ * against is weakest there. The bases bear that out: fouls 51.9%, corners 52.2%,
+ * goals 54.4%, against shots 58.4% and yellow_cards 61.3%. Only fouls' edge is
+ * large enough to be safe from it. Read a badge as "at this line", never as a
+ * property of the statistic.
+ *
+ * **card_points is deliberately absent, and that is a measurement, not a gap.**
+ * It was added here on 2026-09-12 at +5.2pp and removed the same day. The entry
+ * was fitted on the 2,816 rows then carrying an exact `second_bookings` count,
+ * and that subset is not a sample of anything: the column only exists for
+ * matches scraped after migration 005, so it held LaLiga 2 (507) and Super Lig
+ * (343) - the two highest-card leagues - against 20 rows of Premier League and
+ * 19 of Bundesliga. Widening it to 5,885 exact outcomes (see dumpSeason.py, and
+ * note 84% of matches have no red and so need no correction at all) rebalances
+ * the leagues and the edge at 4.5 goes from +4.7pp to **-2.5pp**: the high-card
+ * mix had lifted the over-rate at 4.5 to 47.5%, making it look like a median
+ * line with a weak base, where balanced it is 38.9% over against a 61.1% base.
+ * Best line is now 3.5 at +2.1pp, which is not the line the config prices.
+ * Against 421 real settled prices it returns -19.4%. See docs section 28.
  */
 export const STAT_SIGNAL = {
     fouls:        { strength: 'strong',   lift: 1.23, edge: 13.4, line: 24.5 },
-    card_points:  { strength: 'moderate', lift: 0.23, edge: 5.2, line: 4.5 },
     shots:        { strength: 'weak',     lift: 0.96, edge: 1.9, line: 24.5 },
     yellow_cards: { strength: 'none',     lift: 0.17, edge: 0.6, line: 4.5 },
     corners:      { strength: 'none',     lift: 0.17, edge: 0.1, line: 9.5 },
@@ -246,13 +258,17 @@ export const HALF_LIFE_DAYS = {
     shots: 120,
     yellow_cards: 180,
     // FITTED 2026-09-12, no longer inherited. `decayComparison.mjs` over
-    // 50,219 football-data matches (our own set is too thin for the sweep -
-    // only 2,816 rows carry `second_bookings`) picks 180d, worth +1.6pp of call
-    // accuracy over the window estimator. It lands on the value it had been
-    // INHERITING from yellow_cards, which is the outcome the old comment here
-    // guessed at and asked to be checked. Note the fit is on football-data's
-    // cards, which carry the same +1-per-second-booking bias ours did before
-    // migration 005 - that shifts the LEVEL, and a half-life is a slope.
+    // 50,219 football-data matches picks 180d, worth +1.6pp of call accuracy
+    // over the window estimator. It lands on the value it had been INHERITING
+    // from yellow_cards, which is the outcome the old comment here guessed at
+    // and asked to be checked. Note the fit is on football-data's cards, which
+    // carry the same +1-per-second-booking bias ours did before migration 005 -
+    // that shifts the LEVEL, and a half-life is a slope.
+    //
+    // This survives while the STAT_SIGNAL entry does not, and the asymmetry is
+    // the point: a half-life is fitted on 50k matches from every division and
+    // does not care about our card coverage, whereas the signal was fitted on
+    // our own 2,816-row subset and was an artefact of which leagues it held.
     card_points: 180,
 };
 

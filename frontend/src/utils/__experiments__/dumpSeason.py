@@ -20,6 +20,14 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 SEASON = sys.argv[1] if len(sys.argv) > 1 else "2025/2026"
 
+# Second yellows as a share of all reds, FITTED on the 2,816 dumped rows that
+# carry an exact `second_bookings` count: 202 of 565 reds. CLAUDE.md's 0.3333
+# came from counting 98 match timelines by hand, so this confirms it on 5x the
+# sample rather than replacing it. Stable in the number of reds (0.354 at one
+# red, 0.393 at two) and used only for the ~637 rows that have a red and no
+# column; re-fit it with __experiments__ cardBuckets if the backfill lands.
+SECOND_BOOKING_RATE = 0.3575
+
 # Every per-team statistic on the table. This used to list five; the model
 # experiments could therefore not see xG and the six other columns that have
 # been scraped and stored all along.
@@ -89,18 +97,39 @@ def shape(m):
     # yellows and one red, so `yellows + 2*reds` scores it 4 and has to have the
     # second bookings taken back off.
     #
-    # Emitted ONLY where second_bookings is known. The app fills NULL with 0,
-    # deliberately, to keep the history rather than discard it - but a fit is the
-    # one place that trade is wrong: fitting a signal on targets that are
-    # silently ~1.4% high certifies a statistic that is quietly biased. Rows
-    # without it are omitted and the harness skips them, as with any missing key.
+    # Three cases, and the middle one is why this is not gated on that column:
+    #
+    #   second_bookings known  -> exact, subtract it
+    #   zero reds              -> exact ANYWAY: nothing to correct
+    #   reds, no column        -> overstated by an unknown count, expectation
+    #                             SECOND_BOOKING_RATE * reds
+    #
+    # Gating the whole statistic on the column cost 3,441 perfectly exact rows -
+    # 84% of matches have no red card at all - and that shortfall was not random:
+    # the column only exists for matches scraped after migration 005, so the
+    # surviving rows were whichever leagues happened to be re-scraped recently.
+    # Measured 2026-09-12, it left LaLiga 2 and Super Lig as 850 of 2,816 rows
+    # while Premier League had 20 and Bundesliga 19, and those two are the
+    # highest-card leagues in the set. A pooled model then read that mix as the
+    # level of football and overstated cards everywhere prices actually exist.
+    # 2,816 exact rows -> 6,257, and 6,894 trainable.
+    #
+    # `exact` rides along so a consumer can tell a settled outcome from an
+    # estimate. Use estimates to FIT a mean and never as a label at a line: 4
+    # yellows and a red estimates 5.64, which straddles 5.5 when the truth is
+    # either 5 or 6.
     y, r = stats.get("yellow_cards"), stats.get("red_cards")
     hsb, asb = m.get("home_second_bookings"), m.get("away_second_bookings")
-    if y and r and hsb is not None and asb is not None:
-        stats["card_points"] = {
-            "home": y["home"] + 2 * r["home"] - hsb,
-            "away": y["away"] + 2 * r["away"] - asb,
-        }
+    if y and r:
+        if hsb is not None and asb is not None:
+            home = y["home"] + 2 * r["home"] - hsb
+            away = y["away"] + 2 * r["away"] - asb
+            exact = True
+        else:
+            home = y["home"] + 2 * r["home"] - SECOND_BOOKING_RATE * r["home"]
+            away = y["away"] + 2 * r["away"] - SECOND_BOOKING_RATE * r["away"]
+            exact = r["home"] == 0 and r["away"] == 0
+        stats["card_points"] = {"home": home, "away": away, "exact": exact}
     return {
         "squadre": {"home": m["home_team"], "away": m["away_team"]},
         "stats": stats,

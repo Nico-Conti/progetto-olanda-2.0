@@ -43,14 +43,13 @@ const STAT_FOR_MARKET = Object.fromEntries(
     Object.entries(MARKET_FOR_STAT).map(([s, m]) => [m, s]));
 
 const totalOf = (m, s) => {
-    // card_points is derived in useMatchData, not stored, so the dump has no such
-    // key. `yellows + 2*reds` is the book's scale minus the second-booking
-    // correction, which overstates by ~1.4% - stated rather than silently used.
-    if (s === 'card_points') {
-        const y = m.stats?.yellow_cards, r = m.stats?.red_cards;
-        if (!y || !r || y.home == null || r.home == null) return null;
-        return Number(y.home) + Number(y.away) + 2 * (Number(r.home) + Number(r.away));
-    }
+    // card_points is emitted by dumpSeason.py since 2026-09-12, and it is EXACT -
+    // `yellows + 2*reds - second_bookings`, on the rows where that column is
+    // known. The fallback below is what this used to do unconditionally, and it
+    // overstates a second-yellow dismissal by one point (~1.4% upward, always).
+    // Scoring against a real settled price is the one place that bias cannot be
+    // waved through: it shifts every outcome the same direction as the market's
+    // over side, which is how a systematic error reads as an edge.
     const x = m.stats?.[s];
     return x && x.home != null && x.away != null ? Number(x.home) + Number(x.away) : null;
 };
@@ -133,8 +132,16 @@ for (const market of [...new Set(quotes.map(q => q.market))].sort()) {
             x.n++; x.p += f(r); if (r.over) x.o++; }
         return b.reduce((a, x) => x.n ? a + (x.n / rs.length) * Math.abs(x.p / x.n - x.o / x.n) : a, 0); };
     if (paired.length > 50) {
+        // Leave-one-out: a per-line base rate must never be told the outcome it
+        // is scoring. In-sample it was worth 0.146 of log loss on fouls (75
+        // quotes over 10 lines, thinnest bucket ONE row, which then predicts
+        // itself perfectly) and 0.079 on cards - enough to report that the model
+        // loses to its own baseline when it beats it by 0.066. Corners, with
+        // 1,650 rows, moved 0.005. The bug is invisible exactly where the
+        // samples are large and decisive where they are thin.
         const pl = {}; for (const r of paired) { const c = (pl[r.line] ??= { n: 0, o: 0 }); c.n++; if (r.over) c.o++; }
-        const baseLL = paired.reduce((a, r) => { const c = pl[r.line], b = cl(c.o / c.n);
+        const baseLL = paired.reduce((a, r) => { const c = pl[r.line];
+            const b = c.n > 1 ? cl((c.o - (r.over ? 1 : 0)) / (c.n - 1)) : 0.5;
             return a - Math.log(r.over ? b : 1 - b); }, 0) / paired.length;
         console.log(`\n== ${market} ==  forecast quality on ${paired.length} two-sided lines`);
         console.log(`   model  log loss ${ll(paired, r => r.model).toFixed(4)}  ECE ${(100*eceOf(paired, r => r.model)).toFixed(2)}%`);

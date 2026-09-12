@@ -28,9 +28,9 @@
 import fs from 'fs';
 import {
     createPredictionModel, addMatchToPredictionModel, predictFromModel,
-    dispersionFor, ENGINES, PROB_SHRINK, MEAN_BIAS,
+    dispersionFor, ENGINES, PROB_SHRINK, MEAN_BIAS, isMeasured,
 } from '../predictTotal.js';
-import { STAT_CONFIG } from '../statistics.js';
+import { STAT_CONFIG, STAT_SIGNAL } from '../statistics.js';
 import { probOver } from '../countModel.js';
 import { getAvg, getMedian } from '../stats.js';
 
@@ -62,6 +62,19 @@ const MEASURED = { corners: 0.3, yellow_cards: 0.5 };
  * scored worse than leaving them alone at all three chronological splits.
  */
 const BIAS_MEASURED = ['fouls', 'shots', 'goals'];
+
+/**
+ * The statistics entitled to a signal badge, and therefore to EV ranking -
+ * `isMeasured` is `HALF_LIFE_DAYS[k] != null && STAT_SIGNAL[k] != null`.
+ *
+ * `card_points` is NOT here and adding it back needs docs section 28 read first.
+ * It was admitted at edge +5.2pp and withdrawn hours later: the figure
+ * reproduces exactly and is an artefact of which leagues had been rescraped
+ * since migration 005, and on the widened sample it is -2.5pp at the same line
+ * and -19.4% ROI against real prices. It has a fitted half-life, so the ONLY
+ * thing keeping it out of EV ranking is its absence from STAT_SIGNAL.
+ */
+const SIGNAL_MEASURED = ['corners', 'fouls', 'goals', 'shots', 'yellow_cards'];
 const lineFor = (stat) => {
     const cfg = STAT_CONFIG[stat]?.total;
     return cfg?.default ?? cfg?.options?.[Math.floor((cfg?.options?.length ?? 1) / 2)];
@@ -83,6 +96,16 @@ check(fmt(PROB_SHRINK) === fmt(MEASURED),
 const sortJoin = (xs) => [...xs].sort().join(', ');
 check(sortJoin(MEAN_BIAS) === sortJoin(BIAS_MEASURED),
     `MEAN_BIAS is [${sortJoin(MEAN_BIAS)}], section 26 measured [${sortJoin(BIAS_MEASURED)}]`);
+
+// 0c. And for the badges, which gate EV ranking through isMeasured.
+check(sortJoin(Object.keys(STAT_SIGNAL)) === sortJoin(SIGNAL_MEASURED),
+    `STAT_SIGNAL is [${sortJoin(Object.keys(STAT_SIGNAL))}], sections 27-28 measured ` +
+    `[${sortJoin(SIGNAL_MEASURED)}]`);
+for (const stat of SIGNAL_MEASURED)
+    check(isMeasured(stat), `${stat} has a badge but does not pass isMeasured`);
+check(!isMeasured('card_points'),
+    'card_points passes isMeasured - it has a half-life, so a STAT_SIGNAL entry puts it ' +
+    'straight back into EV ranking at -19.4% ROI (docs section 28)');
 
 for (const stat of STATS) {
     const line = lineFor(stat);

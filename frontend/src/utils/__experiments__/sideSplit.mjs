@@ -125,10 +125,13 @@ function score(pairs) {
         const c = (perLine[r.line] ??= { n: 0, over: 0 });
         c.n++; if (r.over) c.over++;
     }
+    // Leave-one-out - `perLine` is built from the rows it scores, and an
+    // in-sample base rate grades itself. See priceComparison.mjs for what that
+    // cost on a thin sample.
     let baseLL = 0;
     for (const r of pairs) {
         const c = perLine[r.line];
-        const b = clamp(c.over / c.n);
+        const b = c.n > 1 ? clamp((c.over - (r.over ? 1 : 0)) / (c.n - 1)) : 0.5;
         baseLL += r.over ? -Math.log(b) : -Math.log(1 - b);
     }
     const BINS = 10;

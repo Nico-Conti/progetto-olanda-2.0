@@ -115,10 +115,18 @@ function score(rows) {
         const c = (perLine[r.line] ??= { n: 0, over: 0 });
         c.n++; if (r.over) c.over++;
     }
+    // LEAVE-ONE-OUT, and that is not fussiness. `perLine` is built from the very
+    // rows it then scores, so an in-sample base rate is told the outcome it is
+    // about to be graded on - and a bucket of one scores itself perfectly. It
+    // barely matters over thousands of rows per line, which is why it went
+    // unnoticed here; it matters enormously in the thin per-line and per-league
+    // breakdowns below and in priceComparison.mjs, where 75 foul quotes over 10
+    // lines made the base look 0.146 better than it is and turned a model that
+    // BEATS its baseline into one that appears to lose to it.
     let baseLL = 0;
     for (const r of rows) {
         const c = perLine[r.line];
-        const b = clamp(c.over / c.n);
+        const b = c.n > 1 ? clamp((c.over - (r.over ? 1 : 0)) / (c.n - 1)) : 0.5;
         baseLL += r.over ? -Math.log(b) : -Math.log(1 - b);
     }
 
