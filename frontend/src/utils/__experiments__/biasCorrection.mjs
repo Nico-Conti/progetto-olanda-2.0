@@ -50,8 +50,11 @@ const AVAILABLE = (() => {
     return new Set(Object.keys(counts).filter(k => counts[k] > data.length / 2));
 })();
 const only = process.argv[2];
-const STATS = ['corners', 'goals', 'fouls', 'shots', 'yellow_cards']
-    .filter(s => AVAILABLE.has(s) && (!only || s === only));
+// card_points is exempt from the AVAILABLE majority test: it is derived and
+// dumpSeason emits it only where second_bookings is known (41%), which is the
+// subset it must be measured on anyway.
+const STATS = ['corners', 'goals', 'fouls', 'shots', 'yellow_cards', 'card_points']
+    .filter(s => (AVAILABLE.has(s) || s === 'card_points') && (!only || s === only));
 
 const totalOf = (m, s) => {
     const x = m.stats?.[s];

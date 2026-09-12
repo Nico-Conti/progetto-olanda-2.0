@@ -38,7 +38,12 @@ const AVAILABLE = (() => {
     for (const m of data) for (const k of Object.keys(m.stats ?? {})) counts[k] = (counts[k] ?? 0) + 1;
     return new Set(Object.keys(counts).filter(k => counts[k] > data.length / 2));
 })();
-const TARGETS = ['corners', 'goals', 'fouls', 'shots', 'yellow_cards'].filter(s => AVAILABLE.has(s));
+// `node decayComparison.mjs card_points` narrows to one target. card_points is
+// not in the default set because it is derived, not scraped - dumpSeason emits
+// it only where second_bookings is known.
+const ONLY = process.argv[2];
+const TARGETS = ['corners', 'goals', 'fouls', 'shots', 'yellow_cards', 'card_points']
+    .filter(s => AVAILABLE.has(s) && (!ONLY || s === ONLY));
 const HALF_LIVES = [30, 60, 90, 120, 180, 365, 730];
 const totalOf = (m, s) => {
     const x = m.stats?.[s];

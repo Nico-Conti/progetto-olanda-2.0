@@ -171,12 +171,47 @@ export const getStatLabel = (statistic) =>
  * Statistics not listed here have not been measured and deliberately show no badge
  * rather than a made-up one.
  */
+/**
+ * Re-measured 2026-09-12 on 6,894 matches across 18 leagues, all six from ONE
+ * run of `modelComparison.mjs` so the rows are comparable with each other.
+ *
+ * The previous table was fitted on ~3,000 matches across 9 leagues, and the
+ * model has changed underneath it since - `MEAN_BIAS` now corrects the centre
+ * for fouls, shots and goals, and `useGeneralStats` defaults to true. Every
+ * figure moved, and every one moved DOWN: the old numbers were flattering.
+ *
+ *   stat           old lift/edge     new lift/edge
+ *   fouls           1.84 / 14.4       1.23 / 13.4
+ *   shots           1.22 /  2.6       0.96 /  1.9
+ *   corners         0.23 /  2.9       0.17 /  0.1
+ *   goals           0.15 /  1.9       0.08 / -1.1
+ *   yellow_cards    0.19 / -2.7       0.17 / +0.6
+ *   card_points        (absent)       0.23 / +5.2
+ *
+ * `lift` is the top-3-by-predicted-total actual average minus that round's
+ * average. `edge` is accuracy minus the base rate **at margin 0** - calling
+ * every match, which is what a badge implies. Several statistics are markedly
+ * better when selective, and that is deliberately NOT in the badge: corners
+ * reaches +4.9pp at margin 2 and fouls +20.3pp at margin 3.
+ *
+ * Strength thresholds, from `edge`, stated so the next re-measurement does not
+ * have to guess: >=10 strong, 3-10 moderate, 1-3 weak, <1 none.
+ *
+ * card_points earns its first entry here. Its half-life was fitted separately on
+ * 50,219 football-data matches - 180d, the value it had been INHERITING from
+ * yellow_cards, now measured rather than assumed - and its signal on the 2,816
+ * of our matches that carry exact `second_bookings`. football-data cannot supply
+ * that correction: it files a second-yellow dismissal as 2 yellows + 1 red
+ * exactly as diretta does, measured 126 of 142, so its cards carry the same +1
+ * bias and only its VOLUME is useful.
+ */
 export const STAT_SIGNAL = {
-    fouls:        { strength: 'strong',   lift: 1.84, edge: 14.4, line: 24.5 },
-    shots:        { strength: 'moderate', lift: 1.22, edge: 2.6, line: 24.5 },
-    corners:      { strength: 'moderate', lift: 0.23, edge: 2.9, line: 9.5 },
-    goals:        { strength: 'weak',     lift: 0.15, edge: 1.9, line: 2.5 },
-    yellow_cards: { strength: 'none',     lift: 0.19, edge: -2.7, line: 4.5 },
+    fouls:        { strength: 'strong',   lift: 1.23, edge: 13.4, line: 24.5 },
+    card_points:  { strength: 'moderate', lift: 0.23, edge: 5.2, line: 4.5 },
+    shots:        { strength: 'weak',     lift: 0.96, edge: 1.9, line: 24.5 },
+    yellow_cards: { strength: 'none',     lift: 0.17, edge: 0.6, line: 4.5 },
+    corners:      { strength: 'none',     lift: 0.17, edge: 0.1, line: 9.5 },
+    goals:        { strength: 'none',     lift: 0.08, edge: -1.1, line: 2.5 },
 };
 
 /** Signal for a statistic, resolving 'main' to goals. Null when unmeasured. */
@@ -210,10 +245,14 @@ export const HALF_LIFE_DAYS = {
     fouls: 90,
     shots: 120,
     yellow_cards: 180,
-    // Inherited from yellow_cards rather than fitted: card_points is the same
-    // events on a different scale, and 96% of its mass IS the yellow count
-    // (mean 3.96 of 4.32). Inheriting is a defensible prior, not a measurement
-    // - refit it with decayComparison.mjs before treating it as one.
+    // FITTED 2026-09-12, no longer inherited. `decayComparison.mjs` over
+    // 50,219 football-data matches (our own set is too thin for the sweep -
+    // only 2,816 rows carry `second_bookings`) picks 180d, worth +1.6pp of call
+    // accuracy over the window estimator. It lands on the value it had been
+    // INHERITING from yellow_cards, which is the outcome the old comment here
+    // guessed at and asked to be checked. Note the fit is on football-data's
+    // cards, which carry the same +1-per-second-booking bias ours did before
+    // migration 005 - that shifts the LEVEL, and a half-life is a slope.
     card_points: 180,
 };
 

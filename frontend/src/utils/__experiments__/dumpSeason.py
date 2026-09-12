@@ -41,6 +41,9 @@ if not url or not key:
 headers = {"apikey": key, "Authorization": f"Bearer {key}"}
 columns = ["home_team", "away_team", "league", "season", "giornata", "match_date"]
 columns += [f"{side}_{s}" for s in STATS for side in ("home", "away")]
+# Needed to derive card_points, which the app computes in useMatchData and which
+# the experiments have therefore never seen.
+columns += ["home_second_bookings", "away_second_bookings"]
 select = ",".join(columns)
 
 season_filter = "" if SEASON == "all" else f"&season=eq.{SEASON.replace('/', '%2F')}"
@@ -79,6 +82,25 @@ def shape(m):
         if home is None or away is None:
             continue
         stats[s] = {"home": home, "away": away}
+
+    # card_points is what the BOOKMAKER settles: a yellow is 1, a red is 2, and a
+    # second yellow that becomes a red is 3 - the first yellow plus the red, the
+    # second yellow not counted again. diretta files that dismissal as TWO
+    # yellows and one red, so `yellows + 2*reds` scores it 4 and has to have the
+    # second bookings taken back off.
+    #
+    # Emitted ONLY where second_bookings is known. The app fills NULL with 0,
+    # deliberately, to keep the history rather than discard it - but a fit is the
+    # one place that trade is wrong: fitting a signal on targets that are
+    # silently ~1.4% high certifies a statistic that is quietly biased. Rows
+    # without it are omitted and the harness skips them, as with any missing key.
+    y, r = stats.get("yellow_cards"), stats.get("red_cards")
+    hsb, asb = m.get("home_second_bookings"), m.get("away_second_bookings")
+    if y and r and hsb is not None and asb is not None:
+        stats["card_points"] = {
+            "home": y["home"] + 2 * r["home"] - hsb,
+            "away": y["away"] + 2 * r["away"] - asb,
+        }
     return {
         "squadre": {"home": m["home_team"], "away": m["away_team"]},
         "stats": stats,

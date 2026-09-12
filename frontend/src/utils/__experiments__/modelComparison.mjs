@@ -34,7 +34,11 @@ if (!fs.existsSync(DATA)) {
 }
 const data = JSON.parse(fs.readFileSync(DATA));
 
-const STATS = ['corners', 'goals', 'shots', 'fouls', 'yellow_cards'];
+// card_points is derived, not scraped: dumpSeason emits it only where
+// second_bookings is known, so it is measured on that subset and the rest are
+// skipped by the harness like any missing statistic. Fitting it on the whole set
+// would score targets that are ~1.4% high wherever the correction is unknown.
+const STATS = ['corners', 'goals', 'shots', 'fouls', 'yellow_cards', 'card_points'];
 const N_LEAGUES = new Set(data.map(m => m.league)).size;
 const aggFor = (stat) => (VOLATILE_STATS.includes(stat) ? getMedian : getAvg);
 const lineFor = (stat) => STAT_CONFIG[stat]?.total?.default ?? 0;

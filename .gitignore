@@ -43,6 +43,8 @@ backend/*.json
 frontend/src/utils/__experiments__/data.json
 frontend/src/utils/__experiments__/odds.json
 frontend/src/utils/__experiments__/data_fd.json
+# football-data with card_points derived, for the card half-life fit (21 MB).
+frontend/src/utils/__experiments__/data_fd_cards.json
 frontend/src/utils/__experiments__/odds_fd.json
 # Closing prices joined for priceComparison.mjs - regenerate, do not commit.
 frontend/src/utils/__experiments__/odds_closing.json
