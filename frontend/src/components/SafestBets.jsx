@@ -9,6 +9,9 @@ import Dropdown from './ui/Dropdown';
 import StatisticSelector from './StatisticSelector';
 import EngineToggle from './EngineToggle';
 import Header from './Header';
+import MatchCard from './MatchCard';
+import { leagueMeta } from '../utils/leaguePickerFx';
+import { staggerDelay } from '../utils/stagger';
 
 const STORAGE_KEY = 'olanda_safestbets_prefs';
 // The model knobs live in useModelSettings, shared with Hot Matches and the
@@ -39,7 +42,7 @@ const getConfidenceLabel = (stdDev, statType) => {
     return { label: 'Low', color: 'text-red-400' };
 };
 
-const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
+const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, leagues, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const { displayCount, selectedLeagues, selectedDate } = prefs;
     const { nGames, useGeneralStats, forceMean } = modelSettings;
@@ -104,9 +107,6 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                 title={appTitle}
                 onLogoClick={onBack}
                 showSound={true}
-                showAnimationToggle={true}
-                isAnimationEnabled={isAnimationEnabled}
-                onToggleAnimation={onToggleAnimation}
                 pageName={pageName}
             >
                 <EngineToggle engine={engine} onChange={onEngineChange} />
@@ -328,75 +328,41 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, isAnim
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {safestMatches.map((match, idx) => (
-                            <div
-                                key={`${match.home}-${match.away}-${idx}`}
-                                style={{ animationDelay: `${idx * 100}ms` }}
-                                className="glass-panel rounded-xl p-5 border border-white/10 hover:border-cyan-500/30 transition-all group relative overflow-hidden animate-waterfall cursor-pointer"
-                                onClick={() => onMatchClick && onMatchClick(match)}
-                            >
-                                {/* Rank Badge */}
-                                <div className="absolute top-0 right-0 bg-zinc-900/80 px-3 py-1.5 rounded-bl-xl border-l border-b border-white/5 font-black text-2xl text-zinc-700 group-hover:text-cyan-500/50 transition-colors">
-                                    #{idx + 1}
-                                </div>
-
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
-                                        {(() => {
-                                            if (!match.date) return 'TBD';
-                                            const d = new Date(match.date);
-                                            return !isNaN(d.getTime())
-                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                                : match.date;
-                                        })()}
-                                    </div>
-                                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-12">
-                                        {match.league || 'Unknown League'}
-                                    </div>
-                                </div>
-
-                                {/* Teams */}
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex flex-col items-center gap-2 w-1/3">
-                                        <img src={teamLogos[match.home]} alt={match.home} className="w-12 h-12 object-contain drop-shadow-lg" />
-                                        <span className="font-bold text-sm text-center leading-tight">{match.home}</span>
-                                    </div>
-                                    <div className="flex flex-col items-center justify-center w-1/3">
-                                        <span className="text-xs font-bold text-zinc-600 uppercase mb-1">VAR</span>
-                                        <div className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
-                                            {match.prediction.totalStd.toFixed(2)}
+                        {safestMatches.map((match, idx) => {
+                            const { label, color } = getConfidenceLabel(match.prediction.totalStd, selectedStatistic);
+                            return (
+                                <MatchCard
+                                    key={`${match.home}-${match.away}-${idx}`}
+                                    match={match}
+                                    rank={idx + 1}
+                                    meta={leagueMeta(leagues, match.league)}
+                                    teamLogos={teamLogos}
+                                    style={{ animationDelay: staggerDelay(idx) }}
+                                    onClick={() => onMatchClick && onMatchClick(match)}
+                                    center={(
+                                        <>
+                                            <div className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]">
+                                                <span className="text-2xl text-zinc-500 align-top">±</span>{match.prediction.totalStd.toFixed(2)}
+                                            </div>
+                                            <span className="mt-2 text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                                                {getStatLabel(selectedStatistic)} spread
+                                            </span>
+                                        </>
+                                    )}
+                                >
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-zinc-950/40 rounded-lg px-3 py-2 border border-white/5 text-center">
+                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Exp. total</span>
+                                            <span className="block text-lg font-black text-cyan-400 tabular-nums">{match.prediction.total.toFixed(2)}</span>
                                         </div>
-                                        <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider bg-cyan-500/10 px-2 py-0.5 rounded-full mt-1 border border-cyan-500/20">
-                                            {getStatLabel(selectedStatistic)} spread
-                                        </span>
+                                        <div className="bg-zinc-950/40 rounded-lg px-3 py-2 border border-white/5 text-center">
+                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Confidence</span>
+                                            <span className={`block text-lg font-black ${color}`}>{label}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col items-center gap-2 w-1/3">
-                                        <img src={teamLogos[match.away]} alt={match.away} className="w-12 h-12 object-contain drop-shadow-lg" />
-                                        <span className="font-bold text-sm text-center leading-tight">{match.away}</span>
-                                    </div>
-                                </div>
-
-                                {/* Stats Breakdown */}
-                                <div className="grid grid-cols-2 gap-2 mt-4">
-                                    <div className="bg-zinc-900/50 rounded-lg p-2 border border-white/5 text-center">
-                                        <span className="block text-[10px] font-bold text-zinc-500 uppercase">Exp Total</span>
-                                        <span className="block text-lg font-bold text-cyan-400">{match.prediction.total.toFixed(2)}</span>
-                                    </div>
-                                    <div className="bg-zinc-900/50 rounded-lg p-2 border border-white/5 text-center">
-                                        <span className="block text-[10px] font-bold text-zinc-500 uppercase">Confidence</span>
-                                        {(() => {
-                                            const { label, color } = getConfidenceLabel(match.prediction.totalStd, selectedStatistic);
-                                            return (
-                                                <span className={`block text-lg font-bold ${color}`}>
-                                                    {label}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                </MatchCard>
+                            );
+                        })}
                     </div>
 
                     {safestMatches.length === 0 && (

@@ -16,17 +16,16 @@ import { useOdds } from './hooks/useOdds';
 import { useModelSettings } from './hooks/useModelSettings';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
-import ToggleSwitch from './components/ui/ToggleSwitch';
 import BetSlipModal from './components/BetSlipModal';
 import Header from './components/Header';
 import TeamDetails from './components/TeamDetails';
-import LeagueTable from './components/LeagueTable';
-import SeasonResults from './components/SeasonResults';
+import Standings from './components/Standings';
 import Select from './components/ui/Select';
-const STANDINGS_VIEWS = [
-  { id: 'table', label: 'Table', Icon: Trophy },
-  { id: 'results', label: 'Results', Icon: ListOrdered },
-];
+import SlidingTabs from './components/ui/SlidingTabs';
+import { cssMs } from './hooks/usePresence';
+
+// Per-dot pulse order for the loading screen's matrix loader (transitions.dev #31).
+const MATRIX_TWINKLE = [7, 2, 11, 5, 14, 9, 0, 12, 3, 15, 6, 10, 13, 1, 8, 4];
 
 const TABS = [
   { id: 'trends', label: 'Trends', Icon: TrendingUp },
@@ -48,7 +47,6 @@ export default function App() {
   const [previousTab, setPreviousTab] = useState('trends');
 
   // Animation State
-  const [isAnimationEnabled, setIsAnimationEnabled] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
   const [pendingTab, setPendingTab] = useState(null);
   const [pendingLeague, setPendingLeague] = useState(undefined);
@@ -88,32 +86,22 @@ export default function App() {
     setBets([]);
   };
 
+  // The spiral transition is for entering a section - a league, Hot Matches,
+  // Safest Bets, Winning Factor. Moving around inside one (these tabs, a team,
+  // a match) is instant.
   const handleTabChange = (tab) => {
     if (tab === activeTab || isAnimating) return;
-
-    if (isAnimationEnabled) {
-      setPendingTab(tab);
-      setIsAnimating(true);
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
   };
 
   const handleLeagueChange = (league) => {
     if ((league === selectedLeague && view === 'dashboard') || isAnimating) return;
 
-    if (isAnimationEnabled) {
-      setPendingLeague(league);
-      setPendingView('dashboard'); // Switch to dashboard view when league selected
-      setPendingTab('trends'); // Reset to trends tab
-      setIsAnimating(true);
-      setSelectedTeam(null); // Clear selected team
-    } else {
-      setSelectedLeague(league);
-      setView('dashboard');
-      setActiveTab('trends'); // Reset to trends tab
-      setSelectedTeam(null); // Clear selected team
-    }
+    setPendingLeague(league);
+    setPendingView('dashboard'); // Switch to dashboard view when league selected
+    setPendingTab('trends'); // Reset to trends tab
+    setIsAnimating(true);
+    setSelectedTeam(null); // Clear selected team
   };
 
   const handleViewChange = (newView) => {
@@ -123,7 +111,8 @@ export default function App() {
       setPreSelectedMatch(null);
     }
 
-    if (isAnimationEnabled) {
+    // Going back to the landing page is leaving a section, not entering one.
+    if (newView !== 'landing') {
       setPendingView(newView);
       setIsAnimating(true);
     } else {
@@ -295,7 +284,20 @@ export default function App() {
   const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-zinc-200">Loading...</div>;
+    // transitions.dev matrix loader, "twinkle" variant, dots scaled up from 2px.
+    const cycle = cssMs('--matrix-cycle', 1200);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5">
+        <div className="t-matrix [grid-template-columns:repeat(4,6px)] auto-rows-[6px] gap-[5px]" aria-hidden="true">
+          {MATRIX_TWINKLE.map((order, i) => (
+            <i key={i} className="rounded-full" style={{ '--d': Math.round(order * (cycle / 16)) }} />
+          ))}
+        </div>
+        <span className="t-shimmer text-sm font-semibold uppercase tracking-widest" data-text="Loading matches">
+          Loading matches
+        </span>
+      </div>
+    );
   }
 
 
@@ -333,8 +335,6 @@ export default function App() {
           availableLeagues={availableLeagues}
           leaguesData={leagues}
           onSelectLeague={handleLeagueChange}
-          isAnimationEnabled={isAnimationEnabled}
-          onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
           onOpenTopCorners={() => handleViewChange('hot-matches')}
           onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}
           onOpenSafestBets={() => handleViewChange('safest-bets')}
@@ -345,12 +345,11 @@ export default function App() {
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <HighestWinningFactor
             onBack={() => handleViewChange('landing')}
-            isAnimationEnabled={isAnimationEnabled}
-            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             matchData={winningFactorMatchData}
             notStartedLeagues={winningFactorNotStarted}
             fixturesData={currentSeasonFixtures}
             teamLogos={teamLogos}
+            leagues={leagues}
             bets={bets}
             addToBet={addToBet}
             removeFromBet={removeFromBet}
@@ -359,16 +358,10 @@ export default function App() {
               setPreSelectedMatch(match);
               setBackView('highest-winning-factor');
               setBackLabel('Back to Winning Factor');
-              if (isAnimationEnabled) {
-                setPendingLeague(match.league);
-                setPendingTab('predictor');
-                setPendingView('dashboard');
-                setIsAnimating(true);
-              } else {
-                setSelectedLeague(match.league);
-                setActiveTab('predictor');
-                setView('dashboard');
-              }
+              setPendingLeague(match.league);
+              setPendingTab('predictor');
+              setPendingView('dashboard');
+              setIsAnimating(true);
             }}
           />
         </div>
@@ -387,8 +380,7 @@ export default function App() {
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
-            isAnimationEnabled={isAnimationEnabled}
-            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+            leagues={leagues}
             selectedStatistic={selectedStatistic}
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
@@ -397,16 +389,10 @@ export default function App() {
               setPreSelectedMatch(match);
               setBackView('hot-matches');
               setBackLabel('Back to Hot Matches');
-              if (isAnimationEnabled) {
-                setPendingLeague(match.league);
-                setPendingTab('predictor');
-                setPendingView('dashboard');
-                setIsAnimating(true);
-              } else {
-                setSelectedLeague(match.league);
-                setActiveTab('predictor');
-                setView('dashboard');
-              }
+              setPendingLeague(match.league);
+              setPendingTab('predictor');
+              setPendingView('dashboard');
+              setIsAnimating(true);
             }}
           />
         </div>
@@ -421,8 +407,7 @@ export default function App() {
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
-            isAnimationEnabled={isAnimationEnabled}
-            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
+            leagues={leagues}
             selectedStatistic={selectedStatistic}
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
@@ -431,16 +416,10 @@ export default function App() {
               setPreSelectedMatch(match);
               setBackView('safest-bets');
               setBackLabel('Back to Safest Bets');
-              if (isAnimationEnabled) {
-                setPendingLeague(match.league);
-                setPendingTab('predictor');
-                setPendingView('dashboard');
-                setIsAnimating(true);
-              } else {
-                setSelectedLeague(match.league);
-                setActiveTab('predictor');
-                setView('dashboard');
-              }
+              setPendingLeague(match.league);
+              setPendingTab('predictor');
+              setPendingView('dashboard');
+              setIsAnimating(true);
             }}
           />
         </div>
@@ -460,9 +439,6 @@ export default function App() {
             showBackendStatus={true}
             isBackendOnline={isBackendOnline}
             showSound={true}
-            showAnimationToggle={true}
-            isAnimationEnabled={isAnimationEnabled}
-            onToggleAnimation={() => setIsAnimationEnabled(!isAnimationEnabled)}
             showBetSlip={true}
             betsCount={bets.length}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
@@ -471,18 +447,28 @@ export default function App() {
                 desktop pill measures ~943px and md is 768px, so an iPad in
                 portrait got a header wider than its own screen. */}
             <div className="flex items-center gap-2 lg:hidden">
+              {/* Tooltips open below: the header sits at the top of the page. */}
               {TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  title={tab.label}
-                  className={`p-2.5 rounded-lg border transition-all ${activeTab === tab.id
-                    ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
-                    : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
-                    }`}
-                >
-                  <tab.Icon className="w-5 h-5" />
-                </button>
+                <span key={tab.id} className="t-tt-wrap">
+                  <button
+                    onClick={() => handleTabChange(tab.id)}
+                    aria-label={tab.label}
+                    aria-describedby={`tab-tt-${tab.id}`}
+                    className={`t-tt-trigger p-2.5 rounded-lg border transition ${activeTab === tab.id
+                      ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
+                      : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
+                      }`}
+                  >
+                    <tab.Icon className="w-5 h-5" />
+                  </button>
+                  <span
+                    id={`tab-tt-${tab.id}`}
+                    role="tooltip"
+                    className="t-tt bottom-auto top-[calc(100%+8px)] origin-top z-50 text-xs font-semibold"
+                  >
+                    {tab.label}
+                  </span>
+                </span>
               ))}
 
               <StatisticSelector
@@ -501,21 +487,13 @@ export default function App() {
                 className="w-[150px]"
               />
 
-              <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5 shadow-lg shadow-black/20">
-                {TABS.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide transition-all ${activeTab === tab.id
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                      }`}
-                  >
-                    <tab.Icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              <SlidingTabs
+                items={TABS}
+                value={activeTab}
+                onChange={handleTabChange}
+                className="border border-white/5 shadow-lg shadow-black/20"
+                tabClassName="font-semibold"
+              />
 
               <div className="flex items-center gap-2 pl-2 border-l border-white/5">
                 <button
@@ -573,7 +551,6 @@ export default function App() {
                   pricedLines={pricedLines}
                   outcomesFor={outcomesFor}
                   loadMarket={loadMarket}
-            loadMarket={loadMarket}
                   stats={predictorStats}
                   // The prediction MODEL is built on every league, exactly as Hot
                   // Matches and Safest Bets build theirs. One pooled model measured
@@ -609,66 +586,20 @@ export default function App() {
             )}
 
             {activeTab === 'standings' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 space-y-4">
-                {/* Season bar - its own control, separate from the table's
-                    sample/view filters, plus a switch between the table and
-                    that season's results. */}
-                {/* relative z-50: glass-panel applies backdrop-blur, which creates
-                    a stacking context, so without this the season dropdown opens
-                    behind the panel below it. */}
-                <div className="glass-panel rounded-xl border border-white/10 p-3 flex flex-wrap items-center justify-between gap-3 relative z-50">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Season</span>
-                    {availableSeasons.length > 1 ? (
-                      <Select
-                        accent="emerald"
-                        value={activeStandingsSeason}
-                        onChange={setStandingsSeason}
-                        options={availableSeasons.map(sn => ({
-                          value: sn,
-                          label: sn === latestSeason ? `${sn} (current)` : sn,
-                        }))}
-                        className="w-[180px]"
-                      />
-                    ) : (
-                      <span className="text-sm font-bold text-white px-3 py-2">{activeStandingsSeason ?? '-'}</span>
-                    )}
-                  </div>
-
-                  <div className="flex bg-zinc-900/80 p-1 rounded-full border border-white/5">
-                    {STANDINGS_VIEWS.map(v => (
-                      <button
-                        key={v.id}
-                        onClick={() => setStandingsView(v.id)}
-                        className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${standingsView === v.id
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                          }`}
-                      >
-                        <v.Icon className="w-3.5 h-3.5" />
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {standingsView === 'table' ? (
-                  <LeagueTable
-                    matchData={standingsMatchData}
-                    teamLogos={teamLogos}
-                    leagueLogo={leagues.find(l => l.name === selectedLeague)?.logo_url || null}
-                    onTeamClick={handleTeamClick}
-                    selectedStatistic={selectedStatistic}
-                    season={activeStandingsSeason}
-                    latestSeason={latestSeason}
-                  />
-                ) : (
-                  <SeasonResults
-                    matchData={standingsMatchData}
-                    teamLogos={teamLogos}
-                    season={activeStandingsSeason}
-                  />
-                )}
+              <div className="animate-in fade-in slide-in-from-bottom-4">
+                <Standings
+                  matchData={standingsMatchData}
+                  teamLogos={teamLogos}
+                  onTeamClick={handleTeamClick}
+                  league={selectedLeague}
+                  seasons={availableSeasons}
+                  season={activeStandingsSeason}
+                  latestSeason={latestSeason}
+                  onSeasonChange={setStandingsSeason}
+                  view={standingsView}
+                  onViewChange={setStandingsView}
+                  selectedStatistic={selectedStatistic}
+                />
               </div>
             )}
           </main>

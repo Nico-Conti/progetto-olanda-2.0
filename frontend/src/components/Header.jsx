@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 
 import GlassPanel from './ui/GlassPanel';
-import ToggleSwitch from './ui/ToggleSwitch';
 
 const Header = ({
     logoSrc = "/logo.png",
@@ -11,14 +10,22 @@ const Header = ({
     isBackendOnline = false,
     children,
     showSound = false,
-    showAnimationToggle = false,
-    isAnimationEnabled,
-    onToggleAnimation,
     showBetSlip = false,
     betsCount = 0,
     onOpenBetSlip,
     pageName = '',
 }) => {
+    // Publishes the header's height as --app-header-h, so bars that stick
+    // below it (the Standings toolbar) line up however tall it wraps.
+    const ref = useRef(null);
+    useLayoutEffect(() => {
+        const el = ref.current;
+        const observer = new ResizeObserver(() =>
+            document.documentElement.style.setProperty('--app-header-h', `${el.offsetHeight}px`));
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
     const playSound = () => {
         const audio = new Audio('/sounds/malepisello.mp3');
         audio.playbackRate = Math.random() * (1.5 - 0.5) + 0.5;
@@ -26,7 +33,7 @@ const Header = ({
     };
 
     return (
-        <GlassPanel className="sticky top-0 z-[100] border-b border-white/5 mb-8 backdrop-blur-xl">
+        <GlassPanel ref={ref} className="sticky top-0 z-[100] border-b border-white/5 mb-8 backdrop-blur-xl">
             <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 flex items-center justify-between relative">
                 {/* Left Section: Logo & Title */}
                 <div
@@ -69,7 +76,7 @@ const Header = ({
                                     e.stopPropagation();
                                     playSound();
                                 }}
-                                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition-all text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
                                 title="Play Sound"
                             >
                                 <svg
@@ -90,25 +97,32 @@ const Header = ({
                                 </svg>
                             </button>
                         )}
-
-                        {showAnimationToggle && (
-                            <ToggleSwitch
-                                isOn={isAnimationEnabled}
-                                onToggle={onToggleAnimation}
-                            />
-                        )}
                     </div>
 
                     {showBetSlip && (
                         <button
                             onClick={onOpenBetSlip}
-                            className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition-all group"
+                            aria-label="Open bet slip"
+                            className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition group"
                         >
-                            {betsCount > 0 && (
-                                <div className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                                    {betsCount}
-                                </div>
-                            )}
+                            {/* Always mounted so it can pop in and out (transitions.dev
+                                badge); the count re-keys so each change replays the
+                                number pop-in. */}
+                            <span className="t-badge -top-1 -right-1" data-open={betsCount > 0}>
+                                <span className="t-badge-dot min-w-4 h-4 px-1 bg-emerald-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                                    <span key={betsCount} className="t-digit-group is-animating">
+                                        {String(betsCount).split('').map((digit, i, all) => (
+                                            <span
+                                                key={i}
+                                                className="t-digit"
+                                                data-stagger={i === all.length - 1 ? 2 : i === all.length - 2 ? 1 : undefined}
+                                            >
+                                                {digit}
+                                            </span>
+                                        ))}
+                                    </span>
+                                </span>
+                            </span>
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:scale-110 transition-transform">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>

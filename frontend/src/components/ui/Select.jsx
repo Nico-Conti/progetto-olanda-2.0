@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import { usePresence } from '../../hooks/usePresence';
 
 // Written out in full: Tailwind only sees literal class strings, so an
 // interpolated `border-${accent}-500/50` would never be generated.
@@ -21,6 +22,7 @@ const ACCENTS = {
 const Select = ({ value, onChange, options, placeholder = "Select...", className = "", accent = "purple" }) => {
     const theme = ACCENTS[accent] ?? ACCENTS.purple;
     const [isOpen, setIsOpen] = useState(false);
+    const isMenuMounted = usePresence(isOpen, '--dropdown-close-dur');
     const dropdownRef = useRef(null);
 
     const selectedOption = options.find(opt => opt.value === value);
@@ -60,14 +62,15 @@ const Select = ({ value, onChange, options, placeholder = "Select...", className
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
                 <ChevronDown
-                    className={`w-4 h-4 text-zinc-600 ${theme.text} transition-colors ${isOpen ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-zinc-600 ${theme.text} transition ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
 
             {/* Dropdown Menu */}
-            {isOpen && (
+            {isMenuMounted && (
                 <div
-                    className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-60 overflow-y-auto custom-scrollbar"
+                    data-origin="top-center"
+                    className={`t-dropdown ${isOpen ? 'is-open' : 'is-closing'} absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 max-h-60 overflow-y-auto custom-scrollbar`}
                 >
                     <div className="flex flex-col gap-1">
                         {options.map((option) => (
@@ -75,7 +78,7 @@ const Select = ({ value, onChange, options, placeholder = "Select...", className
                                 key={option.value}
                                 onClick={() => handleSelect(option.value)}
                                 className={`
-                                    w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold text-left transition-all
+                                    w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold text-left transition
                                     ${value === option.value
                                         ? theme.selected
                                         : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}

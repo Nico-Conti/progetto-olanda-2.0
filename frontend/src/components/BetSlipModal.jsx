@@ -1,8 +1,11 @@
 import React from 'react';
 import { X, Trash2, Printer, Trophy, ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
+import { usePresence } from '../hooks/usePresence';
 
 const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, betslipUrl }) => {
+    const mounted = usePresence(isOpen, '--modal-close-dur');
+
     /**
      * The accumulator: every selection must land, so the payout multiplies.
      *
@@ -38,7 +41,7 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
         [bets, betslipUrl],
     );
 
-    if (!isOpen) return null;
+    if (!mounted) return null;
 
     const handlePrint = () => {
         const printContent = document.getElementById('bet-slip-content').innerHTML;
@@ -91,8 +94,8 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity starting:opacity-0 ${isOpen ? 'duration-250' : 'duration-150 opacity-0'}`}>
+            <div className={`t-modal ${isOpen ? 'is-open' : 'is-closing'} bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]`}>
                 {/* Header */}
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -138,7 +141,7 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
                                     </div>
                                     <button
                                         onClick={() => onRemove(bet.game, bet.stat, bet.team)}
-                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 no-print"
+                                        className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition opacity-0 group-hover:opacity-100 no-print"
                                         title="Remove"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -203,14 +206,14 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
                     <button
                         onClick={onClear}
                         disabled={bets.length === 0}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Clear
                     </button>
                     <button
                         onClick={handlePrint}
                         disabled={bets.length === 0}
-                        className="flex-[2] py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+                        className="flex-[2] py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
                     >
                         <Printer className="w-4 h-4" />
                         Print to PDF

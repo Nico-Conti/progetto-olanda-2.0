@@ -14,6 +14,10 @@ import StatisticSelector from './StatisticSelector';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import Header from './Header';
+import { staggerDelay } from '../utils/stagger';
+import GlowBorder from './originkit/GlowBorder';
+import MatchCard from './MatchCard';
+import { leagueMeta } from '../utils/leaguePickerFx';
 
 const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }) => {
     const suggested = defaultLineFor(selectedStatistic);
@@ -159,7 +163,7 @@ const DEFAULT_PREFS = {
     rankBy: 'total',
 };
 
-const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, isAnimationEnabled, onToggleAnimation, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
+const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
         displayCount, selectedLeagues, selectedDate,
@@ -366,9 +370,6 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                 title={appTitle}
                 onLogoClick={onBack}
                 showSound={true}
-                showAnimationToggle={true}
-                isAnimationEnabled={isAnimationEnabled}
-                onToggleAnimation={onToggleAnimation}
                 pageName={pageName}
             >
                 <StatisticSelector
@@ -637,13 +638,13 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 <button
                                     onClick={toggleOptimization}
                                     disabled={isOptimizing}
-                                    className={`relative w-full text-sm font-bold uppercase tracking-wider rounded-lg border px-3 py-1.5 flex items-center justify-center gap-2 transition-all ${isOptimizationActive
+                                    className={`relative w-full text-sm font-bold uppercase tracking-wider rounded-lg border px-3 py-1.5 flex items-center justify-center gap-2 transition ${isOptimizationActive
                                         ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
                                         : 'bg-zinc-800 text-zinc-400 border-white/5 hover:bg-zinc-700 hover:text-white'
                                         }`}
                                 >
                                     {isOptimizing ? (
-                                        <span className="animate-pulse">Optimizing...</span>
+                                        <span className="t-shimmer" data-text="Optimizing...">Optimizing...</span>
                                     ) : (
                                         <>
                                             {isOptimizationActive ? <BrainCircuit className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
@@ -672,102 +673,74 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {topMatches.map((match, idx) => (
-                            <div
+                        {topMatches.map((match, idx) => {
+                            const share = match.prediction.expHome / ((match.prediction.expHome + match.prediction.expAway) || 1);
+                            return (
+                            <MatchCard
                                 key={`${match.home}-${match.away}-${idx}`}
-                                style={{ animationDelay: `${idx * 100}ms` }}
-                                className="glass-panel rounded-xl p-5 border border-white/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden animate-waterfall cursor-pointer"
+                                match={match}
+                                rank={idx + 1}
+                                meta={leagueMeta(leagues, match.league)}
+                                teamLogos={teamLogos}
+                                style={{ animationDelay: staggerDelay(idx) }}
                                 onClick={() => onMatchClick && onMatchClick(match)}
-                            >
-                                {/* Rank Badge */}
-                                <div className="absolute top-0 right-0 bg-zinc-900/80 px-3 py-1.5 rounded-bl-xl border-l border-b border-white/5 font-black text-2xl text-zinc-700 group-hover:text-emerald-500/50 transition-colors">
-                                    #{idx + 1}
-                                </div>
-
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                                        <Calendar className="w-3 h-3" />
-                                        {(() => {
-                                            if (!match.date) return 'TBD';
-                                            const d = new Date(match.date);
-                                            return !isNaN(d.getTime())
-                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                                : match.date;
-                                        })()}
+                                // The #1 pick gets a travelling emerald edge. One card
+                                // only: the border runs its own animation frame loop.
+                                overlay={idx === 0 && (
+                                    <div className="absolute inset-0 z-10 pointer-events-none">
+                                        <GlowBorder
+                                            glowColor="#34d399"
+                                            tailColor="rgba(52, 211, 153, 0.35)"
+                                            baseColor="rgba(255, 255, 255, 0)"
+                                            borderWidth={1.5}
+                                            speed={6}
+                                            style={{ borderRadius: 16 }}
+                                        />
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-12">
-                                            {match.league || 'Unknown League'}
-                                        </div>
-                                        {match.isOptimized && (
-                                            match.strategy?.beatsBaseRate ? (
-                                                <div
-                                                    title={`Calls over/under ${match.strategy.line} correctly ${(100 * match.strategy.accuracy).toFixed(1)}% of the time vs a ${(100 * match.strategy.baseRate).toFixed(1)}% base rate, over ${match.strategy.calls} calls.`}
-                                                    className="text-[9px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-12 mt-1 flex items-center gap-1"
-                                                >
-                                                    <BrainCircuit className="w-3 h-3" />
-                                                    +{(100 * match.strategy.edge).toFixed(1)}pt edge
-                                                </div>
-                                            ) : (
-                                                <div
-                                                    title={`No setting beat simply always betting the same side at ${match.strategy?.line}. Best was ${(100 * (match.strategy?.accuracy ?? 0)).toFixed(1)}% vs a ${(100 * (match.strategy?.baseRate ?? 0)).toFixed(1)}% base rate.`}
-                                                    className="text-[9px] font-bold text-zinc-500 uppercase bg-zinc-500/10 px-1.5 py-0.5 rounded border border-zinc-500/20 mr-12 mt-1 flex items-center gap-1"
-                                                >
-                                                    <BrainCircuit className="w-3 h-3" /> No edge found
-                                                </div>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Teams */}
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex flex-col items-center gap-2 w-1/3">
-                                        <img src={teamLogos[match.home]} alt={match.home} className="w-12 h-12 object-contain drop-shadow-lg" />
-                                        <span className="font-bold text-sm text-center leading-tight">{match.home}</span>
-                                    </div>
-                                    <div className="flex flex-col items-center justify-center w-1/3">
-                                        <span className="text-xs font-bold text-zinc-600 uppercase mb-1">VS</span>
-                                        <div className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                                )}
+                                center={(
+                                    <>
+                                        <div className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]">
                                             {match.prediction.total.toFixed(1)}
                                         </div>
-                                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-full mt-1 border border-emerald-500/20">
+                                        <span className="mt-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
                                             Exp. {getStatLabel(selectedStatistic)}
                                         </span>
                                         {match.probability != null && (
-                                            <span className="text-[10px] font-bold text-zinc-400 mt-1 tabular-nums">
+                                            <span className="mt-1 text-[11px] font-bold text-zinc-200 tabular-nums whitespace-nowrap">
                                                 {(100 * match.probability).toFixed(0)}%
-                                                <span className="text-zinc-600"> over {lineFor(selectedStatistic)}</span>
+                                                <span className="text-zinc-500 font-medium"> over {lineFor(selectedStatistic)}</span>
                                             </span>
                                         )}
+                                    </>
+                                )}
+                            >
+                                {/* Home vs away expectation, as numbers and as one split bar. */}
+                                <div>
+                                    <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
+                                        <span>Home exp.</span>
+                                        <span>Away exp.</span>
                                     </div>
-                                    <div className="flex flex-col items-center gap-2 w-1/3">
-                                        <img src={teamLogos[match.away]} alt={match.away} className="w-12 h-12 object-contain drop-shadow-lg" />
-                                        <span className="font-bold text-sm text-center leading-tight">{match.away}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg font-black text-emerald-400 tabular-nums">{match.prediction.expHome.toFixed(2)}</span>
+                                        <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-zinc-800 gap-0.5">
+                                            <div className="bg-emerald-400 rounded-l-full" style={{ width: `${100 * share}%` }} />
+                                            <div className="flex-1 bg-blue-400 rounded-r-full" />
+                                        </div>
+                                        <span className="text-lg font-black text-blue-400 tabular-nums">{match.prediction.expAway.toFixed(2)}</span>
                                     </div>
                                 </div>
 
-                                {/* Stats Breakdown */}
-                                <div className="grid grid-cols-2 gap-2 mt-4">
-                                    <div className="bg-zinc-900/50 rounded-lg p-2 border border-white/5 text-center">
-                                        <span className="block text-[10px] font-bold text-zinc-500 uppercase">Home Exp</span>
-                                        <span className="block text-lg font-bold text-emerald-400">{match.prediction.expHome.toFixed(2)}</span>
-                                    </div>
-                                    <div className="bg-zinc-900/50 rounded-lg p-2 border border-white/5 text-center">
-                                        <span className="block text-[10px] font-bold text-zinc-500 uppercase">Away Exp</span>
-                                        <span className="block text-lg font-bold text-blue-400">{match.prediction.expAway.toFixed(2)}</span>
-                                    </div>
-                                </div>
                                 {match.bestEv && (
                                     <div
                                         title={`Best expected value across every ${getStatLabel(selectedStatistic).toLowerCase()} line with a captured price. ${match.prediction.confident ? '' : 'Below the confidence floor - arithmetic on an estimate we do not yet trust.'}`}
-                                        className={`mt-2 flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-[11px] font-bold ${match.prediction.confident
+                                        className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs font-bold ${match.prediction.confident
                                             ? 'bg-emerald-500/5 border-emerald-500/20'
                                             : 'bg-white/5 border-white/10'}`}
                                     >
-                                        <span className="uppercase tracking-wider text-zinc-500">
+                                        <span className="uppercase tracking-wider text-zinc-300">
                                             {match.bestEv.side} {match.bestEv.line}
-                                            <span className="text-zinc-600 normal-case font-mono"> @ {match.bestEv.price.toFixed(2)}</span>
+                                            <span className="text-zinc-500 normal-case font-mono"> @ {match.bestEv.price.toFixed(2)}</span>
                                         </span>
                                         {/* The claim behind the EV, in probability units.
                                             EV = price x (our p - the price's implied p), so a
@@ -778,10 +751,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                         {match.bestEv.market != null && (
                                             <span
                                                 title={`We make it ${(100 * match.bestEv.prob).toFixed(0)}%, the market ${(100 * match.bestEv.market).toFixed(0)}% (margin removed). EV is that gap multiplied by the price, so long prices inflate it.`}
-                                                className="font-mono tabular-nums text-zinc-500 normal-case"
+                                                className="font-mono tabular-nums text-zinc-400 normal-case"
                                             >
                                                 {(100 * match.bestEv.prob).toFixed(0)}%
-                                                <span className="text-zinc-700"> vs </span>
+                                                <span className="text-zinc-600"> vs </span>
                                                 {(100 * match.bestEv.market).toFixed(0)}%
                                             </span>
                                         )}
@@ -793,16 +766,36 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                     </div>
                                 )}
 
+                                {match.isOptimized && (
+                                    match.strategy?.beatsBaseRate ? (
+                                        <div
+                                            title={`Calls over/under ${match.strategy.line} correctly ${(100 * match.strategy.accuracy).toFixed(1)}% of the time vs a ${(100 * match.strategy.baseRate).toFixed(1)}% base rate, over ${match.strategy.calls} calls.`}
+                                            className="self-center text-[10px] font-bold text-emerald-400 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1"
+                                        >
+                                            <BrainCircuit className="w-3 h-3" />
+                                            +{(100 * match.strategy.edge).toFixed(1)}pt edge
+                                        </div>
+                                    ) : (
+                                        <div
+                                            title={`No setting beat simply always betting the same side at ${match.strategy?.line}. Best was ${(100 * (match.strategy?.accuracy ?? 0)).toFixed(1)}% vs a ${(100 * (match.strategy?.baseRate ?? 0)).toFixed(1)}% base rate.`}
+                                            className="self-center text-[10px] font-bold text-zinc-500 uppercase bg-zinc-500/10 px-2 py-0.5 rounded-full border border-zinc-500/20 flex items-center gap-1"
+                                        >
+                                            <BrainCircuit className="w-3 h-3" /> No edge found
+                                        </div>
+                                    )
+                                )}
+
                                 {isOptimizationActive && match.usedParams && (
-                                    <div className="mt-2 text-[9px] text-zinc-600 font-mono text-center">
+                                    <div className="text-[10px] text-zinc-500 font-mono text-center">
                                         Using: {match.usedParams.n == 'all' ? 'Season' : `Last ${match.usedParams.n}`} • {match.usedParams.ugs ? 'Gen' : 'Spec'} • {match.usedParams.fm ? 'Mean' : 'Median'}
                                         {match.strategy && (
                                             <> • margin {match.strategy.margin} • {(100 * match.strategy.accuracy).toFixed(0)}% vs {(100 * match.strategy.baseRate).toFixed(0)}% base ({match.strategy.calls})</>
                                         )}
                                     </div>
                                 )}
-                            </div>
-                        ))}
+                            </MatchCard>
+                            );
+                        })}
                     </div>
 
                     {topMatches.length === 0 && (

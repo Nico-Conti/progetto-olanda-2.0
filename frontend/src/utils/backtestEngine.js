@@ -62,7 +62,7 @@ export const addMatchToStats = (acc, match, statistic) => {
         // it, "have these teams already met at home?" finds last season's
         // fixture and hides this season's.
         season: match.season ?? null,
-        tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date,
+        date: match.date,
     });
 
     acc[awayTeam].away_for.unshift(cAway);
@@ -72,7 +72,7 @@ export const addMatchToStats = (acc, match, statistic) => {
         team: awayTeam, opponent: homeTeam, location: 'Away',
         statFor: cAway, statAg: cHome, total, giornata,
         season: match.season ?? null,
-        tldr: match.tldr, detailed_summary: match.detailed_summary, date: match.date,
+        date: match.date,
     });
 
     return acc;

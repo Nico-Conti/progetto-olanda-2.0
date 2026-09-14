@@ -6,7 +6,6 @@ import EngineToggle from './EngineToggle';
 import { STAT_OPTIONS, PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
 import MatchRow from './predictor/MatchRow';
-import AnalysisSection from './predictor/AnalysisSection';
 import PredictionHero from './predictor/PredictionHero';
 import ProbabilityLadder from './predictor/ProbabilityLadder';
 import StatsAnalysis from './predictor/StatsAnalysis';
@@ -14,6 +13,7 @@ import StatisticSelector from './StatisticSelector';
 import BetBuilderCell from './BetBuilderCell';
 import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
+import { staggerDelay } from '../utils/stagger';
 
 
 const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
@@ -28,7 +28,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     // expected values. See hooks/useModelSettings.js.
     const { nGames, useGeneralStats, forceMean } = modelSettings;
     const [selectedMatchday, setSelectedMatchday] = useState(null);
-    const [selectedAnalysisMatch, setSelectedAnalysisMatch] = useState(null);
     const [showAccuracy, setShowAccuracy] = useState(false);
     const [showDistribution, setShowDistribution] = useState(false);
 
@@ -36,8 +35,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     useEffect(() => {
         if (preSelectedMatch) {
             setSelectedMatch(preSelectedMatch);
-            // Do not auto-select analysis match. Let user click on specific matches to see details.
-            setSelectedAnalysisMatch(null);
         }
     }, [preSelectedMatch]);
 
@@ -353,7 +350,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                         } else {
                             setSelectedMatch(null);
                         }
-                        setSelectedAnalysisMatch(null);
                     }}
                     className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-2"
                 >
@@ -429,7 +425,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     <button
                                         key={n}
                                         onClick={() => setNGames(n)}
-                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all text-center whitespace-nowrap ${nGames === n
+                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition text-center whitespace-nowrap ${nGames === n
                                             ? 'bg-zinc-700 text-white shadow-sm'
                                             : 'text-zinc-500 hover:text-zinc-300'
                                             } hidden sm:block`}
@@ -438,7 +434,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     </button>
                                 ))}
                                 <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
-                                <div className={`flex items-center justify-between flex-1 sm:flex-none p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
+                                <div className={`flex items-center justify-between flex-1 sm:flex-none p-0.5 rounded-lg border transition ${!['all', 3, 5].includes(nGames)
                                     ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
                                     : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
                                     }`}>
@@ -486,7 +482,8 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                 {detailPred?.probOver && (
                     <div className="mt-4">
                         <ProbabilityLadder prediction={detailPred} statistic={localStatistic}
-                            home={home} away={away} priceFor={priceFor} pricedLines={pricedLines} />
+                            home={home} away={away} priceFor={priceFor} pricedLines={pricedLines}
+                            bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
                     </div>
                 )}
 
@@ -505,7 +502,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.homeMatches.map(m => (
-                                <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
@@ -520,12 +517,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                         </div>
                         <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                             {detailPred.awayMatches.map(m => (
-                                <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                             ))}
                         </div>
                     </div>
                 </div>
-                <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
             </div>
         );
     }
@@ -630,7 +626,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                 <button
                                     key={n}
                                     onClick={() => setNGames(n)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${nGames === n
+                                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition ${nGames === n
                                         ? 'bg-zinc-700 text-white shadow-sm'
                                         : 'text-zinc-500 hover:text-zinc-300'
                                         } hidden sm:block`}
@@ -639,7 +635,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                 </button>
                             ))}
                             <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
-                            <div className={`flex items-center p-0.5 rounded-lg border transition-all ${!['all', 3, 5].includes(nGames)
+                            <div className={`flex items-center p-0.5 rounded-lg border transition ${!['all', 3, 5].includes(nGames)
                                 ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
                                 : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
                                 }`}>
@@ -722,11 +718,10 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                     {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
                         <div
                             key={idx}
-                            style={{ animationDelay: `${idx * 50}ms` }}
+                            style={{ animationDelay: staggerDelay(idx) }}
                             onClick={(e) => {
                                 if (e.target.closest('select') || e.target.closest('button')) return;
                                 setSelectedMatch(match);
-                                setSelectedAnalysisMatch(null);
                             }}
                             className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-95 transition-transform"
                         >
@@ -811,7 +806,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     <BetBuilderCell
                                         game={`${match.home} vs ${match.away}`}
                                         priceFor={priceFor}
-                                            outcomesFor={outcomesFor}
+                                        outcomesFor={outcomesFor}
                                         home={match.home}
                                         away={match.away}
                                         teamLogos={teamLogos}
@@ -856,12 +851,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                             {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
                                 <tr
                                     key={idx}
-                                    style={{ animationDelay: `${idx * 50}ms` }}
+                                    style={{ animationDelay: staggerDelay(idx) }}
                                     onClick={(e) => {
                                         // Prevent navigation if clicking on the dropdown
                                         if (e.target.closest('select')) return;
                                         setSelectedMatch(match);
-                                        setSelectedAnalysisMatch(null);
                                     }}
                                     className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
                                 >
@@ -978,7 +972,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                     </h3>
                     <button
                         onClick={() => setShowCustomPrediction(!showCustomPrediction)}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all ${showCustomPrediction ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition ${showCustomPrediction ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
                     >
                         {showCustomPrediction ? 'Hide Analysis' : 'Analyze Matchup'}
                     </button>
@@ -1001,7 +995,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                         <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Home Team</label>
                         <div className="relative">
                             <select
-                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium"
+                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition font-medium"
                                 value={customHome}
                                 onChange={(e) => setCustomHome(e.target.value)}
                             >
@@ -1014,7 +1008,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                         <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Away Team</label>
                         <div className="relative">
                             <select
-                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-medium"
+                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition font-medium"
                                 value={customAway}
                                 onChange={(e) => setCustomAway(e.target.value)}
                             >
@@ -1034,7 +1028,8 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                             {customPrediction?.probOver && (
                                 <div className="mt-4">
                                     <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
-                                        home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines} />
+                                        home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines}
+                                        bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
                                 </div>
                             )}
 
@@ -1050,7 +1045,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     </div>
                                     <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                         {customPrediction.homeMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                         ))}
                                     </div>
                                 </div>
@@ -1065,12 +1060,11 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                                     </div>
                                     <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                         {customPrediction.awayMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} onShowAnalysis={setSelectedAnalysisMatch} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                            <AnalysisSection match={selectedAnalysisMatch} onClose={() => setSelectedAnalysisMatch(null)} teamLogos={teamLogos} />
                         </div>
                     )
                 }

@@ -57,7 +57,7 @@ const BackgroundAnimation = () => {
                     <div
                         key={index}
                         onClick={() => handlePop(index)}
-                        className={`absolute animate-float text-white pointer-events-auto cursor-pointer transition-all duration-300 ease-out
+                        className={`absolute animate-float text-white pointer-events-auto cursor-pointer transition duration-300 ease-out
                             ${isPopped
                                 ? 'scale-150 opacity-0'
                                 : 'opacity-10 scale-100 hover:opacity-40 hover:scale-110 active:scale-95'
