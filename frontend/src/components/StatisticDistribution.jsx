@@ -119,19 +119,19 @@ const StatisticDistribution = ({ matches, onClose }) => {
                             <div className="flex bg-zinc-900 border border-white/10 rounded-lg p-1">
                                 <button
                                     onClick={() => setViewMode('total')}
-                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${viewMode === 'total' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'total' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Total
                                 </button>
                                 <button
                                     onClick={() => setViewMode('home')}
-                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${viewMode === 'home' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'home' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Home
                                 </button>
                                 <button
                                     onClick={() => setViewMode('away')}
-                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${viewMode === 'away' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'away' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Away
                                 </button>

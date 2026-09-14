@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Info, TrendingUp, Flame, Snowflake } from 'lucide-react';
 import TrendBadge from './TrendBadge';
 import { getAvg, getTrendData } from '../utils/stats';
+import { staggerDelay } from '../utils/stagger';
 
 const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season, currentSeason }) => {
     const [sliderValue, setSliderValue] = useState(0); // 0: 3, 1: 5, 2: 10, 3: All
@@ -45,7 +46,7 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                         step="1"
                         value={sliderValue}
                         onChange={(e) => setSliderValue(parseInt(e.target.value))}
-                        className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition-all"
+                        className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:accent-emerald-400 transition"
                     />
                     <div className="flex justify-between text-[10px] text-zinc-600 font-bold uppercase px-1">
                         <span>3</span>
@@ -106,7 +107,7 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                         return (
                             <div
                                 key={team}
-                                style={{ animationDelay: `${index * 50}ms` }}
+                                style={{ animationDelay: staggerDelay(index) }}
                                 className="glass-panel p-4 rounded-xl border border-white/10 animate-waterfall"
                             >
                                 <div
@@ -205,7 +206,7 @@ const LeagueTrends = ({ stats, teamLogos, selectedStatistic, onTeamClick, season
                                 return (
                                     <tr
                                         key={team}
-                                        style={{ animationDelay: `${index * 50}ms` }}
+                                        style={{ animationDelay: staggerDelay(index) }}
                                         className="hover:bg-white/[0.03] transition-colors group animate-waterfall"
                                     >
                                         <td

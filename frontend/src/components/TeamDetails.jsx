@@ -1,11 +1,9 @@
-import React, { useState, useMemo } from 'react'; // ADDED useMemo here
+import React, { useMemo } from 'react';
 import { ArrowLeft, Calendar, Trophy, History, ChevronDown, ChevronUp, MapPin, Target } from 'lucide-react';
 
 // --- HistoryItem Component (Moved before TeamDetails for clarity, but works either way) ---
 
 const HistoryItem = ({ match, teamLogos }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
     // Helper to determine color based on match result (Win, Draw, Loss - assuming statFor > statAg is a Win for the current team)
     const getResultIndicator = (forVal, agVal) => {
         if (forVal > agVal) return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'; // Win
@@ -14,11 +12,9 @@ const HistoryItem = ({ match, teamLogos }) => {
     };
 
     return (
-        <div className={`border rounded-lg overflow-hidden transition-all duration-300 ${getResultIndicator(match.statFor, match.statAg)}`}>
+        <div className={`border rounded-lg overflow-hidden transition duration-300 ${getResultIndicator(match.statFor, match.statAg)}`}>
             <div
-                className="p-4 flex items-center justify-between cursor-pointer bg-zinc-900/40 hover:bg-zinc-800/60 transition-colors"
-                onClick={() => setIsOpen(!isOpen)}
-            >
+                className="p-4 flex items-center justify-between bg-zinc-900/40">
                 <div className="flex items-center gap-4 w-1/3">
                     <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase w-12 text-center ${match.location === 'Home' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-orange-500/10 text-orange-400'}`}>
                         {match.location}
@@ -42,42 +38,9 @@ const HistoryItem = ({ match, teamLogos }) => {
                         </div>
                         <div className="text-[10px] text-zinc-500 uppercase tracking-tighter">Total: {match.total}</div>
                     </div>
-                    <div className={`text-zinc-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
-                        <ChevronDown className="w-5 h-5" />
-                    </div>
                 </div>
             </div>
 
-            {/* Expandable Content */}
-            {isOpen && (
-                <div className="bg-black/20 border-t border-white/10 p-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Details</h4>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between border-b border-white/5 pb-1">
-                                    <span className="text-zinc-400">Total {match.location === 'Home' ? 'For (Home)' : 'For (Away)'}</span>
-                                    <span className="text-white font-mono">{match.total}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/5 pb-1">
-                                    <span className="text-zinc-400">For</span>
-                                    <span className="text-emerald-400 font-mono">{match.statFor}</span>
-                                </div>
-                                <div className="flex justify-between border-b border-white/5 pb-1">
-                                    <span className="text-zinc-400">Against</span>
-                                    <span className="text-red-400 font-mono">{match.statAg}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Summary</h4>
-                            <p className="text-xs text-zinc-400 leading-relaxed italic">
-                                {match.tldr || match.detailed_summary || "No detailed summary available for this match."}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
@@ -137,7 +100,7 @@ const TeamDetails = ({ team, teamLogo, stats, fixtures, onBack, teamLogos, selec
                     <div
                         // Changed click handler to use the full nextFixture object
                         onClick={() => nextFixture && onMatchClick && onMatchClick(nextFixture)}
-                        className={`glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden group transition-all ${nextFixture ? 'cursor-pointer hover:border-emerald-500/30 hover:bg-white/5' : ''}`}
+                        className={`glass-panel p-5 rounded-xl border border-white/10 relative overflow-hidden group transition ${nextFixture ? 'cursor-pointer hover:border-emerald-500/30 hover:bg-white/5' : ''}`}
                     >
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Calendar className="w-24 h-24 text-emerald-500" />

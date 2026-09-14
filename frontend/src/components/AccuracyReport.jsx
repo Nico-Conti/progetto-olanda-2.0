@@ -205,7 +205,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                     <button
                                         key={n}
                                         onClick={() => setNGames(n)}
-                                        className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${nGames === n ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                        className={`flex-1 text-[10px] font-bold uppercase rounded transition ${nGames === n ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                     >
                                         {n === 'all' ? 'Season' : `Last ${n}`}
                                     </button>
@@ -219,13 +219,13 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
                                 <button
                                     onClick={() => setForceMean(false)}
-                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${!forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition ${!forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Median
                                 </button>
                                 <button
                                     onClick={() => setForceMean(true)}
-                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition ${forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Mean
                                 </button>
@@ -238,13 +238,13 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
                                 <button
                                     onClick={() => setUseGeneralStats(false)}
-                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${!useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition ${!useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     Specific
                                 </button>
                                 <button
                                     onClick={() => setUseGeneralStats(true)}
-                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition-all ${useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                    className={`flex-1 text-[10px] font-bold uppercase rounded transition ${useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
                                     General
                                 </button>
@@ -293,11 +293,11 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                         <button
                             onClick={optimizeSettings}
                             disabled={isCalculating}
-                            className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-black uppercase tracking-widest text-sm rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-white/5 hover:border-emerald-500/50"
+                            className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-black uppercase tracking-widest text-sm rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-white/5 hover:border-emerald-500/50"
                             title="Automatically find the best combination of settings"
                         >
                             {isCalculating ? (
-                                <span className="animate-pulse">...</span>
+                                <span className="t-shimmer" data-text="Optimizing...">Optimizing...</span>
                             ) : (
                                 <>
                                     <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400/20" /> Auto-Optimize
@@ -308,10 +308,16 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                         <button
                             onClick={runBacktest}
                             disabled={isCalculating}
-                            className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black uppercase tracking-widest text-sm rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+                            className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black uppercase tracking-widest text-sm rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
                         >
                             {isCalculating ? (
-                                <span className="animate-pulse">Computing Matches...</span>
+                                <span
+                                    // Dark text on the emerald button, so the shimmer is retuned to match.
+                                    className="t-shimmer [--shimmer-base:rgb(9_9_11/0.55)] [--shimmer-highlight:#09090b]"
+                                    data-text="Computing Matches..."
+                                >
+                                    Computing Matches...
+                                </span>
                             ) : (
                                 <>
                                     <Play className="w-4 h-4 fill-current" /> Run Backtest Analysis

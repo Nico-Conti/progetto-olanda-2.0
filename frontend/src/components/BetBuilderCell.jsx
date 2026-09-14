@@ -1,6 +1,23 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { Plus, Check, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
+
+/**
+ * The add/remove button's icon: Plus and X cross-fade (transitions.dev icon
+ * swap), and right after an add a check draws itself in (success check).
+ */
+export const SlipIcon = ({ isInSlip, justAdded }) => justAdded ? (
+    <span className="t-success-check" data-state="in">
+        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+        </svg>
+    </span>
+) : (
+    <span className="t-icon-swap" data-state={isInSlip ? 'b' : 'a'}>
+        <span className="t-icon" data-icon="a"><Plus className="w-3.5 h-3.5" /></span>
+        <span className="t-icon" data-icon="b"><X className="w-3.5 h-3.5" /></span>
+    </span>
+);
 
 const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor }) => {
     const [team, setTeam] = useState(existingBet ? (existingBet.team || 'total') : 'total');
@@ -145,29 +162,29 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                 <div className="relative">
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className={`w-[60px] h-[30px] rounded-lg border text-xs font-black flex items-center justify-center transition-all ${isOpen ? 'ring-2 ring-white/10' : ''} ${currentStyle}`}
+                        className={`w-[60px] h-[30px] rounded-lg border text-xs font-black flex items-center justify-center transition ${isOpen ? 'ring-2 ring-white/10' : ''} ${currentStyle}`}
                     >
                         {value || '-'}
                     </button>
 
                     {/* Custom Popover */}
-                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[160px] bg-zinc-950 border border-white/10 rounded-xl shadow-2xl backdrop-blur-xl p-2 z-50 grid grid-cols-3 gap-1.5 transition-all duration-200 origin-top ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
+                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[160px] bg-zinc-950 border border-white/10 rounded-xl shadow-2xl backdrop-blur-xl p-2 z-50 grid grid-cols-3 gap-1.5 transition duration-200 origin-top ${isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
                         {/* Main Options */}
                         <button
                             onClick={() => { setValue('1'); setIsOpen(false); }}
-                            className="h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-xs hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all"
+                            className="h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-xs hover:bg-emerald-500/20 hover:border-emerald-500/50 transition"
                         >
                             1
                         </button>
                         <button
                             onClick={() => { setValue('X'); setIsOpen(false); }}
-                            className="h-8 rounded-lg bg-white/5 border border-white/10 text-white font-black text-xs hover:bg-white/10 hover:border-white/30 transition-all"
+                            className="h-8 rounded-lg bg-white/5 border border-white/10 text-white font-black text-xs hover:bg-white/10 hover:border-white/30 transition"
                         >
                             X
                         </button>
                         <button
                             onClick={() => { setValue('2'); setIsOpen(false); }}
-                            className="h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs hover:bg-blue-500/20 hover:border-blue-500/50 transition-all"
+                            className="h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs hover:bg-blue-500/20 hover:border-blue-500/50 transition"
                         >
                             2
                         </button>
@@ -177,7 +194,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                             <button
                                 key={opt}
                                 onClick={() => { setValue(opt); setIsOpen(false); }}
-                                className={`h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold text-[10px] hover:text-white hover:border-zinc-600 transition-all ${value === opt ? 'bg-zinc-800 border-zinc-500 text-white' : ''}`}
+                                className={`h-8 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold text-[10px] hover:text-white hover:border-zinc-600 transition ${value === opt ? 'bg-zinc-800 border-zinc-500 text-white' : ''}`}
                             >
                                 {opt}
                             </button>
@@ -197,30 +214,18 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                             setTimeout(() => setJustAdded(false), 1500);
                         }
                     }}
-                    className={`h-[30px] px-3 rounded-lg transition-all flex items-center justify-center font-bold text-[10px] uppercase tracking-wide gap-1.5 ${isInSlip
-                        ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
-                        : justAdded
-                            ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105'
+                    // justAdded is checked first: the add lands in the slip at
+                    // once, so testing isInSlip first hid the "Added" state.
+                    className={`h-[30px] px-3 rounded-lg transition flex items-center justify-center font-bold text-[10px] uppercase tracking-wide gap-1.5 ${justAdded
+                        ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105'
+                        : isInSlip
+                            ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
                             : 'bg-zinc-800 text-zinc-400 border border-white/5 hover:bg-zinc-700 hover:text-white hover:border-white/10'
                         }`}
-                    title={isInSlip ? 'Remove from Slip' : (justAdded ? 'Added' : 'Add to Slip')}
+                    title={justAdded ? 'Added' : (isInSlip ? 'Remove from Slip' : 'Add to Slip')}
                 >
-                    {isInSlip ? (
-                        <>
-                            <X className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                        </>
-                    ) : justAdded ? (
-                        <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Added</span>
-                        </>
-                    ) : (
-                        <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add</span>
-                        </>
-                    )}
+                    <SlipIcon isInSlip={isInSlip} justAdded={justAdded} />
+                    <span>{justAdded ? 'Added' : isInSlip ? 'Remove' : 'Add'}</span>
                 </button>
             </div>
         );
@@ -238,7 +243,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                     <button
                         key={t}
                         onClick={() => setTeam(t)}
-                        className={`flex-1 overflow-hidden py-1 px-1 rounded transition-all flex items-center justify-center ${team === t ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'
+                        className={`flex-1 overflow-hidden py-1 px-1 rounded transition flex items-center justify-center ${team === t ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'
                             }`}
                     >
                         {t === 'total' ? (
@@ -308,15 +313,15 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                         handleAdd();
                     }
                 }}
-                className={`p-1.5 rounded-lg transition-all flex items-center justify-center ${isInSlip
-                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
-                    : justAdded
-                        ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                className={`p-1.5 rounded-lg transition flex items-center justify-center ${justAdded
+                    ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                    : isInSlip
+                        ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
                         : 'bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white border border-white/5'
                     }`}
-                title={isInSlip ? 'Remove from Slip' : (justAdded ? 'Added' : 'Add to Slip')}
+                title={justAdded ? 'Added' : (isInSlip ? 'Remove from Slip' : 'Add to Slip')}
             >
-                {isInSlip ? <X className="w-3.5 h-3.5" /> : justAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                <SlipIcon isInSlip={isInSlip} justAdded={justAdded} />
             </button>
         </div>
     );

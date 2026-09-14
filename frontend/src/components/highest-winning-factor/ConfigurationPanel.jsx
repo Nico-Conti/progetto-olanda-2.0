@@ -48,7 +48,7 @@ const ConfigurationPanel = ({
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => setAnalysisMode('total')}
-                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'total'
+                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${analysisMode === 'total'
                                     ? 'bg-blue-500 text-white shadow-lg'
                                     : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                     }`}
@@ -57,7 +57,7 @@ const ConfigurationPanel = ({
                             </button>
                             <button
                                 onClick={() => setAnalysisMode('individual')}
-                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${analysisMode === 'individual'
+                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${analysisMode === 'individual'
                                     ? 'bg-purple-500 text-white shadow-lg'
                                     : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                     }`}
@@ -82,7 +82,7 @@ const ConfigurationPanel = ({
                             <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => setOperator('over')}
-                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'over'
+                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${operator === 'over'
                                         ? 'bg-emerald-500 text-white shadow-lg'
                                         : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                         }`}
@@ -91,7 +91,7 @@ const ConfigurationPanel = ({
                                 </button>
                                 <button
                                     onClick={() => setOperator('under')}
-                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition-all ${operator === 'under'
+                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${operator === 'under'
                                         ? 'bg-red-500 text-white shadow-lg'
                                         : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                         }`}
@@ -107,7 +107,7 @@ const ConfigurationPanel = ({
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => adjustThreshold(-currentConfig.step)}
-                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all h-10 w-10 flex items-center justify-center"
+                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition h-10 w-10 flex items-center justify-center"
                                 >
                                     <Minus className="w-4 h-4" />
                                 </button>
@@ -122,7 +122,7 @@ const ConfigurationPanel = ({
 
                                 <button
                                     onClick={() => adjustThreshold(currentConfig.step)}
-                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all h-10 w-10 flex items-center justify-center"
+                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition h-10 w-10 flex items-center justify-center"
                                 >
                                     <Plus className="w-4 h-4" />
                                 </button>

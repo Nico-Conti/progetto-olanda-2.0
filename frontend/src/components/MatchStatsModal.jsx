@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Calendar, Sparkles } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 import { getStatLabel } from '../utils/statistics';
 
 /**
@@ -178,18 +178,6 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                         </p>
                     )}
 
-                    {/* The Gemini prose, when /matches/analysis has any for this match. */}
-                    {(match.tldr || match.detailed_summary) && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
-                            <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
-                                <Sparkles className="w-3 h-3 text-emerald-400" />
-                                Match analysis
-                            </h4>
-                            <p className="text-xs text-zinc-400 leading-relaxed whitespace-pre-line">
-                                {match.detailed_summary || match.tldr}
-                            </p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

@@ -32,7 +32,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                     text-zinc-300 text-sm font-semibold uppercase tracking-wide
                     rounded-full px-4 py-2 
                     focus:outline-none focus:ring-2 focus:ring-emerald-500/50
-                    transition-all duration-200
+                    transition duration-200
                     hover:bg-white/5 hover:text-white hover:border-white/10
                     ${isOpen ? 'ring-2 ring-emerald-500/50 bg-zinc-900 border-emerald-500/50' : ''}
                 `}
@@ -48,7 +48,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                 className={`
                     absolute z-50 mt-2 w-full min-w-[180px] right-0
                     bg-zinc-900 border border-white/10 rounded-lg shadow-xl backdrop-blur-xl
-                    transform transition-all duration-200 origin-top
+                    transform transition duration-200 origin-top
                     ${isOpen
                         ? 'opacity-100 translate-y-0 scale-100 visible'
                         : 'opacity-0 -translate-y-2 scale-95 invisible pointer-events-none'}
@@ -61,7 +61,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                             onClick={() => handleSelect(option.value)}
                             className={`
                                 w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold uppercase tracking-wide
-                                transition-all duration-150
+                                transition duration-150
                                 ${value === option.value
                                     ? 'bg-emerald-500/10 text-emerald-400'
                                     : 'text-zinc-400 hover:bg-white/5 hover:text-white'}

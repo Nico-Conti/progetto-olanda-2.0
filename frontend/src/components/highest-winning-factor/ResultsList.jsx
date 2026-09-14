@@ -2,6 +2,8 @@ import React from 'react';
 import { Trophy, Minus, Plus, X, Check } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import Select from '../ui/Select';
+import LeagueTag from '../LeagueTag';
+import { leagueMeta } from '../../utils/leaguePickerFx';
 
 const ResultsList = ({
     rankedTeams,
@@ -11,6 +13,7 @@ const ResultsList = ({
     setNGames,
     maxGames,
     teamLogos,
+    leagues,
     bets,
     addToBet,
     removeFromBet,
@@ -21,6 +24,29 @@ const ResultsList = ({
     onTeamClick
 }) => {
     const [expandedTeam, setExpandedTeam] = React.useState(null);
+
+    // The bet a team's row adds: its next fixture, the side it plays, and the
+    // over/under being ranked. `added` is any bet on that game and side (the
+    // button's colour); `exact` is this very selection (its icon).
+    const slipFor = (team) => {
+        const next = team.nextMatch;
+        const game = next ? `${next.home} vs ${next.away}` : team.team;
+        const side = analysisMode === 'individual'
+            ? (next ? (next.home === team.team ? 'home' : 'away') : 'individual')
+            : 'total';
+        const option = operator === 'over' ? 'O' : 'U';
+        const onGame = (b) => b.game === game && b.stat === selectedStatistic && b.team === side;
+        const added = Boolean(bets?.some(onGame));
+        return {
+            added,
+            exact: Boolean(bets?.some(b => onGame(b) && b.option === option && b.value === threshold)),
+            toggle: (e) => {
+                e.stopPropagation();
+                if (added) removeFromBet(game, selectedStatistic, side);
+                else addToBet(game, option, threshold, selectedStatistic, side);
+            },
+        };
+    };
 
     const displayLimitOptions = [5, 10, 15, 20].map(n => ({ value: n, label: n.toString() }));
 
@@ -52,7 +78,7 @@ const ResultsList = ({
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => setDisplayLimit(prev => Math.max(1, prev - 1))}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                         >
                             <Minus className="w-3 h-3" />
                         </button>
@@ -68,7 +94,7 @@ const ResultsList = ({
 
                         <button
                             onClick={() => setDisplayLimit(prev => Math.min(20, prev + 1))}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                         >
                             <Plus className="w-3 h-3" />
                         </button>
@@ -89,7 +115,7 @@ const ResultsList = ({
                                     return Math.max(1, val - 1);
                                 });
                             }}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                         >
                             <Minus className="w-3 h-3" />
                         </button>
@@ -111,7 +137,7 @@ const ResultsList = ({
                                     return prev + 1;
                                 });
                             }}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all"
+                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
                         >
                             <Plus className="w-3 h-3" />
                         </button>
@@ -121,76 +147,51 @@ const ResultsList = ({
 
             {/* Mobile View (Cards) */}
             <div className="md:hidden space-y-3 p-4">
-                {rankedTeams.slice(0, displayLimit).map((team, index) => (
+                {rankedTeams.slice(0, displayLimit).map((team, index) => {
+                    const meta = leagueMeta(leagues, team.league);
+                    const slip = slipFor(team);
+                    return (
                     <div
                         key={team.team}
                         className="flex flex-col gap-2"
                     >
                         <div
-                            className={`bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5'}`}
+                            className={`relative overflow-hidden bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5'}`}
                             onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
                         >
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3">
-                                    <span className="font-mono text-zinc-600 font-bold">#{index + 1}</span>
-                                    <div className="flex items-center gap-2">
-                                        <img
-                                            src={teamLogos[team.team]}
-                                            alt={team.team}
-                                            className="w-8 h-8 object-contain"
-                                        />
-                                        <span className="font-bold text-white text-lg">{team.team}</span>
+                            {meta.flag && (
+                                <span
+                                    aria-hidden="true"
+                                    className="absolute inset-x-0 top-0 h-16 bg-cover bg-center opacity-[0.14] pointer-events-none"
+                                    style={{ backgroundImage: `url("${meta.flag}")`, maskImage: 'linear-gradient(to bottom right, black, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom right, black, transparent 70%)' }}
+                                />
+                            )}
+                            <div className="relative flex justify-between items-start gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <span className="font-mono text-zinc-500 font-bold">#{index + 1}</span>
+                                    <img
+                                        src={teamLogos[team.team]}
+                                        alt=""
+                                        className="w-9 h-9 object-contain shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-white text-lg leading-tight truncate">{team.team}</div>
+                                        <LeagueTag meta={meta} />
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const nextMatch = team.nextMatch;
-                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                            const teamParam = analysisMode === 'individual'
-                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                : 'total';
-                                            const opt = operator === 'over' ? 'O' : 'U';
-
-                                            const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-
-                                            if (isAdded) {
-                                                removeFromBet(gameName, selectedStatistic, teamParam);
-                                            } else {
-                                                addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
-                                            }
-                                        }}
-                                        className={`p-2 rounded-lg transition-all ${(() => {
-                                            const nextMatch = team.nextMatch;
-                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                            const teamParam = analysisMode === 'individual'
-                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                : 'total';
-                                            return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-                                        })()
-                                            ? 'bg-red-500/20 text-red-500 border border-red-500/50'
-                                            : 'bg-white/5 text-zinc-400'
-                                            }`}
-                                    >
-                                        {(() => {
-                                            const nextMatch = team.nextMatch;
-                                            const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                            const teamParam = analysisMode === 'individual'
-                                                ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                : 'total';
-                                            const opt = operator === 'over' ? 'O' : 'U';
-                                            return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
-                                        })() ? (
-                                            <X className="w-4 h-4" />
-                                        ) : (
-                                            <Plus className="w-4 h-4" />
-                                        )}
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={slip.toggle}
+                                    aria-label={slip.exact ? `Remove ${team.team} from the slip` : `Add ${team.team} to the slip`}
+                                    className={`shrink-0 p-2 rounded-lg transition ${slip.added
+                                        ? 'bg-red-500/20 text-red-500 border border-red-500/50'
+                                        : 'bg-white/5 text-zinc-400'
+                                        }`}
+                                >
+                                    {slip.exact ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="relative grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
                                     <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Record</span>
                                     <span className="font-mono text-white font-bold">{team.winCount} / {team.totalGames}</span>
@@ -229,14 +230,15 @@ const ResultsList = ({
                                 })}
                                 <button
                                     onClick={() => onTeamClick && onTeamClick(team.team)}
-                                    className="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all"
+                                    className="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition"
                                 >
                                     See next fixture details
                                 </button>
                             </div>
                         )}
                     </div>
-                ))}
+                    );
+                })}
                 {rankedTeams.length === 0 && (
                     <div className="text-center py-8 text-zinc-500">
                         No data available.
@@ -256,7 +258,10 @@ const ResultsList = ({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {rankedTeams.slice(0, displayLimit).map((team, index) => (
+                        {rankedTeams.slice(0, displayLimit).map((team, index) => {
+                            const meta = leagueMeta(leagues, team.league);
+                            const slip = slipFor(team);
+                            return (
                             <React.Fragment key={team.team}>
                                 <tr
                                     className={`hover:bg-white/[0.04] transition-colors group cursor-pointer ${expandedTeam === team.team ? 'bg-emerald-500/[0.03]' : ''}`}
@@ -265,16 +270,19 @@ const ResultsList = ({
                                     <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
                                         #{index + 1}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-3">
                                         <div className="flex items-center gap-3">
                                             <img
                                                 src={teamLogos[team.team]}
-                                                alt={team.team}
-                                                className="w-8 h-8 object-contain"
+                                                alt=""
+                                                className="w-9 h-9 object-contain shrink-0"
                                             />
-                                            <span className="font-bold text-white text-lg group-hover:text-purple-400 transition-colors">
-                                                {team.team}
-                                            </span>
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-white text-lg leading-tight group-hover:text-purple-400 transition-colors">
+                                                    {team.team}
+                                                </div>
+                                                <LeagueTag meta={meta} />
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
@@ -307,48 +315,14 @@ const ResultsList = ({
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const nextMatch = team.nextMatch;
-                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                                const teamParam = analysisMode === 'individual'
-                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                    : 'total';
-                                                const opt = operator === 'over' ? 'O' : 'U';
-
-                                                const isAdded = bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-
-                                                if (isAdded) {
-                                                    removeFromBet(gameName, selectedStatistic, teamParam);
-                                                } else {
-                                                    addToBet(gameName, opt, threshold, selectedStatistic, teamParam);
-                                                }
-                                            }}
-                                            className={`p-2 rounded-lg transition-all ${(() => {
-                                                const nextMatch = team.nextMatch;
-                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                                const teamParam = analysisMode === 'individual'
-                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                    : 'total';
-                                                return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam);
-                                            })()
+                                            onClick={slip.toggle}
+                                            aria-label={slip.exact ? `Remove ${team.team} from the slip` : `Add ${team.team} to the slip`}
+                                            className={`p-2 rounded-lg transition ${slip.added
                                                 ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                                                 : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
                                                 }`}
                                         >
-                                            {(() => {
-                                                const nextMatch = team.nextMatch;
-                                                const gameName = nextMatch ? `${nextMatch.home} vs ${nextMatch.away}` : team.team;
-                                                const teamParam = analysisMode === 'individual'
-                                                    ? (nextMatch ? (nextMatch.home === team.team ? 'home' : 'away') : 'individual')
-                                                    : 'total';
-                                                const opt = operator === 'over' ? 'O' : 'U';
-                                                return bets?.some(b => b.game === gameName && b.stat === selectedStatistic && b.team === teamParam && b.option === opt && b.value === threshold);
-                                            })() ? (
-                                                <X className="w-4 h-4" />
-                                            ) : (
-                                                <Plus className="w-4 h-4 transition-transform" />
-                                            )}
+                                            {slip.exact ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4 transition-transform" />}
                                         </button>
                                     </td>
                                 </tr>
@@ -360,7 +334,7 @@ const ResultsList = ({
                                                     <h4 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Past {team.totalGames} Games Match History</h4>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); onTeamClick && onTeamClick(team.team); }}
-                                                        className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-tighter border-b border-emerald-400/50 pb-0.5 transition-all"
+                                                        className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-tighter border-b border-emerald-400/50 pb-0.5 transition"
                                                     >
                                                         See next fixture details
                                                     </button>
@@ -391,7 +365,8 @@ const ResultsList = ({
                                     </tr>
                                 )}
                             </React.Fragment>
-                        ))}
+                            );
+                        })}
 
                         {rankedTeams.length === 0 && (
                             <tr>

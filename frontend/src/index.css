@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./transitions.css" layer(components);
 
 @theme {
     --font-sans: 'Inter', sans-serif;
@@ -20,7 +21,7 @@
     }
 
     .glass-card {
-        @apply bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-all duration-300;
+        @apply bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 transition duration-300;
     }
 
     .text-gradient {
@@ -111,42 +112,20 @@
         mask-image: linear-gradient(to right, transparent, black 3rem, black calc(100% - 3rem), transparent);
     }
 
-    /* Fire Effect */
+    /* Landing feature cards: the hover state each effect sits on. */
     .hover-fire:hover {
         @apply border-orange-500/50 bg-zinc-800/90;
         box-shadow: 0 0 30px rgba(249, 115, 22, 0.2);
     }
 
-    .fire-particle {
-        @apply absolute bottom-0 left-1/2 rounded-full pointer-events-none opacity-0;
-        background: radial-gradient(circle, rgba(255, 200, 0, 1) 0%, rgba(255, 80, 0, 0.8) 60%, transparent 100%);
-        transform: translateX(-50%);
-    }
-
-    .group:hover .fire-particle {
-        animation: rise-fire 1s ease-out infinite;
-    }
-
-    /* Lightning Effect */
     .hover-lightning:hover {
         @apply border-purple-500/50 bg-zinc-800/90;
         box-shadow: 0 0 30px rgba(168, 85, 247, 0.2);
     }
 
-    .lightning-bolt {
-        @apply absolute bottom-0 left-1/2 pointer-events-none opacity-0;
-        transform: translateX(-50%);
-        filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.8));
-    }
-
-    .group:hover .lightning-bolt {
-        animation: rise-lightning 1.5s ease-out infinite;
-    }
-
-    /* Ice Effect */
     .hover-ice:hover {
         @apply border-cyan-500/50 bg-zinc-800/90;
-        box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+        box-shadow: 0 0 30px rgba(6, 182, 212, 0.2), inset 0 0 24px rgba(34, 211, 238, 0.08);
     }
 }
 
@@ -185,36 +164,284 @@
     }
 }
 
-@keyframes rise-fire {
-    0% {
-        transform: translateX(-50%) translateY(20%) scale(0.5);
-        opacity: 0;
-    }
+/*
+   Landing feature-card hover effects (FeatureCard in LandingPage.jsx).
 
-    20% {
-        opacity: 1;
-    }
+   `.fx` layers fade in on hover and out a little faster on leave, and their
+   particles only run while hovered. Particles carry negative delays, so the
+   stream is already mid-flow the moment the pointer arrives. Transform and
+   opacity only, so all of it stays on the compositor.
+*/
+:root {
+    --fx-fade-out: 200ms;
+}
 
-    100% {
-        transform: translateX(calc(-50% + var(--tx))) translateY(-150%) scale(0);
+.fx {
+    opacity: 0;
+    transition: opacity var(--fx-fade-out) ease-out;
+}
+
+.group:hover .fx {
+    opacity: 1;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Mounted mid-hover (the electric border), so it needs a frame to fade from. */
+@starting-style {
+    .group:hover .fx {
         opacity: 0;
     }
 }
 
-@keyframes rise-lightning {
-    0% {
-        transform: translateX(-50%) translateY(20%) scale(0.3) rotate(var(--rot));
-        opacity: 0;
+.fx,
+.fx * {
+    animation-play-state: paused;
+}
+
+.group:hover .fx,
+.group:hover .fx * {
+    animation-play-state: running;
+}
+
+/* Fire: embers rising and swaying off a flickering heat glow. */
+.fx-ember {
+    position: absolute;
+    bottom: 12px;
+    border-radius: 9999px;
+    background: #fef3c7;
+    box-shadow: 0 0 6px 2px rgb(251 146 60 / 0.9), 0 0 16px 4px rgb(234 88 12 / 0.45);
+    animation: fx-ember var(--dur) cubic-bezier(0.3, 0, 0.7, 1) var(--delay) infinite;
+}
+
+@keyframes fx-ember {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    12% { opacity: 1; }
+    50% { transform: translate(var(--sway), -55px) scale(0.75); }
+    100% { transform: translate(calc(var(--sway) * -0.6), -120px) scale(0.2); opacity: 0; }
+}
+
+.fx-heat {
+    position: absolute;
+    inset: 40% 0 0;
+    border-radius: 0 0 1rem 1rem;
+    background: radial-gradient(ellipse 55% 100% at 50% 100%, rgb(249 115 22 / 0.3), transparent 70%);
+    transform-origin: 50% 100%;
+    animation: fx-heat 1.6s ease-in-out infinite;
+}
+
+@keyframes fx-heat {
+    0%, 100% { opacity: 0.7; transform: scaleY(1); }
+    30% { opacity: 1; transform: scaleY(1.12); }
+    60% { opacity: 0.8; transform: scaleY(0.94); }
+}
+
+.group:hover .fx-flame {
+    transform-origin: 50% 90%;
+    animation: fx-flame 0.9s ease-in-out infinite;
+}
+
+@keyframes fx-flame {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.06, 1.14) rotate(-4deg); }
+    50% { transform: scale(0.97, 1.03) rotate(3deg); }
+    75% { transform: scale(1.04, 1.1) rotate(-2deg); }
+}
+
+/* Lightning: the bolt icon flashes under the electric border. */
+.group:hover .fx-zap {
+    animation: fx-zap 1.8s steps(1, end) infinite;
+}
+
+@keyframes fx-zap {
+    0%, 8%, 14%, 100% { opacity: 1; filter: none; }
+    4%, 11% { opacity: 1; filter: brightness(1.8) drop-shadow(0 0 6px #c084fc); }
+    6% { opacity: 0.4; }
+}
+
+/* Frost: an ice glint sweeps across, sparkles drift down, the shield pulses. */
+.fx-glint {
+    position: absolute;
+    inset: 0 auto 0 -40%;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, rgb(207 250 254 / 0.14), transparent);
+    transform: skewX(-20deg);
+    animation: fx-glint 2.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes fx-glint {
+    0% { transform: translateX(0) skewX(-20deg); }
+    45%, 100% { transform: translateX(480%) skewX(-20deg); }
+}
+
+/* A four-point sparkle: a glowing core with two thin flares crossing it.
+   Ice by default; recolour it by setting --sparkle-core / --sparkle-glow.
+   Fallbacks rather than declarations here: this rule is unlayered, so it would
+   beat the Tailwind classes that set them. */
+.sparkle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, var(--sparkle-core, #ecfeff) 0 18%, var(--sparkle-glow, rgb(34 211 238 / 0.55)) 32%, transparent 60%);
+}
+
+.sparkle::before,
+.sparkle::after {
+    content: "";
+    position: absolute;
+    inset: 4.25px 0;
+    background: linear-gradient(90deg, transparent, var(--sparkle-core, #ecfeff), transparent);
+}
+
+.sparkle::after {
+    transform: rotate(90deg);
+}
+
+.fx-sparkle {
+    animation:
+        fx-fall var(--dur) linear var(--delay) infinite,
+        fx-twinkle 1.3s ease-in-out var(--delay) infinite;
+}
+
+@keyframes fx-fall {
+    from { transform: translate(0, 0) rotate(0deg); }
+    to { transform: translate(var(--sway), 70px) rotate(90deg); }
+}
+
+@keyframes fx-twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+}
+
+.fx-shield-ring {
+    position: absolute;
+    inset: -1px;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(34 211 238 / 0.7);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.group:hover .fx-shield-ring {
+    animation: fx-shield 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.group:hover .fx-shield-ring + .fx-shield-ring {
+    animation-delay: 1s;
+}
+
+@keyframes fx-shield {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.7); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fx-ember,
+    .fx-sparkle,
+    .fx-glint {
+        display: none;
     }
 
-    10% {
-        opacity: 1;
-        transform: translateX(calc(-50% + var(--tx) * 0.2)) translateY(0) scale(1) rotate(var(--rot));
+    .fx *,
+    .group:hover .fx-flame,
+    .group:hover .fx-zap,
+    .group:hover .fx-shield-ring {
+        animation: none !important;
     }
+}
 
-    100% {
-        transform: translateX(calc(-50% + var(--tx))) translateY(-150%) scale(0.5) rotate(var(--rot));
+/* Landing subtitle: Originkit's text-colour-sweep, redone in CSS because the
+   original needs framer-motion. Each character (--i) rises in, starting in the
+   accent colour and settling on the text's own. */
+.colour-sweep > span {
+    display: inline-block;
+    white-space: pre;
+    animation: colour-sweep 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(150ms + var(--i) * 20ms);
+}
+
+@keyframes colour-sweep {
+    from {
         opacity: 0;
+        transform: translateY(12px);
+        color: #34d399;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .colour-sweep > span {
+        animation: none;
+    }
+}
+
+/* Standings (Standings.jsx). A changed points or total value pops in (the
+   transitions.dev number pop-in keyframes); the zone stripes grow in with their
+   rows; the champions pill catches a slow glint. */
+.pop-in {
+    display: inline-block;
+    animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+
+.zone-stripe {
+    animation: zone-in 500ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes zone-in {
+    from {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+}
+
+.champion-pill {
+    background-image: linear-gradient(110deg, transparent 35%, rgba(252, 211, 77, 0.35) 50%, transparent 65%);
+    background-size: 250% 100%;
+    animation: champion-glint 3.5s ease-in-out infinite;
+}
+
+@keyframes champion-glint {
+    0%, 60% { background-position: 150% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pop-in,
+    .zone-stripe,
+    .champion-pill {
+        animation: none;
+    }
+}
+
+/* The add-to-slip card under a price in the probability ladder
+   (ProbabilityLadder.jsx). Opens on hover, or on focus - which is what a tap
+   gives on touch - on the dropdown motion tokens. The 80ms open delay keeps a
+   sweep across the row of prices from flashing every card on the way. */
+.quota-pop {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-4px) scale(var(--dropdown-pre-scale));
+    transition:
+        opacity var(--dropdown-close-dur) var(--dropdown-ease),
+        transform var(--dropdown-close-dur) var(--dropdown-ease),
+        visibility 0s linear var(--dropdown-close-dur);
+}
+
+.quota:hover .quota-pop,
+.quota:focus-within .quota-pop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition:
+        opacity var(--dropdown-open-dur) var(--dropdown-ease) 80ms,
+        transform var(--dropdown-open-dur) var(--dropdown-ease) 80ms,
+        visibility 0s linear 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quota-pop {
+        transform: none;
     }
 }
 
@@ -241,4 +468,83 @@ input[type=number]::-webkit-outer-spin-button {
 
 input[type=number] {
     -moz-appearance: textfield;
+}
+/* League picker: the chosen nation's flag stripes draw in along the top. */
+@keyframes flag-bar {
+    from { transform: scaleX(0); }
+}
+
+/* League picker, nation cards: on hover a ring in the flag's colours spins in
+   around the flag and a stripe bar draws along the bottom. The card sets
+   --flag-ring / --flag-stripes; `.flag-hover` is only on while animations are. */
+.flag-ring,
+.flag-bar {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flag-hover .flag-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    background: var(--flag-ring);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
+    scale: 0.85;
+    transition: opacity 150ms ease-out, scale 150ms ease-out;
+    animation: flag-spin 3s linear infinite paused;
+}
+
+.flag-hover .flag-bar {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 7px;
+    height: 3px;
+    border-radius: 9999px;
+    background: var(--flag-stripes);
+    transform: scaleX(0);
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.flag-hover:hover .flag-ring {
+    opacity: 1;
+    scale: 1;
+    animation-play-state: running;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flag-hover:hover .flag-bar {
+    opacity: 1;
+    transform: scaleX(1);
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes flag-spin {
+    to { rotate: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flag-hover .flag-ring {
+        animation: none;
+    }
+}
+
+/* "Select Your League": its trophy redraws on hover, like the intro draws it. */
+.group:hover .trophy-redraw path {
+    stroke-dasharray: 1;
+    animation: trophy-redraw 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes trophy-redraw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .group:hover .trophy-redraw path {
+        animation: none;
+    }
 }

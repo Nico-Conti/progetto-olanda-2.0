@@ -8,7 +8,7 @@ import { STAT_CONFIG } from '../utils/statistics';
 
 import StatisticSelector from './StatisticSelector';
 
-const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, matchData, notStartedLeagues = [], fixturesData, onMatchClick, teamLogos, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
+const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixturesData, onMatchClick, teamLogos, leagues, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
     const [analysisMode, setAnalysisMode] = useState('total'); // 'total' or 'individual'
     const [operator, setOperator] = useState('over');
@@ -61,6 +61,13 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
 
         const processedStats = processData(filteredMatchData, selectedStatistic);
         const teams = Object.keys(processedStats);
+        // Which league each team plays in, for the row's league tag. The next
+        // fixture's league wins below; this covers a team with none scheduled.
+        const leagueOf = new Map();
+        filteredMatchData.forEach(m => {
+            leagueOf.set(m.squadre.home, m.league);
+            leagueOf.set(m.squadre.away, m.league);
+        });
         const results = [];
 
         teams.forEach(team => {
@@ -118,7 +125,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                     nextMatch = unplayed[0];
                 }
             }
-            return { ...res, nextMatch };
+            return { ...res, nextMatch, league: nextMatch?.league ?? leagueOf.get(res.team) };
         });
     }, [matchData, fixturesData, selectedStatistic, operator, threshold, nGames, selectedLeague, analysisMode]);
 
@@ -159,9 +166,6 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                 title={appTitle}
                 onLogoClick={onBack}
                 showSound={true}
-                showAnimationToggle={true}
-                isAnimationEnabled={isAnimationEnabled}
-                onToggleAnimation={onToggleAnimation}
                 pageName={pageName}
                 showBetSlip={true}
                 betsCount={bets.length}
@@ -224,6 +228,7 @@ const HighestWinningFactor = ({ onBack, isAnimationEnabled, onToggleAnimation, m
                             setNGames={setNGames}
                             maxGames={maxGames}
                             teamLogos={teamLogos}
+                            leagues={leagues}
                             bets={bets}
                             addToBet={addToBet}
                             removeFromBet={removeFromBet}

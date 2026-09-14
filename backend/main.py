@@ -129,18 +129,6 @@ MATCH_COLUMNS = ",".join([
     "home_blocked_shots", "away_blocked_shots",
 ])
 
-# The Gemini prose the UI shows on a match detail. Deliberately NOT part of
-# MATCH_COLUMNS: it is 27% of the /matches payload gzipped, only 452 of ~3100
-# rows carry any, and nothing renders it until a match is opened. /matches
-# therefore stays on the critical path and the prose follows on /matches/analysis
-# once the app has painted. Current column names - "tl dr corner" /
-# "detailed comment corner" are the pre-rename ones and do not exist.
-MATCH_ANALYSIS_COLUMNS = ",".join([
-    # The join key has to match what the frontend builds from a match row.
-    "home_team", "away_team", "league", "season", "match_date",
-    "summary_match", "detail_corner",
-])
-
 
 def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None):
     """Every row, paged. `gte` is an optional (column, value) floor, pushed to
@@ -204,22 +192,6 @@ def get_matches():
             return fetch_all_data("matches")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/matches/analysis")
-def get_match_analysis():
-    """
-    The Gemini prose for the matches that have any, keyed so the frontend can
-    join it onto rows it already holds. Split off /matches so the first paint
-    does not wait on text nothing has rendered yet.
-    """
-    try:
-        rows = fetch_all_data("matches", columns=MATCH_ANALYSIS_COLUMNS)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    # Most rows have no analysis at all. Filtering here rather than in
-    # PostgREST keeps the query trivial, and the wire saving is the point.
-    return [r for r in rows if r.get("summary_match") or r.get("detail_corner")]
 
 
 # Everything the UI reads off a fixture. The table also carries prediction_*
