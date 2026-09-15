@@ -7,7 +7,7 @@
  */
 
 export const STAT_OPTIONS = [
-    { value: 'main', label: 'Main' },
+    { value: 'main', label: '1X2' },
     { value: 'corners', label: 'Corners' },
     { value: 'goals', label: 'Goals' },
     { value: 'shots', label: 'Shots' },
@@ -115,21 +115,21 @@ export const PRICED_STAT_OPTIONS = STAT_OPTIONS.filter(
  * "1x + ov" and these can be offered like any other market.
  */
 export const SLIP_ONLY_OPTIONS = [
-    { value: 'gg_ng', label: 'Both Teams to Score' },
-    { value: 'multigol', label: 'Multigoal' },
-    { value: 'multigol_1h', label: 'Multigoal 1st Half' },
-    { value: 'multigol_2h', label: 'Multigoal 2nd Half' },
-    { value: 'multigol_home', label: 'Multigoal Home' },
-    { value: 'multigol_away', label: 'Multigoal Away' },
-    { value: 'combo_1x2_ggng', label: 'Result + Both Score' },
-    { value: 'combo_1x_ggng', label: 'Home/Draw + Both Score' },
-    { value: 'combo_12_ggng', label: 'Home/Away + Both Score' },
-    { value: 'combo_x2_ggng', label: 'Draw/Away + Both Score' },
-    { value: 'combo_1x2_ou', label: 'Result + Goals O/U' },
-    { value: 'combo_1x_ou', label: 'Home/Draw + Goals O/U' },
-    { value: 'combo_12_ou', label: 'Home/Away + Goals O/U' },
-    { value: 'combo_x2_ou', label: 'Draw/Away + Goals O/U' },
-    { value: 'combo_ou_ggng', label: 'Goals O/U + Both Score' },
+    { value: 'gg_ng', label: 'GG/NG' },
+    { value: 'multigol', label: 'Multigol' },
+    { value: 'multigol_1h', label: 'Multigol 1st Half' },
+    { value: 'multigol_2h', label: 'Multigol 2nd Half' },
+    { value: 'multigol_home', label: 'Multigol Home' },
+    { value: 'multigol_away', label: 'Multigol Away' },
+    { value: 'combo_1x2_ggng', label: '1X2 + GG/NG' },
+    { value: 'combo_1x_ggng', label: '1X + GG/NG' },
+    { value: 'combo_12_ggng', label: '12 + GG/NG' },
+    { value: 'combo_x2_ggng', label: 'X2 + GG/NG' },
+    { value: 'combo_1x2_ou', label: '1X2 + U/O' },
+    { value: 'combo_1x_ou', label: '1X + U/O' },
+    { value: 'combo_12_ou', label: '12 + U/O' },
+    { value: 'combo_x2_ou', label: 'X2 + U/O' },
+    { value: 'combo_ou_ggng', label: 'U/O + GG/NG' },
 ];
 
 const SLIP_ONLY = new Set(SLIP_ONLY_OPTIONS.map((o) => o.value));
@@ -145,11 +145,18 @@ export const isSlipOnly = (statistic) => SLIP_ONLY.has(statistic);
  * token covers all fifteen markets with ten words, and keeps working if the book
  * adds another combination of the same parts. Anything unrecognised (a multigol
  * band, "1-2") is passed through, which is what makes that safe.
+ *
+ * The names are the BOOKMAKER'S, not plain English: `1` / `X` / `2` rather than
+ * Home / Draw / Away, `GG` / `NG` rather than Both score / Not both. Someone
+ * about to place this bet is going to read it again on domusbet's own slip a
+ * second later, and two vocabularies for one selection is how a person clicks
+ * the wrong outcome. Over / Under stay spelled out because that is what the book
+ * writes beside a line too.
  */
 const SELECTION_TOKENS = {
-    '1': 'Home', x: 'Draw', '2': 'Away',
-    '1x': 'Home/Draw', '12': 'Home/Away', x2: 'Draw/Away',
-    gg: 'Both score', ng: 'Not both',
+    '1': '1', x: 'X', '2': '2',
+    '1x': '1X', '12': '12', x2: 'X2',
+    gg: 'GG', ng: 'NG',
     ov: 'Over', un: 'Under', over: 'Over', under: 'Under',
     yes: 'Yes', no: 'No',
 };
@@ -453,10 +460,14 @@ export const statPair = (match, statKey) => {
 };
 
 /** A slip leg's market and pick as the bet slip prints them; the slip history shows the same. */
+// The 'main' builder covers two markets a book keeps apart, so name the one the
+// bet is actually in rather than the group it was picked from.
 export const betMarket = (bet) =>
-    bet.stat === 'main' ? 'Match Result'
+    bet.stat === 'main' ? (/^(gg|ng)$/i.test(bet.value) ? 'GG/NG' : '1X2')
         : isSlipOnly(bet.stat) ? getStatLabel(bet.stat)
-            : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat');
+            // getStatLabel, not the raw column: "Card Points", not "card points".
+            : (bet.team !== 'total' ? `${bet.team[0].toUpperCase()}${bet.team.slice(1)} ` : '')
+              + (getStatLabel(bet.stat) || 'Stat');
 
 // A slip-only bet's `option` is the book's own outcome name ("1x + ov"), not the
 // 'O'/'U' the over/under path uses, so it needs the composite formatter. Reading
