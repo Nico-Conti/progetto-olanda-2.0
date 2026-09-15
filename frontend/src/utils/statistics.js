@@ -108,9 +108,11 @@ export const PRICED_STAT_OPTIONS = STAT_OPTIONS.filter(
  * `value` doubles as the `market` column in odds_snapshots, so no mapping table
  * is needed and the two cannot drift apart.
  *
- * Combos are deliberately absent: their outcomes come back as the book's own
- * codes (`ce`) with no labels anywhere in domusbet's bootstrap, so they would
- * render as "selection 1". They belong here once there is a table of real names.
+ * Combos were absent until 2026-09-15 for want of outcome names - `eqs[].dsl` is
+ * null and the labels are not in the JS bundle - so they would have rendered as
+ * "selection 1". The names ARE in the book's own bootstrap, and `outcome_names()`
+ * in domusbet.py now resolves them at ingest, so `selection` arrives as
+ * "1x + ov" and these can be offered like any other market.
  */
 export const SLIP_ONLY_OPTIONS = [
     { value: 'gg_ng', label: 'Both Teams to Score' },
@@ -119,6 +121,15 @@ export const SLIP_ONLY_OPTIONS = [
     { value: 'multigol_2h', label: 'Multigoal 2nd Half' },
     { value: 'multigol_home', label: 'Multigoal Home' },
     { value: 'multigol_away', label: 'Multigoal Away' },
+    { value: 'combo_1x2_ggng', label: 'Result + Both Score' },
+    { value: 'combo_1x_ggng', label: 'Home/Draw + Both Score' },
+    { value: 'combo_12_ggng', label: 'Home/Away + Both Score' },
+    { value: 'combo_x2_ggng', label: 'Draw/Away + Both Score' },
+    { value: 'combo_1x2_ou', label: 'Result + Goals O/U' },
+    { value: 'combo_1x_ou', label: 'Home/Draw + Goals O/U' },
+    { value: 'combo_12_ou', label: 'Home/Away + Goals O/U' },
+    { value: 'combo_x2_ou', label: 'Draw/Away + Goals O/U' },
+    { value: 'combo_ou_ggng', label: 'Goals O/U + Both Score' },
 ];
 
 const SLIP_ONLY = new Set(SLIP_ONLY_OPTIONS.map((o) => o.value));
@@ -126,10 +137,35 @@ const SLIP_ONLY = new Set(SLIP_ONLY_OPTIONS.map((o) => o.value));
 /** True for a market that carries prices but no prediction. */
 export const isSlipOnly = (statistic) => SLIP_ONLY.has(statistic);
 
-/** Human name for a selection code, where the book's own is unusable. */
-export const SELECTION_LABELS = {
-    gg: 'Both score', ng: 'Not both', yes: 'Yes', no: 'No',
+/**
+ * Human name for one token of a selection.
+ *
+ * A slip-market selection is the book's own name, lower-cased at ingest, and a
+ * combo's is composite - "1x + ov", "gg+un". Splitting on '+' and naming each
+ * token covers all fifteen markets with ten words, and keeps working if the book
+ * adds another combination of the same parts. Anything unrecognised (a multigol
+ * band, "1-2") is passed through, which is what makes that safe.
+ */
+const SELECTION_TOKENS = {
+    '1': 'Home', x: 'Draw', '2': 'Away',
+    '1x': 'Home/Draw', '12': 'Home/Away', x2: 'Draw/Away',
+    gg: 'Both score', ng: 'Not both',
+    ov: 'Over', un: 'Under', over: 'Over', under: 'Under',
+    yes: 'Yes', no: 'No',
 };
+
+/** "1x + ov" at 2.5 -> "Home/Draw + Over 2.5". The line belongs to the O/U part. */
+export const formatSelection = (selection, line = null) =>
+    String(selection ?? '')
+        .split('+')
+        .map((raw) => {
+            const token = raw.trim().toLowerCase();
+            const label = SELECTION_TOKENS[token] ?? raw.trim();
+            const takesLine = token === 'ov' || token === 'un'
+                || token === 'over' || token === 'under';
+            return takesLine && line != null ? `${label} ${line}` : label;
+        })
+        .join(' + ');
 
 /**
  * Stats whose per-match values are spiky enough that the median is a better
@@ -142,6 +178,9 @@ export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards', 
 
 export const getStatLabel = (statistic) =>
     STAT_OPTIONS.find(o => o.value === statistic)?.label
+    // A slip-only market is not in STAT_OPTIONS on purpose (nothing models it),
+    // but it still has to have a name wherever a bet is written out.
+    ?? SLIP_ONLY_OPTIONS.find(o => o.value === statistic)?.label
     ?? String(statistic ?? '').replace(/_/g, ' ');
 
 /**
@@ -415,6 +454,15 @@ export const statPair = (match, statKey) => {
 
 /** A slip leg's market and pick as the bet slip prints them; the slip history shows the same. */
 export const betMarket = (bet) =>
-    bet.stat === 'main' ? 'Match Result' : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat');
+    bet.stat === 'main' ? 'Match Result'
+        : isSlipOnly(bet.stat) ? getStatLabel(bet.stat)
+            : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat');
+
+// A slip-only bet's `option` is the book's own outcome name ("1x + ov"), not the
+// 'O'/'U' the over/under path uses, so it needs the composite formatter. Reading
+// it the other way rendered every combo as "Under <line>" - the same words for
+// four different bets.
 export const betPick = (bet) =>
-    bet.stat === 'main' ? bet.value : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`;
+    bet.stat === 'main' ? bet.value
+        : isSlipOnly(bet.stat) ? formatSelection(bet.option, bet.value)
+            : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`;

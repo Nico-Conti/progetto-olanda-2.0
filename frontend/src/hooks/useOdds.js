@@ -197,6 +197,13 @@ export const useOdds = () => {
         const want = fixtureKey(home, away, market);
         return rows
             .filter((r) => fixtureKey(r.home_team, r.away_team, r.market) === want)
+            // A bare number is the book's raw outcome code, which is what these
+            // markets stored before `outcome_names()` resolved them at ingest.
+            // Nothing can render "1" as a bet, and the same outcome now arrives
+            // under its real name as a separate row, so showing both would offer
+            // one readable button and one meaningless one. They age out on their
+            // own: --prune-slip clears a slip market once its match is played.
+            .filter((r) => !/^\d+$/.test(String(r.selection ?? '')))
             .map((r) => ({ line: r.line, selection: r.selection, price: Number(r.price),
                            ref: r.selection_ref }))
             .sort((a, b) => String(a.line ?? '').localeCompare(String(b.line ?? ''))

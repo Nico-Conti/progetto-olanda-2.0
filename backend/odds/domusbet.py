@@ -123,12 +123,61 @@ SLIP_MARKETS = {
     12562: ("combo_ou_ggng", "line"),
 }
 
-# Outcome names where they are unambiguous. Anything absent keeps the book's own
-# code rather than being guessed at.
+# Outcome names, for markets whose shape names them without needing the book.
+# Everything else is looked up in `outcome_names()` below.
 SLIP_SELECTIONS = {
     "range": {1: "yes", 2: "no"},
-    "gg_ng": {1: "gg", 2: "ng"},
 }
+
+
+# The book's own outcome names, read rather than guessed at.
+#
+# `eqs[].dsl` is null on every per-event response and the labels are not in the
+# app's JS bundle either, which is why a combo's outcome used to be stored as the
+# raw code ("1", "2") and why combos were kept out of the UI entirely - "selection
+# 1" is not something anyone can bet on knowingly.
+#
+# They are in the app's OWN bootstrap. `getStaticData` with empty signatures
+# returns the full aggregate catalogue, and each aggregate carries the markets it
+# displays: `ags["1"].pr[].scs[]` is a market, `.eas[]` its outcomes as
+# `{ce, ds}`. Football is sport 1. The same market appears under several
+# aggregates with different subsets of its outcomes - `combo_ou_ggng` names two
+# under one and four under another - so the map is a UNION over all of them, not
+# the first hit.
+#
+# Lower-cased to match the vocabulary already stored ("over", "under", "gg"), so
+# gg_ng keeps writing exactly what it wrote before and `odds_snapshot_uniq` does
+# not see a new identity for a row that has not changed.
+_OUTCOME_NAMES = None
+
+
+def outcome_names():
+    """(market code, esito code) -> the book's own name for that outcome."""
+    global _OUTCOME_NAMES
+    if _OUTCOME_NAMES is not None:
+        return _OUTCOME_NAMES
+
+    _OUTCOME_NAMES = {}
+    try:
+        # Empty signatures mean "I have nothing cached", so it answers in full.
+        # systemCode / lingua / hash already ride along in COMMON.
+        data = get("getStaticData", signatureAggregate="", signatureMacrogruppi="",
+                   signatureConfiguration="", signatureLabels="",
+                   betTemplatesSignature="", localStorageVersion="", isMobile="false")
+        sport = json.loads((data or {}).get("aggr") or "{}").get("ags", {})
+        for aggregate in (sport.get(str(FOOTBALL_SPORT_ID)) or {}).get("pr") or []:
+            for market in aggregate.get("scs") or []:
+                for esito in market.get("eas") or []:
+                    name = " ".join(str(esito.get("ds") or "").split()).lower()
+                    if name:
+                        _OUTCOME_NAMES.setdefault((market.get("cs"), esito.get("ce")), name)
+    except (requests.RequestException, ValueError) as exc:
+        # Not fatal: an unnamed outcome falls back to the book's code, which is
+        # exactly the behaviour that shipped before this existed. Losing a whole
+        # capture window over a cosmetic lookup would be the worse trade.
+        print(f"  note: outcome names unavailable ({exc}); selections keep their codes",
+              file=sys.stderr)
+    return _OUTCOME_NAMES
 
 ALL_MARKETS = -1                  # only used by --coverage, which wants everything
 REQUEST_PAUSE = 1.0
@@ -413,16 +462,21 @@ def slip_rows(event, market, league, season, home, away, kickoff):
         line = None
 
     names = SLIP_SELECTIONS.get(name) or SLIP_SELECTIONS.get(shape) or {}
+    book_names = outcome_names()
     rows = []
     for esito in market.get("eqs") or []:
         price = (esito.get("q") or 0) / 100
-        # Same rule as the totals path: a price under 1.01 is a suspended or
-        # placeholder selection, not a quote. Combo markets are full of 1.01
-        # padding, so this does most of the filtering here.
-        if price < 1.01:
+        # A price of 1.01 or less is a suspended or placeholder selection, not a
+        # quote. Note `<=`, not `<`: combo markets are padded with EXACTLY 1.01,
+        # so the strict test kept every one of them - 8,040 of 26,264 stored
+        # combo rows, 31%, were padding that this comment claimed was filtered.
+        # Scoped to the slip path on purpose: multigol and gg_ng have no 1.01
+        # rows at all, while the modelled markets have 467 that are genuine
+        # quotes on extreme lines, and those are in the priced history.
+        if price <= 1.01:
             continue
         ce = esito.get("ce")
-        selection = names.get(ce, str(ce))
+        selection = names.get(ce) or book_names.get((market.get("cs"), ce)) or str(ce)
         if band:
             # Only the band HAPPENING is worth storing. ce=2 is "not 1-2", which
             # nobody plays and which the book prices at a flat 1.01 placeholder

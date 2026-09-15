@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { isSlipOnly, SELECTION_LABELS } from '../utils/statistics';
+import { isSlipOnly, formatSelection } from '../utils/statistics';
 
 /**
  * The add/remove button's icon: Plus and X cross-fade (transitions.dev icon
@@ -264,7 +264,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                                     : 'bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800 hover:text-white'
                             }`}
                         >
-                            {SELECTION_LABELS[o.selection] ?? o.selection}
+                            {formatSelection(o.selection, o.line)}
                             <span className={`ml-1.5 font-mono ${on ? 'text-white' : 'text-emerald-400'}`}>
                                 {o.price.toFixed(2)}
                             </span>
