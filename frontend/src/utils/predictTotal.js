@@ -598,7 +598,3 @@ const withDistribution = (model, prediction) => {
         distribution: () => distribution(mu, r),
     };
 };
-
-/** True when `statistic` is predicted from something other than itself. */
-export const isDerived = (statistic) =>
-    Boolean(PREDICTOR_MODEL[resolveStatKey(statistic)]);

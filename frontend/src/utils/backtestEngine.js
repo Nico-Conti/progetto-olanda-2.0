@@ -89,37 +89,3 @@ export const sortMatchesChronologically = (matches, statistic) => {
             return getG(a.giornata) - getG(b.giornata);
         });
 };
-
-/**
- * Walks `matches` oldest-to-newest, calling `onMatch(match, statsBeforeMatch)`
- * for each one. The stats passed in contain history strictly *before* that
- * match, so there is no lookahead.
- */
-export const walkForward = (matches, statistic, onMatch) => {
-    const acc = createStatsAccumulator();
-    for (let i = 0; i < matches.length; i++) {
-        onMatch(matches[i], acc, i);
-        addMatchToStats(acc, matches[i], statistic);
-    }
-    return acc;
-};
-
-/** The over/under line a prediction implies, given the user's betting params. */
-export const impliedLineFor = (predictionTotal, { softBuffer = 0, maxLineCap = null } = {}) => {
-    let adjusted = predictionTotal;
-    if (softBuffer > 0) adjusted -= softBuffer;
-
-    let line = Math.round(adjusted) - 0.5;
-    let isCapped = false;
-    if (maxLineCap !== null && maxLineCap > 0 && line > maxLineCap) {
-        line = maxLineCap;
-        isCapped = true;
-    }
-    return { line, isCapped };
-};
-
-export const actualTotalFor = (match, statistic) => {
-    const s = match.stats?.[resolveStatKey(statistic)];
-    if (!s) return null;
-    return Number(s.home) + Number(s.away);
-};

@@ -9,13 +9,6 @@
 /** Newest first. */
 export const sortSeasons = (seasons) => [...seasons].sort((a, b) => String(b).localeCompare(String(a)));
 
-/** Every distinct season present in a set of rows, newest first. */
-export const collectSeasons = (...rowSets) => {
-    const seen = new Set();
-    rowSets.forEach(rows => (rows || []).forEach(r => r?.season && seen.add(r.season)));
-    return sortSeasons([...seen]);
-};
-
 /** Seasons present for one league, newest first. */
 export const seasonsForLeague = (rows, league) =>
     sortSeasons([...new Set((rows || []).filter(r => r?.league === league && r?.season).map(r => r.season))]);
@@ -49,9 +42,4 @@ export const modelSeasonsForLeague = (matches, fixtures, league) => {
     return new Set([latest, previous].filter(Boolean));
 };
 
-/** Display form: "2025/2026" -> "25/26"; "2026" stays "2026". */
-export const shortSeason = (season) => {
-    const s = String(season ?? '');
-    const m = s.match(/^(\d{4})\/(\d{4})$/);
-    return m ? `${m[1].slice(2)}/${m[2].slice(2)}` : s;
-};
+

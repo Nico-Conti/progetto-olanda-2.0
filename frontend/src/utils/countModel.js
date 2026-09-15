@@ -119,13 +119,6 @@ export const fitDispersion = (samples, { minSamples = 30 } = {}) => {
     return best;
 };
 
-/**
- * Every line a book might post for this statistic, priced from one distribution.
- * Handy for display; pricing a specific offer should call probOver directly.
- */
-export const priceLadder = (mu, r, lines) =>
-    (lines || []).map(line => ({ line, over: probOver(mu, line, r), under: 1 - probOver(mu, line, r) }));
-
 /** Expected profit per unit staked at decimal odds `price`, given probability `p`. */
 export const expectedValue = (p, price) =>
     (p == null || !(price > 1)) ? null : p * (price - 1) - (1 - p);

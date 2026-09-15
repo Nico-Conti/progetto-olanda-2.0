@@ -33,9 +33,6 @@ export const STAT_OPTIONS = [
     { value: 'blocked_shots', label: 'Interceptions' },
 ];
 
-/** Options for pickers that analyse a concrete stat and cannot express 'main'. */
-export const CONCRETE_STAT_OPTIONS = STAT_OPTIONS.filter(o => o.value !== 'main');
-
 /**
  * 'main' is a UI concept (the 1X2 / both-teams-to-score market), not a scraped
  * column. Everything that reads `match.stats[key]` must resolve it to 'goals'
