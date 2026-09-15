@@ -162,34 +162,73 @@ export const teamsOf = (game) => {
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
 /**
- * The played match a leg refers to.
+ * How far a stored kickoff may sit from the leg's own before they stop being the
+ * same fixture. Generous, because a postponement genuinely moves a match by
+ * weeks and grading it late is still correct; far short of a year, which is what
+ * separates this fixture from the same one last season.
+ */
+export const MAX_KICKOFF_DRIFT_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** A slip can be saved a little after kickoff, but not before the fixture exists. */
+const SAVE_GRACE_MS = 12 * 60 * 60 * 1000;
+
+const time = (v) => {
+    const t = new Date(v ?? NaN).getTime();
+    return Number.isNaN(t) ? null : t;
+};
+
+/**
+ * The played match a leg refers to, or null.
  *
- * `(home, away)` is NOT a key - a two-legged tie puts the same ordered pair on
- * the pitch twice, 320 Belgian rows over 240 distinct pairs - so the leg's own
- * kickoff decides between candidates when it has one. Legs saved before that
- * field existed carry no date, and for those the nearest meeting on or after
- * the slip's own timestamp is the best available answer; it is right for every
- * ordinary fixture and can only be wrong where the same pair meets twice.
+ * The hard part is not finding a candidate, it is REFUSING one. "Falkirk vs
+ * Hearts" names a fixture that recurs every season, so the teams alone will
+ * always find something once a league has any history - and on 2026-09-15 that
+ * is exactly what happened: three unplayed Scottish fixtures were graded against
+ * last season's meetings and the slip was declared lost before a ball was
+ * kicked. Falkirk v Hearts had ONE stored match, from December 2025, and it was
+ * returned without any check at all; Hibernian v Kilmarnock had two and the
+ * nearest-wins rule picked April's.
+ *
+ * This is the same mistake the Predictor, HighestWinningFactor and
+ * useUpcomingFixtures each made in turn - comparing a fixture against history
+ * without checking WHICH season - and the lesson is the one CLAUDE.md already
+ * states: matching on team names alone is never enough. The leg carries its own
+ * kickoff for this, so the match must be near it; and a leg saved before that
+ * field existed has only the slip's timestamp, which at least rules out a
+ * fixture played before the bet was made.
+ *
+ * `(home, away)` is not a key either - a two-legged tie puts the same ordered
+ * pair on the pitch twice, 320 Belgian rows over 240 distinct pairs - so among
+ * candidates that pass the test the nearest kickoff wins.
  */
 export const matchForLeg = (leg, matches, savedAt = null) => {
     const teams = teamsOf(leg?.game);
     if (!teams || !matches?.length) return null;
-    const candidates = matches.filter(m =>
-        norm(m.squadre?.home) === norm(teams.home)
-        && norm(m.squadre?.away) === norm(teams.away));
-    if (candidates.length <= 1) return candidates[0] ?? null;
 
-    const anchor = leg.date ? new Date(leg.date) : (savedAt ? new Date(savedAt) : null);
-    if (!anchor || Number.isNaN(anchor.getTime())) return null;
-    // Nearest by kickoff when the leg names one; otherwise the first meeting at
-    // or after the slip was saved, since you cannot bet on a played match.
-    const dated = candidates.filter(m => m.date).map(m => ({ m, t: new Date(m.date) }));
-    if (!dated.length) return null;
-    if (leg.date) {
-        return dated.reduce((best, c) =>
-            Math.abs(c.t - anchor) < Math.abs(best.t - anchor) ? c : best).m;
+    // A match with no stored date cannot be shown to be this fixture, so it is
+    // not a candidate. That is a refusal, not a miss.
+    const candidates = matches
+        .filter(m => norm(m.squadre?.home) === norm(teams.home)
+                  && norm(m.squadre?.away) === norm(teams.away))
+        .map(m => ({ m, t: time(m.date) }))
+        .filter(c => c.t != null);
+    if (!candidates.length) return null;
+
+    const legAt = time(leg?.date);
+    if (legAt != null) {
+        const best = candidates.reduce((a, b) =>
+            Math.abs(b.t - legAt) < Math.abs(a.t - legAt) ? b : a);
+        return Math.abs(best.t - legAt) <= MAX_KICKOFF_DRIFT_MS ? best.m : null;
     }
-    const after = dated.filter(c => c.t >= anchor).sort((a, b) => a.t - b.t);
+
+    // No kickoff on the leg: the best available answer is the first meeting at
+    // or after the slip was saved, because a bet cannot be struck on a match
+    // that has already finished.
+    const savedAtMs = time(savedAt);
+    if (savedAtMs == null) return null;
+    const after = candidates
+        .filter(c => c.t >= savedAtMs - SAVE_GRACE_MS)
+        .sort((a, b) => a.t - b.t);
     return after.length ? after[0].m : null;
 };
 

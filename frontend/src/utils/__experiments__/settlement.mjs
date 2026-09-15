@@ -101,9 +101,11 @@ const one = (l, m) => settleLeg(l, m);
     const played = match(2, 1);
     const unplayed = { squadre: { home: 'Roma', away: 'Como' }, date: '2026-09-20T18:00:00Z', stats: {} };
     const matches = [played, unplayed];
-    const win = { game: 'Milan vs Lecce', stat: 'corners', option: 'O', value: 9.5, team: 'total', price: 2 };
-    const lose = { game: 'Milan vs Lecce', stat: 'corners', option: 'U', value: 9.5, team: 'total', price: 2 };
-    const open = { game: 'Roma vs Como', stat: 'corners', option: 'O', value: 9.5, team: 'total', price: 2 };
+    // Legs carry their fixture's kickoff, which is what ties them to a match.
+    const at = '2026-09-13T18:00:00Z';
+    const win = { game: 'Milan vs Lecce', date: at, stat: 'corners', option: 'O', value: 9.5, team: 'total', price: 2 };
+    const lose = { game: 'Milan vs Lecce', date: at, stat: 'corners', option: 'U', value: 9.5, team: 'total', price: 2 };
+    const open = { game: 'Roma vs Como', date: '2026-09-20T18:00:00Z', stat: 'corners', option: 'O', value: 9.5, team: 'total', price: 2 };
 
     // One unknown leg leaves the whole accumulator pending...
     assert.equal(settleSlip({ legs: [win, open] }, matches).status, 'pending');
@@ -119,7 +121,7 @@ const one = (l, m) => settleLeg(l, m);
 
     // A void leg is refunded: it leaves the accumulator at 1.00 rather than
     // losing it, so the stored ticket price has to be rebuilt from the legs.
-    const push = { game: 'Milan vs Lecce', stat: 'corners', option: 'O', value: 10, team: 'total', price: 2 };
+    const push = { game: 'Milan vs Lecce', date: at, stat: 'corners', option: 'O', value: 10, team: 'total', price: 2 };
     const mixed = settleSlip({ legs: [win, push] }, matches);
     assert.equal(mixed.status, WON);
     assert.deepEqual(slipReturn({ stake: 10, odds: 4, legs: [win, push] }, mixed),
@@ -130,6 +132,53 @@ const one = (l, m) => settleLeg(l, m);
     // No stake means no ledger entry, however the legs landed.
     assert.equal(slipReturn({ stake: null, odds: 2.5, legs: [win] },
         settleSlip({ legs: [win] }, matches)), null);
+}
+
+// ---------------------------------- an unplayed fixture must NOT be graded
+{
+    // The 2026-09-15 failure, reproduced. "Falkirk vs Hearts" recurs every
+    // season, so the teams alone always find something once a league has any
+    // history - and last season's 0-2 graded this week's unplayed fixture as a
+    // losing Over 2.5. The slip read LOST before a ball was kicked.
+    const lastSeason = {
+        squadre: { home: 'Falkirk', away: 'Hearts' },
+        date: '2025-12-12T23:00:00Z',
+        stats: { goals: { home: 0, away: 2 }, corners: { home: 5, away: 6 } },
+    };
+    const thisWeek = { game: 'Falkirk vs Hearts', date: '2026-09-16T18:00:00Z',
+                       stat: 'goals', option: 'O', value: 2.5, team: 'total' };
+    assert.equal(matchForLeg(thisWeek, [lastSeason]), null, 'last season is not this fixture');
+    assert.equal(settleLeg(thisWeek, matchForLeg(thisWeek, [lastSeason])), null);
+    assert.equal(settleSlip({ legs: [thisWeek] }, [lastSeason]).status, 'pending');
+
+    // Two stored meetings, both from last season, still must not be used.
+    const aug = { squadre: { home: 'Hibernian', away: 'Kilmarnock' }, date: '2025-08-09T22:00:00Z',
+                  stats: { goals: { home: 2, away: 2 } } };
+    const apr = { squadre: { home: 'Hibernian', away: 'Kilmarnock' }, date: '2026-04-04T14:00:00Z',
+                  stats: { goals: { home: 3, away: 0 } } };
+    const upcoming = { game: 'Hibernian vs Kilmarnock', date: '2026-09-16T18:00:00Z',
+                       stat: 'goals', option: 'O', value: 3.5, team: 'total' };
+    assert.equal(matchForLeg(upcoming, [aug, apr]), null, 'nearest is still five months away');
+
+    // Once it IS played, the same leg settles against it.
+    const played = { squadre: { home: 'Falkirk', away: 'Hearts' }, date: '2026-09-16T18:00:00Z',
+                     stats: { goals: { home: 2, away: 1 } } };
+    assert.equal(matchForLeg(thisWeek, [lastSeason, played]), played);
+    assert.equal(settleLeg(thisWeek, played), WON);
+
+    // A postponement moves a kickoff by weeks and is still the same fixture.
+    const postponed = { squadre: { home: 'Falkirk', away: 'Hearts' }, date: '2026-10-08T18:00:00Z',
+                        stats: { goals: { home: 2, away: 1 } } };
+    assert.equal(matchForLeg(thisWeek, [lastSeason, postponed]), postponed);
+
+    // A leg with no kickoff (saved before that field existed) may not reach
+    // backwards past the moment the slip was saved.
+    const undated = { game: 'Falkirk vs Hearts', stat: 'goals', option: 'O', value: 2.5, team: 'total' };
+    assert.equal(matchForLeg(undated, [lastSeason], '2026-09-15T12:00:00Z'), null);
+    assert.equal(matchForLeg(undated, [lastSeason, played], '2026-09-15T12:00:00Z'), played);
+    // A match with no stored date can never be shown to be this fixture.
+    assert.equal(matchForLeg({ game: 'Falkirk vs Hearts', date: '2026-09-16T18:00:00Z' },
+        [{ squadre: { home: 'Falkirk', away: 'Hearts' }, date: null, stats: {} }]), null);
 }
 
 // ------------------------------------------------- picking the right fixture

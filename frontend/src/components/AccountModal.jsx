@@ -294,12 +294,6 @@ const HistoryTab = ({ matchData }) => {
             .then(({ data, error }) => { setSlips(data ?? []); setError(error?.message); });
     }, []);
 
-    const setStatus = async (id, status) => {
-        const { error } = await supabase.from('slips').update({ status }).eq('id', id);
-        if (error) return setError(error.message);
-        setSlips(prev => prev.map(s => (s.id === id ? { ...s, status } : s)));
-    };
-
     const remove = async (id) => {
         if (!window.confirm('Delete this slip from your history?')) return;
         const { error } = await supabase.from('slips').delete().eq('id', id);
@@ -309,19 +303,19 @@ const HistoryTab = ({ matchData }) => {
 
     if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">Loading…</p>;
 
-    // Every slip graded against what was actually played. Derived on read rather
-    // than written back: a match re-scraped tomorrow (a corrected statistic, a
-    // postponement finally played) simply grades differently next time, where a
-    // stored verdict would keep the old answer for ever.
+    // Every slip graded against what was actually played, and ONLY against that.
+    // Derived on read rather than written back: a match re-scraped tomorrow (a
+    // corrected statistic, a postponement finally played) simply grades
+    // differently next time, where a stored verdict would keep the old answer.
     //
-    // The stored `status` stays as a manual OVERRIDE - anything the user has set
-    // by hand wins, which is what settles the markets we refuse to grade
-    // ourselves and anything the book voided for its own reasons.
+    // There is deliberately no way to set an outcome by hand. A ledger whose
+    // entries the owner can edit is not a record of anything, and the honest
+    // answer for a leg we cannot grade is "pending", not whatever the user
+    // would like it to be. The `slips.status` column is consequently written by
+    // nothing and read by nothing.
     const rows = slips.map((slip) => {
         const settled = settleSlip(slip, matchData);
-        const status = slip.status !== 'pending' ? slip.status : settled.status;
-        const auto = slip.status === 'pending' && status !== 'pending';
-        return { slip, settled: { ...settled, status }, status, auto };
+        return { slip, settled, status: settled.status };
     });
 
     const done = rows.filter(r => r.status === 'won' || r.status === 'lost' || r.status === 'void');
@@ -349,33 +343,23 @@ const HistoryTab = ({ matchData }) => {
                     </div>
                     {staked > 0 && (
                         <p className="text-[10px] text-zinc-500 px-1 -mt-1">
-                            €{staked.toFixed(2)} staked · {(100 * profit / staked).toFixed(1)}% ROI.
-                            Settled from played matches; pick an outcome by hand to override.
+                            €{staked.toFixed(2)} staked · {(100 * profit / staked).toFixed(1)}% ROI,
+                            over settled slips only.
                         </p>
                     )}
-                    {rows.map(({ slip, settled, status, auto }) => (
+                    {rows.map(({ slip, settled, status }) => (
                         <div key={slip.id} className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-zinc-500">
                                     {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                                 </span>
                                 <div className="flex items-center gap-1">
-                                    {auto && (
-                                        <span
-                                            title="Graded from the played match. Choose an outcome to override."
-                                            className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 border border-white/10 rounded px-1.5 py-0.5"
-                                        >
-                                            auto
-                                        </span>
-                                    )}
-                                    <select
-                                        value={status}
-                                        onChange={(e) => setStatus(slip.id, e.target.value)}
+                                    <span
                                         aria-label="Slip outcome"
-                                        className={`bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[status]}`}
+                                        className={`px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[status]}`}
                                     >
-                                        {Object.keys(STATUS_STYLE).map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
+                                        {status}
+                                    </span>
                                     <button onClick={() => remove(slip.id)} aria-label="Delete slip" className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
