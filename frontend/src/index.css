@@ -232,7 +232,8 @@
     position: absolute;
     inset: 0 auto 0 -40%;
     width: 35%;
-    background: linear-gradient(90deg, transparent, rgb(207 250 254 / 0.14), transparent);
+    /* Ice by default; the league button passes gold as --glint. */
+    background: linear-gradient(90deg, transparent, var(--glint, rgb(207 250 254 / 0.14)), transparent);
     transform: skewX(-20deg);
     animation: fx-glint 2.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
@@ -509,6 +510,80 @@ input[type=number] {
 @keyframes trophy-redraw {
     from { stroke-dashoffset: 1; }
     to { stroke-dashoffset: 0; }
+}
+
+/*
+   League picker hover: a champion's glory, the gold sibling of the feature
+   cards' fire, lightning and frost. It rides the same .fx plumbing above (fade
+   in on hover, paused otherwise) and reuses the frost glint and the sparkle.
+*/
+
+/* Rays of light turning slowly behind the trophy, fading out from its centre. */
+.fx-rays {
+    border-radius: 9999px;
+    background: repeating-conic-gradient(from 0deg, rgb(251 191 36 / 0.16) 0deg 5deg, transparent 5deg 20deg);
+    mask-image: radial-gradient(circle, black 8%, transparent 60%);
+    -webkit-mask-image: radial-gradient(circle, black 8%, transparent 60%);
+    animation: fx-rays 16s linear infinite;
+}
+
+@keyframes fx-rays {
+    to { transform: rotate(360deg); }
+}
+
+/* Gold dust rising off the card: the sparkle, in gold. */
+.fx-dust {
+    --sparkle-core: #fffbeb;
+    --sparkle-glow: rgb(251 191 36 / 0.7);
+    animation: fx-rise var(--dur) cubic-bezier(0.3, 0, 0.6, 1) var(--delay) infinite;
+}
+
+@keyframes fx-rise {
+    0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+    15% { opacity: 1; }
+    70% { opacity: 0.8; }
+    100% { transform: translate(var(--sway), -95px) scale(1) rotate(90deg); opacity: 0; }
+}
+
+/* The title turns gold, with a sheen running through it. */
+.group:hover .fx-gold-text {
+    color: transparent;
+    background: linear-gradient(100deg, #fcd34d 0%, #fcd34d 40%, #fffbeb 50%, #fcd34d 60%, #fcd34d 100%) 0 0 / 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: fx-sheen 2.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes fx-sheen {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+
+/* The cup is lifted: a hop and a sway, glowing gold. */
+.group:hover .fx-cup {
+    transform-origin: 50% 85%;
+    filter: drop-shadow(0 0 6px rgb(251 191 36 / 0.75));
+    animation: fx-cup 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes fx-cup {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    18% { transform: translateY(-4px) rotate(-9deg) scale(1.08); }
+    36% { transform: translateY(-4px) rotate(8deg) scale(1.08); }
+    54% { transform: translateY(-2px) rotate(-4deg) scale(1.04); }
+    72% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fx-dust {
+        display: none;
+    }
+
+    .fx-rays,
+    .group:hover .fx-cup,
+    .group:hover .fx-gold-text {
+        animation: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

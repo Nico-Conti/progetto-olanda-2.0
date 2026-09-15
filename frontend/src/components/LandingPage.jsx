@@ -4,6 +4,7 @@ import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
+import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import { confettiBurst, flagWipe, flagColors, flagStripes, flagRing, motionAllowed } from '../utils/leaguePickerFx';
 
@@ -29,6 +30,8 @@ const EMBERS = particles(16, { left: [12, 88], dur: [1.1, 1.9], sway: 14 })
     .map(style => ({ ...style, width: 3 + Math.random() * 3, height: 3 + Math.random() * 3 }));
 const SPARKLES = particles(10, { left: [4, 94], dur: [2.6, 4.2], sway: 12 })
     .map(style => ({ ...style, top: `${-10 + Math.random() * 40}%` }));
+const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
+    .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
 
 /** The effect layer behind a feature card's content; see "Landing feature-card hover effects" in index.css. */
 const HoverFx = ({ kind }) => {
@@ -191,6 +194,11 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
 
     const isModalMounted = usePresence(isLeagueModalOpen, '--modal-close-dur');
 
+    // Like the electric border on Winning Factor, the league button's golden
+    // edge redraws every frame, so it only exists while hovered.
+    const [leagueHover, setLeagueHover] = React.useState(false);
+    const leagueGlow = usePresence(motionAllowed() && leagueHover, '--fx-fade-out');
+
 
     // The nation is reset on open, not on close, so the list does not jump
     // back to nations while the closing modal is still fading out. Unless the
@@ -255,19 +263,53 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                     >
                         <button
                             onClick={openModal}
+                            onMouseEnter={() => setLeagueHover(true)}
+                            onMouseLeave={() => setLeagueHover(false)}
                             disabled={availableLeagues.length === 0}
-                            className="group w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                            className="group relative w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/50 transition-colors">
-                                    {/* The trophy the picker opens with; it redraws itself on hover. */}
+                            {/* A champion's glory, the gold counterpart of the fire,
+                                lightning and frost cards below: rays turn behind the
+                                trophy, gold dust rises, a light sweeps the card and a
+                                golden edge runs round it. See "League picker hover"
+                                in index.css. */}
+                            {availableLeagues.length > 0 && (
+                                <>
+                                    <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
+                                        {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
+                                    </div>
+                                    {/* Clipped to the card: light glowing from within it. */}
+                                    <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
+                                        <div className="fx-rays absolute left-12 top-1/2 w-72 h-72 -translate-x-1/2 -translate-y-1/2" />
+                                        <div className="fx-glint" style={{ '--glint': 'rgb(253 230 138 / 0.2)' }} />
+                                    </div>
+                                    {leagueGlow && (
+                                        <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
+                                            <GlowBorder
+                                                glowColor="#fcd34d"
+                                                tailColor="rgba(251, 191, 36, 0.45)"
+                                                baseColor="rgba(255, 255, 255, 0)"
+                                                borderWidth={1.5}
+                                                speed={5}
+                                                style={{ borderRadius: 16 }}
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-24 blur-[40px] rounded-full bg-amber-500/25 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" aria-hidden="true" />
+                                </>
+                            )}
+
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/60 group-hover:bg-amber-500/15 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.35)] transition duration-300">
+                                    {/* The trophy the picker opens with; it redraws itself
+                                        on hover and is lifted like a cup. */}
                                     <TrophyIcon
-                                        className="w-6 h-6 trophy-redraw"
+                                        className="w-6 h-6 trophy-redraw fx-cup"
                                         pathProps={{ pathLength: 1 }}
                                     />
                                 </div>
                                 <div className="text-left">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
+                                    <h3 className="text-lg font-bold text-white fx-gold-text">
                                         Select Your League
                                     </h3>
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
@@ -277,7 +319,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     </span>
                                 </div>
                             </div>
-                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
+                            <ArrowRight className="relative z-10 w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
                         </button>
 
                         {favourites.length > 0 && (
