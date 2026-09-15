@@ -4,12 +4,22 @@ import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import { betMarket, betPick } from '../utils/statistics';
+import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
 const STATUS_STYLE = {
     pending: 'text-zinc-300', won: 'text-emerald-400', lost: 'text-red-400', void: 'text-zinc-500',
+};
+
+// Per-leg verdict. `null` is "cannot say" - not played, not scraped, or a market
+// we deliberately do not grade - and it must read differently from a loss.
+const LEG_MARK = {
+    won: { mark: '✓', cls: 'text-emerald-400', title: 'Won' },
+    lost: { mark: '✗', cls: 'text-red-400', title: 'Lost' },
+    void: { mark: '—', cls: 'text-zinc-500', title: 'Void - stake returned for this leg' },
+    null: { mark: '·', cls: 'text-zinc-600', title: 'Not settled yet' },
 };
 
 /**
@@ -273,7 +283,7 @@ const ProfileTab = ({ user, leagues }) => {
     );
 };
 
-const HistoryTab = () => {
+const HistoryTab = ({ matchData }) => {
     const [slips, setSlips] = useState(null);
     const [error, setError] = useState(null);
 
@@ -299,9 +309,27 @@ const HistoryTab = () => {
 
     if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">Loading…</p>;
 
-    // Profit over settled slips that carry both a stake and odds; void is a refund.
-    const settled = slips.filter(s => s.stake && s.odds && (s.status === 'won' || s.status === 'lost'));
-    const profit = settled.reduce((sum, s) => sum + (s.status === 'won' ? s.stake * (s.odds - 1) : -s.stake), 0);
+    // Every slip graded against what was actually played. Derived on read rather
+    // than written back: a match re-scraped tomorrow (a corrected statistic, a
+    // postponement finally played) simply grades differently next time, where a
+    // stored verdict would keep the old answer for ever.
+    //
+    // The stored `status` stays as a manual OVERRIDE - anything the user has set
+    // by hand wins, which is what settles the markets we refuse to grade
+    // ourselves and anything the book voided for its own reasons.
+    const rows = slips.map((slip) => {
+        const settled = settleSlip(slip, matchData);
+        const status = slip.status !== 'pending' ? slip.status : settled.status;
+        const auto = slip.status === 'pending' && status !== 'pending';
+        return { slip, settled: { ...settled, status }, status, auto };
+    });
+
+    const done = rows.filter(r => r.status === 'won' || r.status === 'lost' || r.status === 'void');
+    const returns = done.map(r => slipReturn(r.slip, r.settled)).filter(Boolean);
+    const profit = returns.reduce((sum, r) => sum + r.profit, 0);
+    const staked = done.reduce((sum, r) => sum + (Number(r.slip.stake) > 0 ? Number(r.slip.stake) : 0), 0);
+    // Only slips carrying a stake can enter a ledger, so say how many did.
+    const counted = returns.length;
 
     return (
         <div className="space-y-3">
@@ -314,23 +342,37 @@ const HistoryTab = () => {
             ) : (
                 <>
                     <div className="flex justify-between text-xs text-zinc-400 px-1">
-                        <span>{slips.length} slips · {settled.length} settled</span>
+                        <span>{slips.length} slips · {counted} settled</span>
                         <span className={`font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             P/L {profit >= 0 ? '+' : '−'}€{Math.abs(profit).toFixed(2)}
                         </span>
                     </div>
-                    {slips.map(slip => (
+                    {staked > 0 && (
+                        <p className="text-[10px] text-zinc-500 px-1 -mt-1">
+                            €{staked.toFixed(2)} staked · {(100 * profit / staked).toFixed(1)}% ROI.
+                            Settled from played matches; pick an outcome by hand to override.
+                        </p>
+                    )}
+                    {rows.map(({ slip, settled, status, auto }) => (
                         <div key={slip.id} className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-zinc-500">
                                     {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                                 </span>
                                 <div className="flex items-center gap-1">
+                                    {auto && (
+                                        <span
+                                            title="Graded from the played match. Choose an outcome to override."
+                                            className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 border border-white/10 rounded px-1.5 py-0.5"
+                                        >
+                                            auto
+                                        </span>
+                                    )}
                                     <select
-                                        value={slip.status}
+                                        value={status}
                                         onChange={(e) => setStatus(slip.id, e.target.value)}
                                         aria-label="Slip outcome"
-                                        className={`bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[slip.status]}`}
+                                        className={`bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[status]}`}
                                     >
                                         {Object.keys(STATUS_STYLE).map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
@@ -340,9 +382,15 @@ const HistoryTab = () => {
                                 </div>
                             </div>
                             <ul className="space-y-1">
-                                {slip.legs.map((bet, i) => (
+                                {settled.legs.map(({ leg: bet, status: legStatus }, i) => (
                                     <li key={i} className="text-xs flex justify-between gap-2">
-                                        <span className="text-white font-semibold truncate">{bet.game}</span>
+                                        <span className="text-white font-semibold truncate">
+                                            <span className={`mr-1.5 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
+                                                  title={(LEG_MARK[legStatus] ?? LEG_MARK.null).title}>
+                                                {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
+                                            </span>
+                                            {bet.game}
+                                        </span>
                                         <span className="shrink-0 text-zinc-400">
                                             <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}
                                             <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
@@ -351,10 +399,25 @@ const HistoryTab = () => {
                                     </li>
                                 ))}
                             </ul>
+                            {status === 'pending' && settled.graded < settled.total && (
+                                <p className="text-[10px] text-zinc-500">
+                                    {settled.graded} of {settled.total} legs settled
+                                    {settled.legs.some(l => UNGRADEABLE.has(l.leg?.stat))
+                                        && ' · one of these is a market we do not settle ourselves'}
+                                    .
+                                </p>
+                            )}
                             <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
                                 <span>odds {slip.odds ? Number(slip.odds).toFixed(2) : '—'}</span>
                                 <span>stake {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}</span>
-                                <span>returns {slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—'}</span>
+                                <span>
+                                    {status === 'won' || status === 'lost' || status === 'void' ? 'returned' : 'returns'}{' '}
+                                    {(() => {
+                                        const r = slipReturn(slip, settled);
+                                        if (r) return `€${r.returned.toFixed(2)}`;
+                                        return slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—';
+                                    })()}
+                                </span>
                             </div>
                         </div>
                     ))}
@@ -369,7 +432,7 @@ const TABS = [
     { id: 'history', label: 'Slip history', Icon: History },
 ];
 
-const AccountModal = ({ isOpen, onClose, leagues }) => {
+const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
     const { user } = useAccount();
     const mounted = usePresence(isOpen, '--modal-close-dur');
     const [tab, setTab] = useState('profile');
@@ -407,7 +470,7 @@ const AccountModal = ({ isOpen, onClose, leagues }) => {
                             <SlidingTabs items={TABS} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
                             {tab === 'profile'
                                 ? <ProfileTab key={user.id} user={user} leagues={leagues} />
-                                : <HistoryTab key={user.id} />}
+                                : <HistoryTab key={user.id} matchData={matchData} />}
                         </>
                     )}
                 </div>

@@ -444,6 +444,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     const betBuilder = (match) => (
         <BetBuilderCell
             game={`${match.home} vs ${match.away}`}
+            date={match.date}
             priceFor={priceFor}
             outcomesFor={outcomesFor}
             home={match.home}

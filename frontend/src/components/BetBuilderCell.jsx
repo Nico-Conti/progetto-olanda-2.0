@@ -20,7 +20,7 @@ export const SlipIcon = ({ isInSlip, justAdded }) => justAdded ? (
     </span>
 );
 
-const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor, outcomesFor }) => {
+const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, onAdd, onRemove, bets, existingBet, priceFor, outcomesFor }) => {
     // A market we only price has no line ladder and no over/under: a multigol
     // band IS the selection. Show what was captured and let it be added
     // directly, rather than pretending there is a total to step through.
@@ -58,7 +58,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
 
     // Reset "Added" feedback after a delay
     const handleAdd = () => {
-        onAdd(game, option, value, stat, team);
+        onAdd(game, option, value, stat, team, date);
         setJustAdded(true);
         setTimeout(() => setJustAdded(false), 1500);
     };
@@ -217,7 +217,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                         if (isInSlip) {
                             handleRemove();
                         } else {
-                            onAdd(game, 'Result', value, stat, 'match');
+                            onAdd(game, 'Result', value, stat, 'match', date);
                             setJustAdded(true);
                             setTimeout(() => setJustAdded(false), 1500);
                         }
@@ -256,7 +256,7 @@ const BetBuilderCell = ({ game, home, away, teamLogos, stat, prediction, onAdd, 
                             key={i}
                             onClick={() => (on
                                 ? onRemove?.(game, stat, 'total')
-                                : onAdd(game, o.selection, o.line, stat, 'total'))}
+                                : onAdd(game, o.selection, o.line, stat, 'total', date))}
                             title={on ? 'In your slip' : 'Add to slip'}
                             className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-colors ${
                                 on

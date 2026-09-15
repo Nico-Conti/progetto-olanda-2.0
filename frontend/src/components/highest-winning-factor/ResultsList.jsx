@@ -43,7 +43,7 @@ const ResultsList = ({
             toggle: (e) => {
                 e.stopPropagation();
                 if (added) removeFromBet(game, selectedStatistic, side);
-                else addToBet(game, option, threshold, selectedStatistic, side);
+                else addToBet(game, option, threshold, selectedStatistic, side, next?.date ?? null);
             },
         };
     };

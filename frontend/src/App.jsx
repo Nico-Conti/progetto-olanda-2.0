@@ -67,15 +67,21 @@ export default function App() {
   const user = useAuthUser(openAccount);
   const account = useMemo(() => ({ user, openAccount }), [user, openAccount]);
 
-  const addToBet = (game, option, value, stat, team = 'total') => {
+  // `date` is the fixture's kickoff, and it is here so a SAVED slip can be
+  // settled later. "Milan vs Lecce" does not identify a fixture - the same
+  // ordered pair meets twice in a two-legged tie - and a slip already written
+  // without it can never be repaired, so it is recorded at the moment the bet
+  // is made rather than inferred afterwards. Not part of a bet's identity: the
+  // three keys below still decide what replaces what.
+  const addToBet = (game, option, value, stat, team = 'total', date = null) => {
     setBets(prev => {
       const existingIndex = prev.findIndex(b => b.game === game && b.stat === stat && b.team === team);
       if (existingIndex >= 0) {
         const newBets = [...prev];
-        newBets[existingIndex] = { game, option, value, stat, team };
+        newBets[existingIndex] = { game, option, value, stat, team, date };
         return newBets;
       }
-      return [...prev, { game, option, value, stat, team }];
+      return [...prev, { game, option, value, stat, team, date }];
     });
   };
 
@@ -340,6 +346,9 @@ export default function App() {
         isOpen={isAccountOpen}
         onClose={() => setIsAccountOpen(false)}
         leagues={availableLeagues}
+        // Slip history settles itself against played matches, and every stat it
+        // needs is already here - no endpoint, no stored result.
+        matchData={matchData}
       />
 
 
