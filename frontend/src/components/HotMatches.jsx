@@ -130,6 +130,18 @@ const RANK_MODES = {
     ev: { value: 'ev', label: 'Expected value', needsCount: true, needsPrice: true },
 };
 
+/**
+ * A price the cap allows us to back, or null.
+ *
+ * The cap filters LEGS, not fixtures. A fixture whose best expected value sits
+ * on a 5.00 outsider still surfaces with its best leg UNDER the cap, rather
+ * than disappearing from a list it belongs in - filtering `bestEv` after the
+ * scan would have hidden it. Devigging deliberately still reads both raw
+ * prices: the cap is about what we will back, not about what the market thinks.
+ */
+const bettable = (price, maxPrice) =>
+    (price && (maxPrice == null || price <= maxPrice)) ? price : null;
+
 /** The line a statistic is judged at - the same one the backtests use. */
 const lineFor = (stat) => STAT_CONFIG[resolveStatKey(stat)]?.total?.default ?? null;
 
@@ -161,13 +173,14 @@ const DEFAULT_PREFS = {
     optimizedParams: {},
     currentBettingParams: {},
     rankBy: 'total',
+    maxPrice: null,
 };
 
 const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
         displayCount, selectedLeagues, selectedDate,
-        isOptimizationActive, optimizedParams, rankBy,
+        isOptimizationActive, optimizedParams, rankBy, maxPrice,
     } = prefs;
     const { nGames, useGeneralStats, forceMean } = modelSettings;
 
@@ -184,6 +197,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
     const setDisplayCount = (v) => setPrefs({ displayCount: v });
     const setSelectedDate = (v) => setPrefs({ selectedDate: v });
     const setRankBy = (v) => setPrefs({ rankBy: v });
+    const setMaxPrice = (v) => setPrefs({ maxPrice: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
@@ -290,9 +304,9 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                         // implied probability when only one side was captured.
                         const dv = (overPrice > 1 && underPrice > 1) ? devig(overPrice, underPrice) : null;
                         const candidatesEv = [
-                            { ev: overPrice ? expectedValue(p, overPrice) : null, side: 'Over', line: l, price: overPrice,
+                            { ev: bettable(overPrice, maxPrice) ? expectedValue(p, overPrice) : null, side: 'Over', line: l, price: overPrice,
                               prob: p, market: dv ? dv.over : (overPrice > 1 ? 1 / overPrice : null) },
-                            { ev: underPrice ? expectedValue(1 - p, underPrice) : null, side: 'Under', line: l, price: underPrice,
+                            { ev: bettable(underPrice, maxPrice) ? expectedValue(1 - p, underPrice) : null, side: 'Under', line: l, price: underPrice,
                               prob: 1 - p, market: dv ? dv.under : (underPrice > 1 ? 1 / underPrice : null) },
                         ];
                         for (const c of candidatesEv) {
@@ -325,7 +339,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
         return scored
             .sort((a, b) => b.prediction.total - a.prediction.total)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
 
     // How much of the candidate set each narrowing mode actually keeps, so the
     // UI can say so instead of just showing a short list.
@@ -340,14 +354,14 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
             if (!pred?.probOver || !priceFor) continue;
             const hasPrice = linesFor(selectedStatistic,
                 pricedLines?.(match.home, match.away, selectedStatistic) ?? []).some(l =>
-                priceFor(match.home, match.away, selectedStatistic, l, true) ||
-                priceFor(match.home, match.away, selectedStatistic, l, false));
+                bettable(priceFor(match.home, match.away, selectedStatistic, l, true), maxPrice) ||
+                bettable(priceFor(match.home, match.away, selectedStatistic, l, false), maxPrice));
             if (!hasPrice) continue;
             priced++;
             if (pred.confident) confident++;
         }
         return { total: candidates.length, priced, confident };
-    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines]);
+    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
 
     // Close dropdown when clicking outside
     useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
@@ -543,6 +557,35 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 </Dropdown>
                             )}
 
+                            {/* Max price - only under an EV ranking, which is the
+                                only thing a price cap can narrow. A long price
+                                multiplies the model's disagreement with the book,
+                                so the top of an EV list is mostly outsiders. */}
+                            {effectiveRankBy === 'ev' && (
+                                <Dropdown
+                                    label="Max price"
+                                    active={activeDropdown === 'maxPrice'}
+                                    onToggle={() => setActiveDropdown(activeDropdown === 'maxPrice' ? null : 'maxPrice')}
+                                    value={maxPrice == null ? 'Any' : maxPrice.toFixed(2)}
+                                    width="w-full"
+                                    className="flex-1 min-w-[110px]"
+                                >
+                                    <div className="space-y-1">
+                                        {[null, 1.5, 1.75, 2, 2.5, 3, 5].map(v => (
+                                            <button
+                                                key={v ?? 'any'}
+                                                onClick={() => { setMaxPrice(v); setActiveDropdown(null); }}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${maxPrice === v
+                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                    : 'text-zinc-400 hover:bg-white/5'}`}
+                                            >
+                                                {v == null ? 'Any price' : `Under ${v.toFixed(2)}`}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Dropdown>
+                            )}
+
                             {/* Manual Overrides (Disable if optimized) */}
                             <div className={`flex gap-3 transition-opacity ${isOptimizationActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
                                 {!decayed && (<>
@@ -663,7 +706,8 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 Ranking by expected value, so this is not the whole fixture list.
                                 Of <span className="font-bold text-amber-300">{coverage.total}</span> upcoming
                                 matches, <span className="font-bold text-amber-300">{coverage.priced}</span> have
-                                a captured {getStatLabel(selectedStatistic).toLowerCase()} price and{' '}
+                                a captured {getStatLabel(selectedStatistic).toLowerCase()} price
+                                {maxPrice != null && <> under <span className="font-bold text-amber-300">{maxPrice.toFixed(2)}</span></>} and{' '}
                                 <span className="font-bold text-amber-300">{coverage.confident}</span> of those
                                 also clear the confidence floor ({MIN_EFFECTIVE_FOR_EV} effective matches, a fitted
                                 spread, and a statistic that has actually been measured). Prices cannot be
@@ -801,7 +845,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     {topMatches.length === 0 && (
                         <div className="text-center py-12 text-zinc-500 text-sm">
                             {effectiveRankBy === 'ev'
-                                ? `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price and enough history to trust. Try another statistic, or rank by expected total.`
+                                ? `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price${maxPrice != null ? ` under ${maxPrice.toFixed(2)}` : ''} and enough history to trust. Try ${maxPrice != null ? 'a higher max price, ' : ''}another statistic, or rank by expected total.`
                                 : 'No upcoming matches found to analyze.'}
                         </div>
                     )}
