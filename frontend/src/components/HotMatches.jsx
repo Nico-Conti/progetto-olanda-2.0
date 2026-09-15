@@ -3,7 +3,7 @@ import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, BrainCircuit } 
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
 import EngineToggle from './EngineToggle';
-import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
+import { getStatLabel, STAT_CONFIG, resolveStatKey, UNJOINED_STATS } from '../utils/statistics';
 import { halfLifeFor } from '../utils/statistics';
 import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
 import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
@@ -645,7 +645,12 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     {topMatches.length === 0 && (
                         <div className="text-center py-12 text-zinc-500 text-sm">
                             {effectiveRankBy === 'ev'
-                                ? `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price${maxPrice != null ? ` under ${maxPrice.toFixed(2)}` : ''} and enough history to trust. Try ${maxPrice != null ? 'a higher max price, ' : ''}another statistic, or rank by expected total.`
+                                ? (UNJOINED_STATS.has(selectedStatistic)
+                                    // The book posts these and we capture them; we
+                                    // decline to join them, so "no captured price"
+                                    // would read as an outage rather than a choice.
+                                    ? `${getStatLabel(selectedStatistic)} is deliberately not priced: the bookmaker settles it on a narrower count than we measure, so an expected value here would be arithmetic on two different quantities. Rank by expected total, or pick another statistic.`
+                                    : `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price${maxPrice != null ? ` under ${maxPrice.toFixed(2)}` : ''} and enough history to trust. Try ${maxPrice != null ? 'a higher max price, ' : ''}another statistic, or rank by expected total.`)
                                 : 'No upcoming matches found to analyze.'}
                         </div>
                     )}

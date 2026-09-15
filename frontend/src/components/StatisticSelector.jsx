@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { PRICED_STAT_OPTIONS } from '../utils/statistics';
+import { PREDICTED_STAT_OPTIONS } from '../utils/statistics';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -15,7 +15,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
     // Predicted statistics only. The markets we merely price are chosen per
     // fixture, in the row's own Stat dropdown, so the table keeps its
     // predictions for every other row instead of emptying out.
-    const options = PRICED_STAT_OPTIONS;
+    const options = PREDICTED_STAT_OPTIONS;
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
     useClickOutside(isOpen, dropdownRef, useCallback(() => setIsOpen(false), []));

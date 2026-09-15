@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calculator, Calendar, Flame, ChevronDown, TrendingUp, BarChart2, ArrowLeftRight } from 'lucide-react';
 import { processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
-import { STAT_OPTIONS, PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
+import { STAT_OPTIONS, PREDICTED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
 import FormPanel from './predictor/FormPanel';
 import ModelControls, { Group } from './predictor/ModelControls';
@@ -16,6 +16,11 @@ import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 import { staggerDelay } from '../utils/stagger';
 
+
+// 1X2 belongs in the per-fixture builder and not in the dashboard selector: it
+// is a market whose outcome you pick, not a quantity with a line to predict.
+// STAT_OPTIONS holds it, so take it from there rather than writing a label here.
+const MAIN_OPTION = STAT_OPTIONS.filter((o) => o.value === 'main');
 
 const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
@@ -434,7 +439,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                 onClick={(e) => e.stopPropagation()}
                 className={`bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-7 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold cursor-pointer hover:bg-zinc-800 ${className}`}
             >
-                {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
+                {[...MAIN_OPTION, ...PREDICTED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
             </select>

@@ -80,19 +80,39 @@ export const MARKET_FOR_STAT = {
 };
 
 /**
- * The statistics a prediction can actually be checked against a price.
+ * Markets the book posts and we capture, but deliberately do NOT join to a
+ * price. See MARKET_FOR_STAT above for the measurement: the quantity the book
+ * settles is narrower than diretta's, so a price here is a price for something
+ * else. We still model them - `shots` has a fitted half-life and a STAT_SIGNAL
+ * entry, `shots_on_target` goes through the window estimator - so a prediction
+ * for them is worth showing; an expected value is not.
+ */
+export const UNJOINED_STATS = new Set(['shots', 'shots_on_target']);
+
+/** Why a line in one of those markets shows no price. Not a missing capture. */
+export const UNJOINED_REASON =
+    'Not priced on purpose: the bookmaker settles this on a narrower count than we measure';
+
+/**
+ * The statistics the dashboard selector offers: the ones a bookmaker puts a
+ * line on, joined or not.
  *
  * Everything else in STAT_OPTIONS - xG, possession, big chances, box touches,
  * crosses, saves, interceptions, and the raw yellow/red counts - is modellable
- * but unpriced, so a prediction for it can never be turned into a bet. Offering
- * them in the selector invites a number nobody can act on.
+ * but has no market at all, so a prediction for it can never be turned into a
+ * bet. Offering them here invites a number nobody can act on.
  *
- * `main` survives the filter because it resolves to goals. STAT_OPTIONS itself
- * stays complete: Predictor's league averages iterate every statistic, and
- * getStatLabel must still name the ones that are only ever displayed.
+ * Keyed on `opt.value`, NOT on the resolved key, which is what drops `main`:
+ * it resolved to goals and so appeared as a selectable "statistic" whose
+ * prediction was really a goals total under a 1X2 label. 1X2 is a market, not a
+ * quantity with a line - it still belongs in the per-fixture bet builder, where
+ * an outcome is what you pick, and not in a selector that means "predict this".
+ *
+ * STAT_OPTIONS itself stays complete: Predictor's league averages iterate every
+ * statistic, and getStatLabel must still name the ones that are only displayed.
  */
-export const PRICED_STAT_OPTIONS = STAT_OPTIONS.filter(
-    (opt) => MARKET_FOR_STAT[resolveStatKey(opt.value)],
+export const PREDICTED_STAT_OPTIONS = STAT_OPTIONS.filter(
+    (opt) => MARKET_FOR_STAT[opt.value] || UNJOINED_STATS.has(opt.value),
 );
 
 /**

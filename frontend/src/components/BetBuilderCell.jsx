@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { isSlipOnly, formatSelection } from '../utils/statistics';
+import { isSlipOnly, formatSelection, UNJOINED_STATS, UNJOINED_REASON } from '../utils/statistics';
 
 /**
  * The add/remove button's icon: Plus and X cross-fade (transitions.dev icon
@@ -330,9 +330,15 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                     }`}
                     title={currentPrice > 1
                         ? `Bookmaker price for ${option === 'O' ? 'over' : 'under'} ${value}`
-                        : currentPrice === undefined
-                            ? 'Loading prices'
-                            : 'No price captured for this line'}
+                        // "No price captured" would be a lie for shots: the book
+                        // posts these and we capture them, we just refuse to join
+                        // them to our own count. Saying so stops it reading as a
+                        // failed capture, which is what it looks like otherwise.
+                        : UNJOINED_STATS.has(stat)
+                            ? UNJOINED_REASON
+                            : currentPrice === undefined
+                                ? 'Loading prices'
+                                : 'No price captured for this line'}
                 >
                     {currentPrice > 1 ? currentPrice.toFixed(2)
                         : currentPrice === undefined ? '·' : '—'}
