@@ -1,9 +1,10 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
-import { halfLifeFor } from '../../utils/statistics';
+import { halfLifeFor, getStatLabel } from '../../utils/statistics';
 
-const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStatistic }) => {
+const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStatistic, general = false }) => {
     if (!prediction) return null;
+    const stat = getStatLabel(selectedStatistic);
 
     // "Last N Games" describes the WINDOW estimator. A statistic with a fitted
     // half-life is not built that way - every past match contributes, weighted by
@@ -25,15 +26,15 @@ const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStat
                     <div className="relative z-10">
                         <div className="text-emerald-400 font-bold mb-3 flex items-center gap-2">
                             <img src={teamLogos[home]} alt={home} className="w-6 h-6 object-contain" />
-                            {home} <span className="text-zinc-500 text-xs font-normal">(Home Matches)</span>
+                            {home} <span className="text-zinc-500 text-xs font-normal">({general ? 'All' : 'Home'} Matches)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} in favour</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {stat} in favour</div>
                                 <div className="text-2xl font-mono font-bold text-white">{prediction.hFor.toFixed(2)}</div>
                             </div>
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} conceded</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {stat} conceded</div>
                                 <div className="text-2xl font-mono font-bold text-red-400">{prediction.hAg.toFixed(2)}</div>
                             </div>
                         </div>
@@ -45,15 +46,15 @@ const StatsAnalysis = ({ prediction, home, away, nGames, teamLogos, selectedStat
                     <div className="relative z-10">
                         <div className="text-blue-400 font-bold mb-3 flex items-center gap-2">
                             <img src={teamLogos[away]} alt={away} className="w-6 h-6 object-contain" />
-                            {away} <span className="text-zinc-500 text-xs font-normal">(Away Matches)</span>
+                            {away} <span className="text-zinc-500 text-xs font-normal">({general ? 'All' : 'Away'} Matches)</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} in favour</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {stat} in favour</div>
                                 <div className="text-2xl font-mono font-bold text-white">{prediction.aFor.toFixed(2)}</div>
                             </div>
                             <div className="bg-zinc-950/50 p-3 rounded border border-white/5">
-                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {selectedStatistic} conceded</div>
+                                <div className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Avg {stat} conceded</div>
                                 <div className="text-2xl font-mono font-bold text-red-400">{prediction.aAg.toFixed(2)}</div>
                             </div>
                         </div>

@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Trash2, Printer, Trophy, ExternalLink } from 'lucide-react';
-import { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { X, Trash2, Printer, Trophy, ExternalLink, History } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
+import { supabase, useAccount } from '../hooks/useAuth';
+import { betMarket, betPick } from '../utils/statistics';
 
 const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, betslipUrl }) => {
     const mounted = usePresence(isOpen, '--modal-close-dur');
@@ -40,6 +41,29 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
         () => (bets?.length && betslipUrl ? betslipUrl(bets) : null),
         [bets, betslipUrl],
     );
+
+    // Saving to the account's slip history. Odds default to the captured
+    // combined price, but the bookmaker reprices on arrival, so what was
+    // actually played can be typed over it. `savedBets` disables the button for
+    // this exact slip, so a double click does not record it twice.
+    const { user, openAccount } = useAccount();
+    const [stake, setStake] = useState('10');
+    const [odds, setOdds] = useState('');
+    const [savedBets, setSavedBets] = useState(null);
+    const [saveError, setSaveError] = useState(null);
+    const capturedOdds = combined && combined.priced === combined.total ? combined.multiplier : null;
+    const playedOdds = Number(odds) || capturedOdds;
+
+    const saveSlip = async () => {
+        setSaveError(null);
+        const { error } = await supabase.from('slips').insert({
+            legs: bets.map(bet => ({ ...bet, price: priceFor?.(bet) > 1 ? priceFor(bet) : null })),
+            odds: playedOdds > 1 ? Math.round(playedOdds * 100) / 100 : null,
+            stake: Number(stake) > 0 ? Number(stake) : null,
+        });
+        if (error) setSaveError(error.message);
+        else setSavedBets(bets);
+    };
 
     if (!mounted) return null;
 
@@ -125,10 +149,10 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
                                         <div className="game font-bold text-white text-sm">{bet.game}</div>
                                         <div className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
                                             <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold text-zinc-300 stat-label">
-                                                {bet.stat === 'main' ? 'Match Result' : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat')}
+                                                {betMarket(bet)}
                                             </span>
                                             <span className="selection text-emerald-400 font-mono font-bold text-sm">
-                                                {bet.stat === 'main' ? bet.value : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`}
+                                                {betPick(bet)}
                                             </span>
                                             {priceFor && (
                                                 priceFor(bet) > 1
@@ -198,6 +222,39 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
                                 ? `all ${handover.total} selections — odds are re-read by domusbet`
                                 : `${handover.linked} of ${handover.total} selections — the rest were captured without a bookmaker id`}
                         </div>
+                    </div>
+                )}
+
+                {supabase && bets.length > 0 && (
+                    <div className="px-4 pt-3">
+                        {user ? (
+                            <div className="flex gap-2 items-end">
+                                <label className="w-20">
+                                    <span className="block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1">Stake €</span>
+                                    <input type="number" min="0" step="any" value={stake} onChange={(e) => setStake(e.target.value)}
+                                        className="w-full bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-2 text-sm text-white font-mono" />
+                                </label>
+                                <label className="w-20">
+                                    <span className="block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1">Odds</span>
+                                    <input type="number" min="1" step="0.01" value={odds} onChange={(e) => setOdds(e.target.value)}
+                                        placeholder={capturedOdds ? capturedOdds.toFixed(2) : '—'}
+                                        className="w-full bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-2 text-sm text-white font-mono placeholder:text-zinc-500" />
+                                </label>
+                                <button
+                                    onClick={saveSlip}
+                                    disabled={savedBets === bets}
+                                    className="flex-1 py-2 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-60 disabled:cursor-default flex items-center justify-center gap-2"
+                                >
+                                    <History className="w-4 h-4" />
+                                    {savedBets === bets ? 'Saved' : 'Save as played'}
+                                </button>
+                            </div>
+                        ) : (
+                            <button onClick={openAccount} className="w-full text-xs text-zinc-400 hover:text-emerald-400">
+                                Sign in to keep a history of your played slips
+                            </button>
+                        )}
+                        {saveError && <p role="status" className="text-xs text-red-400 mt-1.5">{saveError}</p>}
                     </div>
                 )}
 

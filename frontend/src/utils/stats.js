@@ -53,20 +53,6 @@ export const getAvg = (list) => list.length > 0 ? list.reduce((a, b) => a + b, 0
 
 export { VOLATILE_STATS } from './statistics.js';
 
-export const getTrendData = (list, nGames) => {
-    if (!list || list.length === 0) return { season: 0, recent: 0, diff: 0 };
-
-    const seasonAvg = getAvg(list);
-    const recentSlice = nGames === 'all' ? list : list.slice(0, nGames);
-    const recentAvg = getAvg(recentSlice);
-
-    return {
-        season: seasonAvg,
-        recent: recentAvg,
-        diff: recentAvg - seasonAvg
-    };
-};
-
 export const getStdDev = (list) => {
     if (!list || list.length === 0) return 0;
     const mean = getAvg(list);

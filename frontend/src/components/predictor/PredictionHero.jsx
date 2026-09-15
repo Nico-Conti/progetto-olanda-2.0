@@ -1,7 +1,8 @@
 import React from 'react';
-import { Flame, Info } from 'lucide-react';
+import { Flame, Info, Calendar } from 'lucide-react';
+import { getStatLabel } from '../../utils/statistics';
 
-const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, leagueAverage }) => {
+const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, leagueAverage, date }) => {
     if (!prediction) return null;
 
     // Use dynamic threshold if leagueAverage is provided, otherwise fallback to reasonable default or keep existing behavior
@@ -15,7 +16,14 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, 
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
 
             <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs mb-4 md:mb-6">Predicted Total {selectedStatistic}</h2>
+                {date && !isNaN(new Date(date)) && (
+                    <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold text-zinc-300">
+                        <Calendar className="w-3 h-3 text-zinc-500" />
+                        {new Date(date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {String(date).includes('T') && <> · {new Date(date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</>}
+                    </div>
+                )}
+                <h2 className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs mb-4 md:mb-6">Predicted total {getStatLabel(selectedStatistic)}</h2>
 
                 <div className="flex items-center justify-center gap-2 md:gap-8 mb-6 md:mb-8 w-full">
                     <div className="text-right flex-1 flex flex-col items-end overflow-hidden">

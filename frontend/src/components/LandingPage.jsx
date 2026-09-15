@@ -1,6 +1,8 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Shield } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Shield, Star } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
+import { useAccount } from '../hooks/useAuth';
+import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import { confettiBurst, flagWipe, flagColors, flagStripes, flagRing, motionAllowed } from '../utils/leaguePickerFx';
@@ -167,6 +169,9 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
     const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, safe: onOpenSafestBets };
+    // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
+    const { user } = useAccount();
+    const favourites = (user?.user_metadata?.favourite_leagues ?? []).filter(l => availableLeagues.includes(l));
 
     // Nations, each with the leagues we actually have data for. `League` rows
     // carry `country` and `tier`, so the drill-down needs no extra request.
@@ -215,6 +220,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
 
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
+
+            <div className="absolute top-4 right-4 z-20 pointer-events-auto">
+                <AccountButton />
+            </div>
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 w-full relative z-10 pointer-events-none">
                 <div className="max-w-4xl w-full text-center space-y-12 pointer-events-none">
@@ -270,6 +279,26 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                             </div>
                             <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
                         </button>
+
+                        {favourites.length > 0 && (
+                            <div className="flex flex-wrap justify-center gap-2 mt-3">
+                                {favourites.map(name => {
+                                    const logo = leaguesData?.find(l => l.name === name)?.logo_url;
+                                    return (
+                                        <button
+                                            key={name}
+                                            onClick={() => onSelectLeague(name)}
+                                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/60 border border-amber-500/20 hover:border-amber-500/50 text-xs font-semibold text-zinc-300 hover:text-amber-300 transition"
+                                        >
+                                            {logo
+                                                ? <img src={logo} alt="" className="w-4 h-4 object-contain bg-white rounded-sm" />
+                                                : <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
+                                            {name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
 

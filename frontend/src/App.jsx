@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { TrendingUp, Calculator, Trophy, Home, ListOrdered } from 'lucide-react';
-import LeagueTrends from './components/LeagueTrends';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Calculator, Trophy, Home } from 'lucide-react';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
@@ -17,6 +16,8 @@ import { useModelSettings } from './hooks/useModelSettings';
 import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
 import BetSlipModal from './components/BetSlipModal';
+import AccountModal from './components/AccountModal';
+import { AccountContext, useAuthUser } from './hooks/useAuth';
 import Header from './components/Header';
 import TeamDetails from './components/TeamDetails';
 import Standings from './components/Standings';
@@ -28,23 +29,22 @@ import { cssMs } from './hooks/usePresence';
 const MATRIX_TWINKLE = [7, 2, 11, 5, 14, 9, 0, 12, 3, 15, 6, 10, 13, 1, 8, 4];
 
 const TABS = [
-  { id: 'trends', label: 'Trends', Icon: TrendingUp },
   { id: 'predictor', label: 'Predictor', Icon: Calculator },
   { id: 'standings', label: 'Standings', Icon: Trophy },
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('trends');
+  const [activeTab, setActiveTab] = useState('predictor');
   const [selectedLeague, setSelectedLeague] = useState(null);
   const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | safest-bets | highest-winning-factor
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   // Standings-only: null follows the league's current season, a label pins to
-  // a past one. Trends and the Predictor always stay on the current season.
+  // a past one. The Predictor always stays on the current season.
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
-  const [previousTab, setPreviousTab] = useState('trends');
+  const [previousTab, setPreviousTab] = useState('predictor');
 
   // Animation State
   const [isAnimating, setIsAnimating] = useState(false);
@@ -60,6 +60,12 @@ export default function App() {
   // Bet Slip State
   const [bets, setBets] = useState([]);
   const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
+
+  // Account. Opens by itself when the page was reached from a password-reset link.
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const openAccount = useCallback(() => setIsAccountOpen(true), []);
+  const user = useAuthUser(openAccount);
+  const account = useMemo(() => ({ user, openAccount }), [user, openAccount]);
 
   const addToBet = (game, option, value, stat, team = 'total') => {
     setBets(prev => {
@@ -99,7 +105,7 @@ export default function App() {
 
     setPendingLeague(league);
     setPendingView('dashboard'); // Switch to dashboard view when league selected
-    setPendingTab('trends'); // Reset to trends tab
+    setPendingTab('predictor'); // A league opens on the Predictor
     setIsAnimating(true);
     setSelectedTeam(null); // Clear selected team
   };
@@ -162,7 +168,7 @@ export default function App() {
     ? standingsSeason
     : latestSeason;
 
-  // Trends and team details look backwards, so they use the latest season with
+  // Team details look backwards, so they use the latest season with
   // results. Season matters as much as league here: without it, two seasons of
   // results blend into one table and one set of team form.
   const filteredMatchData = useMemo(() => {
@@ -302,6 +308,7 @@ export default function App() {
 
 
   return (
+    <AccountContext.Provider value={account}>
     <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans relative">
       <BackgroundAnimation />
       <TransitionAnimation
@@ -327,6 +334,12 @@ export default function App() {
         betslipUrl={betslipUrl}
         onRemove={removeFromBet}
         onClear={clearBets}
+      />
+
+      <AccountModal
+        isOpen={isAccountOpen}
+        onClose={() => setIsAccountOpen(false)}
+        leagues={availableLeagues}
       />
 
 
@@ -508,19 +521,6 @@ export default function App() {
           </Header>
 
           <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
-            {activeTab === 'trends' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <LeagueTrends
-                  stats={stats}
-                  teamLogos={teamLogos}
-                  selectedStatistic={selectedStatistic}
-                  onTeamClick={handleTeamClick}
-                  season={latestResultSeason}
-                  currentSeason={latestSeason}
-                />
-              </div>
-            )}
-
             {activeTab === 'team-details' && selectedTeam && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <TeamDetails
@@ -575,7 +575,7 @@ export default function App() {
                     setPreSelectedMatch(null);
                     if (backView === 'dashboard') {
                       if (selectedTeam) setActiveTab('team-details');
-                      else setActiveTab('trends');
+                      else setActiveTab('predictor');
                     } else {
                       handleViewChange(backView);
                     }
@@ -606,5 +606,6 @@ export default function App() {
         </>
       )}
     </div>
+    </AccountContext.Provider>
   );
 }

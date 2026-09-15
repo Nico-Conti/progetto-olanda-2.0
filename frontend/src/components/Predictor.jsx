@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ChevronRight, Calculator, Calendar, Flame, Plus, Minus, ChevronDown, TrendingUp, BarChart2 } from 'lucide-react';
-import { VOLATILE_STATS, processData } from '../utils/stats';
+import { ChevronLeft, ChevronRight, Calculator, Calendar, Flame, ChevronDown, TrendingUp, BarChart2, ArrowLeftRight } from 'lucide-react';
+import { processData } from '../utils/stats';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
-import EngineToggle from './EngineToggle';
 import { STAT_OPTIONS, PRICED_STAT_OPTIONS, SLIP_ONLY_OPTIONS, isSlipOnly, resolveStatKey, STAT_CONFIG, halfLifeFor } from '../utils/statistics';
 import { API_BASE_URL } from '../config';
-import MatchRow from './predictor/MatchRow';
+import FormPanel from './predictor/FormPanel';
+import ModelControls, { Group } from './predictor/ModelControls';
+import Select from './ui/Select';
 import PredictionHero from './predictor/PredictionHero';
 import ProbabilityLadder from './predictor/ProbabilityLadder';
 import StatsAnalysis from './predictor/StatsAnalysis';
@@ -109,7 +110,6 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     // broken model rather than a superseded setting. Every priced market has a
     // half-life; the exploratory statistics (xG, box touches, crosses...) do not
     // and still use them.
-    const decayedLocal = halfLifeFor(localStatistic) != null;
     const decayedSelected = halfLifeFor(selectedStatistic) != null;
 
     // The model's homeMatches/awayMatches are in PREDICTOR units: goals are
@@ -162,7 +162,7 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
     }, [teams, customHome]);
 
     const customPrediction = useMemo(() => {
-        if (!customHome || !customAway || !showCustomPrediction) return null;
+        if (!customHome || !customAway || customHome === customAway || !showCustomPrediction) return null;
         return predictFromModel(localModel, customHome, customAway, {
             nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
             // A hypothetical matchup has no kickoff; model it as of now.
@@ -296,6 +296,20 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
         return upcomingMatches.filter(m => m.matchday === selectedMatchday);
     }, [upcomingMatches, selectedMatchday]);
 
+    // The matchday's fixtures by kickoff day, earliest first; undated ones last.
+    const byDay = useMemo(() => {
+        const at = (m) => (m.date && !isNaN(new Date(m.date)) ? new Date(m.date).getTime() : Infinity);
+        const groups = [];
+        [...displayedMatches].sort((a, b) => (at(a) - at(b)) || 0).forEach(m => {
+            const key = at(m) === Infinity ? 'TBD' : new Date(m.date).toDateString();
+            if (groups.at(-1)?.key !== key) groups.push({ key, date: key === 'TBD' ? null : new Date(m.date), matches: [] });
+            groups.at(-1).matches.push(m);
+        });
+        return groups;
+    }, [displayedMatches]);
+
+    const controls = { engine, onEngineChange, useGeneralStats, setUseGeneralStats, forceMean, setForceMean, nGames, setNGames };
+
     // Explain an empty or number-less table: either no fixtures are loaded at
     // all, or fixtures are listed but there is not enough played history yet to
     // model them, so every expected value renders as a dash.
@@ -359,124 +373,23 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                     </span>
                 </button>
 
-                {/* Configuration (Sample Size Only) */}
                 {/* relative z-50: glass-panel applies backdrop-blur, which creates a
                     stacking context, so the statistic dropdown inside would open
                     behind the prediction hero below without this. */}
-                <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 relative z-50">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2 self-start md:self-auto">
-                        <Calculator className="w-5 h-5 text-emerald-400" />
-                        Match Analysis
-                    </h3>
-                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                        {/* Local Statistic Selector */}
-                        {/* Row, not stacked: both are block-level, so without this the
-                            statistic dropdown sits UNDER the engine toggle and the panel
-                            is two rows tall for no reason. That was masked while the
-                            sample-size control was here making it tall anyway. */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-                            <EngineToggle engine={engine} onChange={onEngineChange} />
+                <div className="glass-panel px-5 py-4 rounded-xl border border-white/10 relative z-50">
+                    <ModelControls statistic={localStatistic} {...controls}>
+                        <Group label="Statistic">
                             <StatisticSelector
                                 value={localStatistic}
                                 onChange={(e) => setLocalStatistic(e.target.value)}
-                                className="w-full sm:w-[140px]"
+                                className="w-[160px]"
                             />
-                        </div>
-
-                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
-
-                        {/* General Trend Toggle */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Gen. Trend:</span>
-                            <button
-                                onClick={() => setUseGeneralStats(!useGeneralStats)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${useGeneralStats ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
-                            >
-                                <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-
-                        {!decayedLocal && VOLATILE_STATS.includes(localStatistic) && (
-                            <>
-                                <div className="hidden sm:block w-px h-4 bg-white/10"></div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap">Use Mean:</span>
-                                    <button
-                                        onClick={() => setForceMean(!forceMean)}
-                                        className={`relative w-10 h-5 rounded-full transition-colors ${forceMean ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
-                                    >
-                                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${forceMean ? 'translate-x-5' : 'translate-x-0'}`} />
-                                    </button>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Sample size parameterises the WINDOW estimator, which lost to
-                            recency decay (docs section 10). A statistic with a fitted
-                            half-life never reaches it, so the control would do nothing. */}
-                        {!decayedLocal && (
-                        <>
-                        <div className="hidden sm:block w-px h-4 bg-white/10"></div>
-
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                            <span className="text-xs font-bold text-zinc-400 uppercase whitespace-nowrap mb-1 sm:mb-0">Sample Size:</span>
-                            <div className="flex flex-wrap bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1 w-full sm:w-auto">
-                                {[3, 5, 'all'].map((n) => (
-                                    <button
-                                        key={n}
-                                        onClick={() => setNGames(n)}
-                                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition text-center whitespace-nowrap ${nGames === n
-                                            ? 'bg-zinc-700 text-white shadow-sm'
-                                            : 'text-zinc-500 hover:text-zinc-300'
-                                            } hidden sm:block`}
-                                    >
-                                        {n === 'all' ? 'Season' : `Last ${n}`}
-                                    </button>
-                                ))}
-                                <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
-                                <div className={`flex items-center justify-between flex-1 sm:flex-none p-0.5 rounded-lg border transition ${!['all', 3, 5].includes(nGames)
-                                    ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                                    : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
-                                    }`}>
-                                    <button
-                                        onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
-                                        className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                    >
-                                        <Minus className="w-3 h-3" />
-                                    </button>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="30"
-                                        value={nGames === 'all' ? '' : nGames}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '') {
-                                                setNGames('');
-                                            } else {
-                                                const parsed = parseInt(val);
-                                                if (!isNaN(parsed) && parsed > 0) setNGames(parsed);
-                                            }
-                                        }}
-                                        placeholder="#"
-                                        className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
-                                    />
-                                    <button
-                                        onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
-                                        className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                    >
-                                        <Plus className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        </>
-                        )}
-                    </div>
+                        </Group>
+                    </ModelControls>
                 </div>
 
                 {/* Prediction Hero */}
-                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
+                <PredictionHero prediction={detailPred} home={home} away={away} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} date={selectedMatch.date} />
 
                 {/* Only the distribution engine can price a ladder of lines. */}
                 {detailPred?.probOver && (
@@ -488,193 +401,145 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
                 )}
 
                 {/* Stats Analysis Breakdown */}
-                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} selectedStatistic={localStatistic} />
+                <StatsAnalysis prediction={detailPred} home={home} away={away} nGames={nGames} teamLogos={teamLogos} selectedStatistic={localStatistic} general={useGeneralStats} />
 
-                {/* Detailed History */}
+                {/* Each side's form at this fixture's venue, against the line. */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                            <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                <img src={teamLogos[home]} alt={home} className="w-6 h-6 object-contain" />
-                                {home}
-                            </h4>
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
-                        </div>
-                        <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                            {detailPred.homeMatches.map(m => (
-                                <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                            <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                <img src={teamLogos[away]} alt={away} className="w-6 h-6 object-contain" />
-                                {away}
-                            </h4>
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
-                        </div>
-                        <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                            {detailPred.awayMatches.map(m => (
-                                <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                            ))}
-                        </div>
-                    </div>
+                    <FormPanel team={home} label={useGeneralStats ? 'All games' : 'Home games'} accent="text-emerald-400" matches={detailPred.homeMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} />
+                    <FormPanel team={away} label={useGeneralStats ? 'All games' : 'Away games'} accent="text-blue-400" matches={detailPred.awayMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} />
                 </div>
             </div>
         );
     }
 
     // Master Table View
+    const mdIndex = availableMatchdays.indexOf(selectedMatchday);
+    const dated = byDay.filter(g => g.date);
+    const dayLabel = (d) => d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const dayRange = dated.length === 0 ? null
+        : dated.length === 1 ? dayLabel(dated[0].date)
+            : `${dayLabel(dated[0].date)} – ${dayLabel(dated.at(-1).date)}`;
+    const kickoff = (m) => (m.date && String(m.date).includes('T') && !isNaN(new Date(m.date))
+        ? new Date(m.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+        : 'TBD');
+    const isHot = (m) => m.selectedStat !== 'possession' && m.prediction && m.prediction.total > (leagueAverages[m.selectedStat] * 1.15);
+    const statSelect = (match, className) => (
+        <>
+            <select
+                value={match.selectedStat}
+                onChange={(e) => {
+                    const matchId = `${match.home}-${match.away}`;
+                    setMatchStatistics(prev => ({ ...prev, [matchId]: e.target.value }));
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className={`bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-7 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold cursor-pointer hover:bg-zinc-800 ${className}`}
+            >
+                {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
+        </>
+    );
+    const betBuilder = (match) => (
+        <BetBuilderCell
+            game={`${match.home} vs ${match.away}`}
+            priceFor={priceFor}
+            outcomesFor={outcomesFor}
+            home={match.home}
+            away={match.away}
+            teamLogos={teamLogos}
+            stat={match.selectedStat}
+            prediction={match.prediction}
+            onAdd={addToBet}
+            onRemove={removeFromBet}
+            bets={bets}
+            existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
+        />
+    );
+    const teamOptions = teams.map(t => ({
+        value: t,
+        label: (
+            <span className="flex items-center gap-2 min-w-0">
+                <img src={teamLogos[t]} alt="" className="w-4 h-4 object-contain shrink-0" />
+                <span className="truncate">{t}</span>
+            </span>
+        ),
+    }));
+
     return (
         <div className="space-y-6">
-            <div className="glass-panel p-5 rounded-xl border border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-emerald-400" />
-                        Upcoming Fixtures & Predictions
-                    </h2>
-                    {/* Same point as StatsAnalysis: do not advertise a window the
-                        decayed statistics never used. */}
-                    <p className="text-zinc-400 text-sm mt-1">
-                        {decayedSelected
-                            ? 'Predictions weighted by recency'
-                            : `Predictions based on ${nGames === 'all' ? 'Season' : `Last ${nGames || 5}`} games form`}
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center md:justify-end gap-y-4 gap-x-6">
-                    <button
-                        onClick={() => setShowAccuracy(true)}
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-colors flex items-center gap-2"
-                    >
-                        <TrendingUp className="w-3.5 h-3.5" /> Backtest
-                    </button>
-
-                    <button
-                        onClick={() => setShowDistribution(true)}
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider rounded-lg border border-white/5 transition-colors flex items-center gap-2"
-                    >
-                        <BarChart2 className="w-3.5 h-3.5" /> Distribution
-                    </button>
-
-                    {/* Matchday Selector */}
+            {/* relative z-40: the matchday Select opens over the table below. */}
+            <div className="glass-panel rounded-xl border border-white/10 relative z-40">
+                <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-white/5">
                     <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Matchday:</span>
-                        <div className="relative">
-                            <select
-                                value={selectedMatchday || ''}
-                                onChange={(e) => setSelectedMatchday(parseInt(e.target.value))}
-                                className="bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-1.5 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-bold"
-                            >
-                                {availableMatchdays.map(day => (
-                                    <option key={day} value={day}>MD {day}</option>
-                                ))}
-                            </select>
-                            <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 rotate-90 pointer-events-none" />
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <Calendar className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white leading-tight">Upcoming fixtures</h2>
+                            {/* Same point as StatsAnalysis: do not advertise a window
+                                the decayed statistics never used. */}
+                            <p className="text-zinc-400 text-sm">
+                                {[
+                                    selectedMatchday != null && `Matchday ${selectedMatchday}`,
+                                    dayRange,
+                                    decayedSelected ? 'weighted by recency' : `last ${nGames === 'all' ? 'season' : `${nGames || 5} games`} form`,
+                                ].filter(Boolean).join(' · ')}
+                            </p>
                         </div>
                     </div>
-
-                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
-
-                    {/* Prediction engine. Classic is the measured model and the
-                        default; Distribution prices any line from one fit. */}
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Engine:</span>
-                        <EngineToggle engine={engine} onChange={onEngineChange} />
-                    </div>
-
-                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Gen. Trend:</span>
                         <button
-                            onClick={() => setUseGeneralStats(!useGeneralStats)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${useGeneralStats ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
+                            onClick={() => setShowAccuracy(true)}
+                            className="px-3 py-2 bg-zinc-900/70 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors flex items-center gap-2"
                         >
-                            <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${useGeneralStats ? 'translate-x-5' : 'translate-x-0'}`} />
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Backtest
+                        </button>
+                        <button
+                            onClick={() => setShowDistribution(true)}
+                            className="px-3 py-2 bg-zinc-900/70 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/10 transition-colors flex items-center gap-2"
+                        >
+                            <BarChart2 className="w-3.5 h-3.5 text-cyan-400" /> Distribution
                         </button>
                     </div>
-
-                    {!decayedSelected && VOLATILE_STATS.includes(selectedStatistic) && (
-                        <>
-                            <div className="w-px h-8 bg-white/10 hidden md:block"></div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-zinc-400 uppercase hidden md:inline">Use Mean:</span>
-                                <button
-                                    onClick={() => setForceMean(!forceMean)}
-                                    className={`relative w-10 h-5 rounded-full transition-colors ${forceMean ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-zinc-700'}`}
-                                >
-                                    <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${forceMean ? 'translate-x-5' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Sample size parameterises the WINDOW estimator, which lost to
-                        recency decay (docs section 10). A statistic with a fitted
-                        half-life never reaches it, so the control would do nothing. */}
-                    {!decayedSelected && (
-                    <>
-                    <div className="w-px h-8 bg-white/10 hidden md:block"></div>
-
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-zinc-400 uppercase">Sample:</span>
-                        <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-white/5 items-center gap-1">
-                            {[3, 5, 'all'].map((n) => (
-                                <button
-                                    key={n}
-                                    onClick={() => setNGames(n)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition ${nGames === n
-                                        ? 'bg-zinc-700 text-white shadow-sm'
-                                        : 'text-zinc-500 hover:text-zinc-300'
-                                        } hidden sm:block`}
-                                >
-                                    {n === 'all' ? 'Season' : `Last ${n}`}
-                                </button>
-                            ))}
-                            <div className="hidden sm:block w-px h-4 bg-white/10 mx-1"></div>
-                            <div className={`flex items-center p-0.5 rounded-lg border transition ${!['all', 3, 5].includes(nGames)
-                                ? 'bg-zinc-800 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
-                                : 'bg-zinc-900/50 border-white/5 hover:border-white/10'
-                                }`}>
-                                <button
-                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.max(1, val - 1); })}
-                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                >
-                                    <Minus className="w-3 h-3" />
-                                </button>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="30"
-                                    value={nGames === 'all' ? '' : nGames}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === '') {
-                                            setNGames('');
-                                        } else {
-                                            const parsed = parseInt(val);
-                                            if (!isNaN(parsed) && parsed > 0) setNGames(parsed);
-                                        }
-                                    }}
-                                    placeholder="#"
-                                    className="w-8 bg-transparent border-none p-0 text-center focus:ring-0 text-white font-bold text-xs appearance-none"
-                                />
-                                <button
-                                    onClick={() => setNGames(prev => { const val = (prev === 'all' || !prev) ? 5 : parseInt(prev); return Math.min(30, val + 1); })}
-                                    className="p-1 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    </>
-                    )}
-                </div >
-            </div >
+                </div>
+                <div className="px-5 py-4">
+                    <ModelControls statistic={selectedStatistic} {...controls}>
+                        {availableMatchdays.length > 0 && (
+                            <Group label="Matchday">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedMatchday(availableMatchdays[mdIndex - 1])}
+                                        disabled={mdIndex <= 0}
+                                        aria-label="Previous matchday"
+                                        className="p-2 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <Select
+                                        accent="emerald"
+                                        value={selectedMatchday}
+                                        onChange={setSelectedMatchday}
+                                        options={availableMatchdays.map(d => ({ value: d, label: `Matchday ${d}` }))}
+                                        className="w-[150px]"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedMatchday(availableMatchdays[mdIndex + 1])}
+                                        disabled={mdIndex < 0 || mdIndex >= availableMatchdays.length - 1}
+                                        aria-label="Next matchday"
+                                        className="p-2 rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </Group>
+                        )}
+                    </ModelControls>
+                </div>
+            </div>
 
             {emptyReason && (
                 <div className="glass-panel rounded-xl border border-white/10 p-8 text-center mb-4">
@@ -713,362 +578,269 @@ const Predictor = ({ engine, onEngineChange, priceFor, pricedLines, outcomesFor,
             )}
 
             <div className="glass-panel rounded-xl overflow-hidden border border-white/10">
-                {/* Mobile View (Cards) */}
-                <div className="md:hidden space-y-4 p-4">
-                    {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
-                        <div
-                            key={idx}
-                            style={{ animationDelay: staggerDelay(idx) }}
-                            onClick={(e) => {
-                                if (e.target.closest('select') || e.target.closest('button')) return;
-                                setSelectedMatch(match);
-                            }}
-                            className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-95 transition-transform"
-                        >
-                            {/* Date Badge */}
-                            <div className="absolute top-0 right-0 bg-zinc-900/80 px-2 py-1 rounded-bl-lg border-l border-b border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                                {(() => {
-                                    if (!match.date) return 'TBD';
-                                    const d = new Date(match.date);
-                                    return !isNaN(d.getTime())
-                                        ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                        : match.date;
-                                })()}
-                            </div>
-
-                            {/* Hot Match Indicator */}
-                            {match.selectedStat !== 'possession' && match.prediction && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
-                                <div className="absolute top-0 left-0 bg-red-500/20 text-red-500 p-1.5 rounded-br-lg animate-pulse border-r border-b border-red-500/20 z-10">
-                                    <Flame className="w-3.5 h-3.5 fill-current" />
-                                </div>
-                            )}
-
-                            {/* Teams */}
-                            <div className="flex items-center justify-between mt-2 mb-4">
-                                <div className="flex flex-col items-center w-1/3 text-center">
-                                    <img src={teamLogos[match.home]} alt={match.home} className="w-10 h-10 object-contain mb-1" />
-                                    <span className={`text-xs font-bold leading-tight ${match.prediction && match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}>{match.home}</span>
-                                </div>
-
-                                <div className="flex flex-col items-center justify-center w-1/3">
-                                    <span className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Total</span>
-                                    <div className="text-2xl font-black text-white tracking-tighter bg-white/5 px-3 py-1 rounded-lg border border-white/5">
-                                        {match.prediction ? match.prediction.total.toFixed(1) : '-'}
+                {/* Mobile View (Cards), by kickoff day */}
+                <div className="md:hidden p-4 space-y-5">
+                    {byDay.length > 0 ? byDay.map(group => (
+                        <div key={group.key} className="space-y-3">
+                            <h3 className="text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                {group.date ? group.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Date to be confirmed'}
+                            </h3>
+                            {group.matches.map((match, idx) => (
+                                <div
+                                    key={`${match.home}-${match.away}`}
+                                    style={{ animationDelay: staggerDelay(idx) }}
+                                    onClick={(e) => {
+                                        if (e.target.closest('select') || e.target.closest('button')) return;
+                                        setSelectedMatch(match);
+                                    }}
+                                    className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-[0.98] transition-transform"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[11px] font-bold text-zinc-300 tabular-nums">{kickoff(match)}</span>
+                                        {isHot(match) && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold uppercase tracking-wider text-orange-400">
+                                                <Flame className="w-3 h-3 fill-current" /> Hot
+                                            </span>
+                                        )}
                                     </div>
-                                    {/* The distribution engine can say how likely the
-                                        line is, not just where the total lands. */}
-                                    {match.prediction?.probOver && lineFor(match.selectedStat) != null && (
-                                        <span className="text-[10px] font-bold text-zinc-400 mt-1 tabular-nums">
-                                            {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
-                                            <span className="text-zinc-600"> over {lineFor(match.selectedStat)}</span>
-                                        </span>
+
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-4">
+                                        <div className="flex flex-col items-center text-center min-w-0">
+                                            <img src={teamLogos[match.home]} alt="" className="w-10 h-10 object-contain mb-1" />
+                                            <span className="w-full text-xs font-bold leading-tight text-white line-clamp-2">{match.home}</span>
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <div className="text-3xl font-black text-white tracking-tighter tabular-nums">
+                                                {match.prediction ? match.prediction.total.toFixed(1) : '-'}
+                                            </div>
+                                            {match.prediction?.probOver && lineFor(match.selectedStat) != null && (
+                                                <span className="text-[10px] font-bold text-zinc-400 tabular-nums">
+                                                    {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
+                                                    <span className="text-zinc-600"> over {lineFor(match.selectedStat)}</span>
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-center text-center min-w-0">
+                                            <img src={teamLogos[match.away]} alt="" className="w-10 h-10 object-contain mb-1" />
+                                            <span className="w-full text-xs font-bold leading-tight text-white line-clamp-2">{match.away}</span>
+                                        </div>
+                                    </div>
+
+                                    {match.prediction && (
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <span className="text-sm font-black text-emerald-400 tabular-nums">{match.prediction.expHome.toFixed(2)}</span>
+                                            <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-zinc-800 gap-0.5">
+                                                <div className="bg-emerald-400" style={{ width: `${100 * match.prediction.expHome / ((match.prediction.expHome + match.prediction.expAway) || 1)}%` }} />
+                                                <div className="flex-1 bg-blue-400" />
+                                            </div>
+                                            <span className="text-sm font-black text-blue-400 tabular-nums">{match.prediction.expAway.toFixed(2)}</span>
+                                        </div>
                                     )}
-                                </div>
 
-                                <div className="flex flex-col items-center w-1/3 text-center">
-                                    <img src={teamLogos[match.away]} alt={match.away} className="w-10 h-10 object-contain mb-1" />
-                                    <span className={`text-xs font-bold leading-tight ${match.prediction && match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}>{match.away}</span>
+                                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5">
+                                        <div className="relative flex-grow">{statSelect(match, 'w-full py-2')}</div>
+                                        <div onClick={(e) => e.stopPropagation()}>{betBuilder(match)}</div>
+                                    </div>
                                 </div>
-                            </div>
-
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-                                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2 text-center">
-                                    <div className="text-[10px] text-emerald-500/70 font-bold uppercase">Home Exp</div>
-                                    <div className="text-lg font-mono font-bold text-emerald-400">{match.prediction ? match.prediction.expHome.toFixed(2) : '-'}</div>
-                                </div>
-                                <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-2 text-center">
-                                    <div className="text-[10px] text-blue-500/70 font-bold uppercase">Away Exp</div>
-                                    <div className="text-lg font-mono font-bold text-blue-400">{match.prediction ? match.prediction.expAway.toFixed(2) : '-'}</div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5">
-                                <div className="relative flex-grow">
-                                    <select
-                                        value={match.selectedStat}
-                                        onChange={(e) => {
-                                            const matchId = `${match.home}-${match.away}`;
-                                            setMatchStatistics(prev => ({ ...prev, [matchId]: e.target.value }));
-                                        }}
-                                        className="w-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-lg pl-2 pr-8 py-2 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
-                                </div>
-
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <BetBuilderCell
-                                        game={`${match.home} vs ${match.away}`}
-                                        priceFor={priceFor}
-                                        outcomesFor={outcomesFor}
-                                        home={match.home}
-                                        away={match.away}
-                                        teamLogos={teamLogos}
-                                        stat={match.selectedStat}
-                                        prediction={match.prediction}
-                                        onAdd={addToBet}
-                                        onRemove={removeFromBet}
-                                        bets={bets}
-                                        existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
-                                    />
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     )) : (
-                        <div className="glass-panel p-8 text-center text-zinc-500 rounded-xl border border-white/10 border-dashed">
+                        <div className="p-8 text-center text-zinc-500 rounded-xl border border-white/10 border-dashed">
                             No upcoming fixtures found for this matchday.
                         </div>
                     )}
                 </div>
 
-                {/* Desktop View (Table) */}
+                {/* Desktop View (Table), by kickoff day */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-zinc-300">
-                        <thead className="text-xs text-zinc-400 uppercase bg-zinc-950/80 border-b border-white/5">
+                        <thead className="text-[11px] text-zinc-500 uppercase bg-zinc-950/80 border-b border-white/5">
                             <tr>
-                                <th className="pl-5 lg:pl-3 pr-2 py-3 font-bold tracking-wider text-center w-[80px] whitespace-nowrap">Date</th>
-                                <th className="pl-2 pr-5 lg:pr-3 py-3 font-bold tracking-wider text-center whitespace-nowrap">Matchup</th>
-                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap">Home Exp</th>
-                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-blue-500/5 text-blue-500 whitespace-nowrap">Away Exp</th>
-                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-white/5 text-white whitespace-nowrap">Total Exp</th>
+                                <th className="pl-5 lg:pl-4 pr-2 py-3 font-bold tracking-wider text-center w-[80px] whitespace-nowrap">Kickoff</th>
+                                <th className="px-3 py-3 font-bold tracking-wider text-center whitespace-nowrap">Matchup</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider text-emerald-500 whitespace-nowrap">Home exp</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider text-blue-500 whitespace-nowrap">Away exp</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider text-white whitespace-nowrap">Total</th>
                                 {showProbability && (
-                                    <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider bg-emerald-500/5 text-emerald-500 whitespace-nowrap"
+                                    <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider text-emerald-500 whitespace-nowrap"
                                         title="Probability the total goes over the configured line, from the fitted distribution.">
                                         P(Over)
                                     </th>
                                 )}
                                 <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider whitespace-nowrap">Stat</th>
-                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider whitespace-nowrap">Bet Builder</th>
+                                <th className="px-3 lg:px-2 py-3 text-center font-bold tracking-wider whitespace-nowrap">Bet builder</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-sm">
-                            {displayedMatches.length > 0 ? displayedMatches.map((match, idx) => (
-                                <tr
-                                    key={idx}
-                                    style={{ animationDelay: staggerDelay(idx) }}
-                                    onClick={(e) => {
-                                        // Prevent navigation if clicking on the dropdown
-                                        if (e.target.closest('select')) return;
-                                        setSelectedMatch(match);
-                                    }}
-                                    className="hover:bg-white/[0.03] transition-colors cursor-pointer group animate-waterfall"
-                                >
-                                    <td className="pl-5 lg:pl-3 pr-0 py-4 whitespace-nowrap font-medium text-zinc-400 text-center w-[80px]">
-                                        {(() => {
-                                            if (!match.date) return 'TBD';
-                                            const d = new Date(match.date);
-                                            return !isNaN(d.getTime())
-                                                ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                                                : match.date;
-                                        })()}
+                        {byDay.length > 0 ? byDay.map(group => (
+                            <tbody key={group.key} className="divide-y divide-white/5 text-sm">
+                                <tr className="bg-white/[0.02]">
+                                    <td colSpan={showProbability ? 8 : 7} className="px-5 lg:px-4 py-2 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                        {group.date ? group.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : 'Date to be confirmed'}
+                                        <span className="ml-2 font-bold normal-case tracking-normal text-zinc-600">
+                                            {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
+                                        </span>
                                     </td>
-                                    <td className="pl-0 pr-5 lg:pr-3 py-4 relative text-center">
-                                        <div className="flex items-center gap-3 justify-center">
-                                            <div className="flex items-center gap-2 w-[150px] justify-end">
-                                                <span
-                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction && match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}
-                                                    title={match.home}
-                                                >
-                                                    {match.home}
-                                                </span>
-                                                <img src={teamLogos[match.home]} alt={match.home} className="w-6 h-6 flex-shrink-0 object-contain" />
-                                            </div>
-                                            <div className="flex flex-col items-center flex-shrink-0">
-                                                <span className="text-zinc-600 font-bold text-xs">VS</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 w-[150px]">
-                                                <img src={teamLogos[match.away]} alt={match.away} className="w-6 h-6 flex-shrink-0 object-contain" />
-                                                <span
-                                                    className={`font-bold whitespace-nowrap truncate ${match.prediction && match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}
-                                                    title={match.away}
-                                                >
-                                                    {match.away}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {/* Hot Indicator */}
-                                        {match.selectedStat !== 'possession' && match.prediction && match.prediction.total > (leagueAverages[match.selectedStat] * 1.15) && (
-                                            <div className="absolute top-1 right-2 w-6 h-6 flex items-center justify-center bg-red-500/10 text-red-500 rounded-full animate-pulse border border-red-500/20" title="Hot Match (15% Above Avg)">
-                                                <Flame className="w-3.5 h-3.5 fill-current" />
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-emerald-400 bg-emerald-500/5">{match.prediction ? match.prediction.expHome.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
-                                    <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-blue-400 bg-blue-500/5">{match.prediction ? match.prediction.expAway.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
-                                    <td className="px-3 lg:px-2 py-4 text-center font-black text-white bg-white/5 text-lg">{match.prediction ? match.prediction.total.toFixed(1) : '-'}</td>
-                                    {showProbability && (
-                                        <td className="px-3 lg:px-2 py-4 text-center font-black bg-emerald-500/5 tabular-nums">
-                                            {match.prediction?.probOver && lineFor(match.selectedStat) != null ? (
-                                                <>
-                                                    <span className="text-emerald-400">
-                                                        {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
-                                                    </span>
-                                                    <span className="block text-[10px] font-bold text-zinc-600">
-                                                        over {lineFor(match.selectedStat)}
-                                                    </span>
-                                                </>
-                                            ) : <span className="text-zinc-600">-</span>}
-                                        </td>
-                                    )}
-                                    <td className="px-3 lg:px-2 py-4 text-center">
-                                        <div className="relative inline-block">
-                                            <select
-                                                value={match.selectedStat}
-                                                onChange={(e) => {
-                                                    const matchId = `${match.home}-${match.away}`;
-                                                    setMatchStatistics(prev => ({ ...prev, [matchId]: e.target.value }));
-                                                }}
-                                                className="bg-zinc-900 border border-white/10 text-zinc-300 text-xs rounded-md pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-emerald-500/50 font-bold w-[100px] cursor-pointer hover:bg-zinc-800"
-                                            >
-                                                {[...PRICED_STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500 pointer-events-none" />
-                                        </div>
-                                    </td>
-                                    <td className="px-3 lg:px-2 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                        <BetBuilderCell
-                                            game={`${match.home} vs ${match.away}`}
-                                            priceFor={priceFor}
-                                            outcomesFor={outcomesFor}
-                                            home={match.home}
-                                            away={match.away}
-                                            teamLogos={teamLogos}
-                                            stat={match.selectedStat}
-                                            prediction={match.prediction}
-                                            onAdd={addToBet}
-                                            onRemove={removeFromBet}
-                                            bets={bets}
-                                            existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
-                                        />
-                                    </td>
-
                                 </tr>
-                            )) : (
+                                {group.matches.map((match, idx) => (
+                                    <tr
+                                        key={`${match.home}-${match.away}`}
+                                        style={{ animationDelay: staggerDelay(idx) }}
+                                        onClick={(e) => {
+                                            // Prevent navigation if clicking on the dropdown
+                                            if (e.target.closest('select')) return;
+                                            setSelectedMatch(match);
+                                        }}
+                                        className="hover:bg-white/[0.04] transition-colors cursor-pointer group animate-waterfall"
+                                    >
+                                        <td className="pl-5 lg:pl-4 pr-2 py-4 whitespace-nowrap font-bold text-zinc-400 text-center tabular-nums w-[80px]">
+                                            {kickoff(match)}
+                                        </td>
+                                        <td className="px-3 py-4">
+                                            <div className="flex items-center gap-3 justify-center">
+                                                <div className="flex items-center gap-2 w-[150px] justify-end">
+                                                    <span
+                                                        className={`font-bold whitespace-nowrap truncate transition-colors group-hover:text-white ${match.prediction && match.prediction.expHome > match.prediction.expAway ? 'text-white' : 'text-zinc-400'}`}
+                                                        title={match.home}
+                                                    >
+                                                        {match.home}
+                                                    </span>
+                                                    <img src={teamLogos[match.home]} alt="" className="w-7 h-7 flex-shrink-0 object-contain transition-transform group-hover:scale-110" />
+                                                </div>
+                                                <span className="text-zinc-600 font-bold text-[10px]">VS</span>
+                                                <div className="flex items-center gap-2 w-[150px]">
+                                                    <img src={teamLogos[match.away]} alt="" className="w-7 h-7 flex-shrink-0 object-contain transition-transform group-hover:scale-110" />
+                                                    <span
+                                                        className={`font-bold whitespace-nowrap truncate transition-colors group-hover:text-white ${match.prediction && match.prediction.expAway > match.prediction.expHome ? 'text-white' : 'text-zinc-400'}`}
+                                                        title={match.away}
+                                                    >
+                                                        {match.away}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-emerald-400">{match.prediction ? match.prediction.expHome.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                        <td className="px-3 lg:px-2 py-4 text-center font-mono font-bold text-blue-400">{match.prediction ? match.prediction.expAway.toFixed(2) : <span className="text-zinc-600">-</span>}</td>
+                                        <td className="px-3 lg:px-2 py-4 text-center">
+                                            <span className="inline-flex items-center gap-1.5 font-black text-white text-lg tabular-nums">
+                                                {match.prediction ? match.prediction.total.toFixed(1) : '-'}
+                                                {isHot(match) && (
+                                                    <span title="Hot match: 15% above the league average" className="text-orange-400">
+                                                        <Flame className="w-3.5 h-3.5 fill-current" />
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </td>
+                                        {showProbability && (
+                                            <td className="px-3 lg:px-2 py-4 text-center font-black tabular-nums">
+                                                {match.prediction?.probOver && lineFor(match.selectedStat) != null ? (
+                                                    <>
+                                                        <span className="text-emerald-400">
+                                                            {(100 * match.prediction.probOver(lineFor(match.selectedStat))).toFixed(0)}%
+                                                        </span>
+                                                        <span className="block text-[10px] font-bold text-zinc-600">
+                                                            over {lineFor(match.selectedStat)}
+                                                        </span>
+                                                    </>
+                                                ) : <span className="text-zinc-600">-</span>}
+                                            </td>
+                                        )}
+                                        <td className="px-3 lg:px-2 py-4 text-center">
+                                            <div className="relative inline-block">{statSelect(match, 'w-[110px] py-1.5')}</div>
+                                        </td>
+                                        <td className="px-3 lg:px-2 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                            {betBuilder(match)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        )) : (
+                            <tbody>
                                 <tr>
                                     <td colSpan={showProbability ? 8 : 7} className="px-5 py-8 text-center text-zinc-500">
                                         No upcoming fixtures found for this matchday.
                                     </td>
                                 </tr>
-                            )}
-                        </tbody>
+                            </tbody>
+                        )}
                     </table>
                 </div>
-            </div >
+            </div>
 
-            {/* Custom Matchup Selector */}
-            < div className="glass-panel p-6 rounded-xl border border-white/10 mt-8" >
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Calculator className="w-5 h-5 text-emerald-400" />
-                        Custom Matchup Analysis
-                    </h3>
-                    <button
-                        onClick={() => setShowCustomPrediction(!showCustomPrediction)}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition ${showCustomPrediction ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
-                    >
-                        {showCustomPrediction ? 'Hide Analysis' : 'Analyze Matchup'}
-                    </button>
-                </div>
-
-                {
-                    showCustomPrediction && (
-                        <div className="flex justify-end mb-4">
+            {/* Custom matchup: any two teams of the league, as if they met today.
+                relative z-30 so the team pickers open over what follows. */}
+            <div className="glass-panel p-5 md:p-6 rounded-xl border border-white/10 mt-8 relative z-30">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                    <div>
+                        <h3 className="text-lg font-black text-white flex items-center gap-2">
+                            <Calculator className="w-5 h-5 text-emerald-400" />
+                            Custom matchup
+                        </h3>
+                        <p className="text-zinc-500 text-sm mt-0.5">Any two teams from this league, modelled as if they met today.</p>
+                    </div>
+                    {showCustomPrediction && (
+                        <Group label="Statistic">
                             <StatisticSelector
                                 value={localStatistic}
                                 onChange={(e) => setLocalStatistic(e.target.value)}
-                                className="w-[140px]"
+                                className="w-[160px]"
                             />
-                        </div>
-                    )
-                }
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Home Team</label>
-                        <div className="relative">
-                            <select
-                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition font-medium"
-                                value={customHome}
-                                onChange={(e) => setCustomHome(e.target.value)}
-                            >
-                                {teams.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 rotate-90 pointer-events-none" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5 ml-1">Away Team</label>
-                        <div className="relative">
-                            <select
-                                className="w-full bg-zinc-950 border border-zinc-800 text-white text-sm rounded-lg p-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition font-medium"
-                                value={customAway}
-                                onChange={(e) => setCustomAway(e.target.value)}
-                            >
-                                {teams.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 rotate-90 pointer-events-none" />
-                        </div>
-                    </div>
+                        </Group>
+                    )}
                 </div>
 
-                {
-                    showCustomPrediction && customPrediction && (
-                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                            {/* Prediction Hero (Reused) */}
-                            <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto] items-end gap-3">
+                    <div>
+                        <span className="block text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1.5">Home team</span>
+                        <Select accent="emerald" value={customHome} onChange={setCustomHome} options={teamOptions} />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => { setCustomHome(customAway); setCustomAway(customHome); }}
+                        aria-label="Swap home and away"
+                        title="Swap home and away"
+                        className="h-10 w-10 mx-auto rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors"
+                    >
+                        <ArrowLeftRight className="w-4 h-4" />
+                    </button>
+                    <div>
+                        <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5">Away team</span>
+                        <Select accent="emerald" value={customAway} onChange={setCustomAway} options={teamOptions} />
+                    </div>
+                    <button
+                        onClick={() => setShowCustomPrediction(!showCustomPrediction)}
+                        disabled={customHome === customAway}
+                        className={`h-10 px-5 rounded-lg text-sm font-bold uppercase tracking-wide transition disabled:opacity-40 disabled:cursor-not-allowed ${showCustomPrediction
+                            ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                            : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}
+                    >
+                        {showCustomPrediction ? 'Hide' : 'Analyze'}
+                    </button>
+                </div>
+                {customHome === customAway && (
+                    <p className="text-xs text-amber-400 mt-2">Pick two different teams.</p>
+                )}
 
-                            {customPrediction?.probOver && (
-                                <div className="mt-4">
-                                    <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
-                                        home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines}
-                                        bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
-                                </div>
-                            )}
+                {showCustomPrediction && customHome !== customAway && !customPrediction && (
+                    <p className="text-sm text-zinc-500 text-center mt-6">Not enough history for these two teams to model yet.</p>
+                )}
 
-                            {/* Detailed History (Reused) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                                        <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                            <img src={teamLogos[customHome]} alt={customHome} className="w-6 h-6 object-contain" />
-                                            {customHome}
-                                        </h4>
-                                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Home Form</span>
-                                    </div>
-                                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                        {customPrediction.homeMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                                        ))}
-                                    </div>
-                                </div>
+                {showCustomPrediction && customPrediction && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 mt-6">
+                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} />
 
-                                <div className="glass-panel rounded-xl p-5 h-full border border-white/10">
-                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/5">
-                                        <h4 className="font-bold text-white flex items-center gap-3 text-lg">
-                                            <img src={teamLogos[customAway]} alt={customAway} className="w-6 h-6 object-contain" />
-                                            {customAway}
-                                        </h4>
-                                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Away Form</span>
-                                    </div>
-                                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                                        {customPrediction.awayMatches.map(m => (
-                                            <MatchRow key={m.giornata} match={inTargetUnits(m)} teamLogos={teamLogos} selectedStatistic={localStatistic} />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                        {customPrediction?.probOver && (
+                            <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
+                                home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines}
+                                bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormPanel team={customHome} label={useGeneralStats ? 'All games' : 'Home games'} accent="text-emerald-400" matches={customPrediction.homeMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} />
+                            <FormPanel team={customAway} label={useGeneralStats ? 'All games' : 'Away games'} accent="text-blue-400" matches={customPrediction.awayMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} />
                         </div>
-                    )
-                }
-            </div >
+                    </div>
+                )}
+            </div>
 
 
             {/* Detailed Analysis Modal/Section */}

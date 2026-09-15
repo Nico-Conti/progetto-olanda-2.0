@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 
 import GlassPanel from './ui/GlassPanel';
+import { AccountButton } from './AccountModal';
 
 const Header = ({
     logoSrc = "/logo.png",
@@ -132,6 +133,8 @@ const Header = ({
                             </svg>
                         </button>
                     )}
+
+                    <AccountButton />
                 </div>
             </div>
         </GlassPanel>

@@ -415,3 +415,9 @@ export const statPair = (match, statKey) => {
     if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
     return { home, away, total: home + away };
 };
+
+/** A slip leg's market and pick as the bet slip prints them; the slip history shows the same. */
+export const betMarket = (bet) =>
+    bet.stat === 'main' ? 'Match Result' : (bet.team !== 'total' ? `${bet.team} ` : '') + (bet.stat?.replace(/_/g, ' ') || 'Stat');
+export const betPick = (bet) =>
+    bet.stat === 'main' ? bet.value : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`;

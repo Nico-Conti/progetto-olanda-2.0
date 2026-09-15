@@ -45,6 +45,7 @@ const SlidingTabs = ({ items, value, onChange, className = '', tabClassName = ''
             {items.map(item => (
                 <button
                     key={item.id}
+                    type="button"
                     role="tab"
                     aria-selected={value === item.id}
                     onClick={() => onChange(item.id)}

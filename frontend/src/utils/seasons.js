@@ -30,7 +30,7 @@ export const latestSeasonForLeague = (matches, fixtures, league) =>
 /**
  * The seasons a *model* should see: the one being played, plus the one before.
  *
- * Backward-looking views (Trends, Standings, team details) must stay on a single
+ * Backward-looking views (Standings, team details) must stay on a single
  * season - blending two makes one table out of two years. Prediction is the
  * opposite case: recency decay weights last season's matches lightly rather than
  * discarding them, which is what stops the model going blank every August. On
