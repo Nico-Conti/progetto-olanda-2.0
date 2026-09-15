@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, User, LogOut, History, Trash2, Star, Camera } from 'lucide-react';
+import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
@@ -348,62 +348,97 @@ const HistoryTab = ({ matchData }) => {
                         </p>
                     )}
                     {rows.map(({ slip, settled, status }) => (
-                        <div key={slip.id} className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-zinc-500">
-                                    {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        // <details> rather than a useState per card: the browser
+                        // already does this, with the keyboard and screen-reader
+                        // behaviour we would otherwise have to write. Collapsed by
+                        // default - the header carries what you scan for, and the
+                        // legs are the detail you open for.
+                        <details key={slip.id} className="group bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+                            <summary className="flex items-center gap-2 p-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-white/5">
+                                <ChevronRight className="w-4 h-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-90" />
+                                <span className="text-xs text-zinc-500 shrink-0">
+                                    {new Date(slip.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                                 </span>
-                                <div className="flex items-center gap-1">
-                                    <span
-                                        aria-label="Slip outcome"
-                                        className={`px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[status]}`}
-                                    >
-                                        {status}
+                                <span className="text-xs text-zinc-500 shrink-0">
+                                    {settled.total} leg{settled.total === 1 ? '' : 's'}
+                                </span>
+                                {/* The numbers being scanned for, so the common case
+                                    needs no expanding at all. */}
+                                <span className="ml-auto text-xs font-mono text-zinc-400 shrink-0">
+                                    {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}
+                                    {' @ '}
+                                    {slip.odds ? Number(slip.odds).toFixed(2) : '—'}
+                                </span>
+                                <span
+                                    aria-label="Slip outcome"
+                                    className={`px-2 py-1 text-xs font-bold uppercase shrink-0 ${STATUS_STYLE[status]}`}
+                                >
+                                    {status}
+                                </span>
+                                <button
+                                    // Inside a <summary>, so without this the click
+                                    // toggles the card open on its way up.
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); remove(slip.id); }}
+                                    aria-label="Delete slip"
+                                    className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg shrink-0"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </summary>
+
+                            <div className="px-3 pb-3 space-y-2">
+                                <ul className="space-y-1">
+                                    {settled.legs.map(({ leg: bet, status: legStatus }, i) => (
+                                        // Stacked at EVERY width, and that is the
+                                        // unusual part. A combo's market and pick
+                                        // together are wider than this card, and a
+                                        // too-narrow flex sibling CLIPS rather than
+                                        // overflowing - the fixture name vanished
+                                        // entirely while the page reported no overflow
+                                        // at all. A `sm:` breakpoint looked like the
+                                        // fix and is wrong here: Tailwind breakpoints
+                                        // read the VIEWPORT, but this modal is
+                                        // `max-w-md` on every screen, so `sm:flex-row`
+                                        // would put the clipping back on every desktop.
+                                        <li key={i} className="text-xs flex flex-col">
+                                            <span className="text-white font-semibold truncate">
+                                                <span className={`mr-1.5 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
+                                                      title={(LEG_MARK[legStatus] ?? LEG_MARK.null).title}>
+                                                    {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
+                                                </span>
+                                                {bet.game}
+                                            </span>
+                                            <span className="shrink-0 text-zinc-400 truncate pl-[1.375rem]">
+                                                <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}
+                                                <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
+                                                {bet.price && <span className="font-mono text-zinc-500"> @{bet.price.toFixed(2)}</span>}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {status === 'pending' && settled.graded < settled.total && (
+                                    <p className="text-[10px] text-zinc-500">
+                                        {settled.graded} of {settled.total} legs settled
+                                        {settled.legs.some(l => UNGRADEABLE.has(l.leg?.stat))
+                                            && ' · one of these is a market we do not settle ourselves'}
+                                        .
+                                    </p>
+                                )}
+                                <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
+                                    <span>
+                                        {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                                     </span>
-                                    <button onClick={() => remove(slip.id)} aria-label="Delete slip" className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <span>
+                                        {status === 'won' || status === 'lost' || status === 'void' ? 'returned' : 'returns'}{' '}
+                                        {(() => {
+                                            const r = slipReturn(slip, settled);
+                                            if (r) return `€${r.returned.toFixed(2)}`;
+                                            return slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—';
+                                        })()}
+                                    </span>
                                 </div>
                             </div>
-                            <ul className="space-y-1">
-                                {settled.legs.map(({ leg: bet, status: legStatus }, i) => (
-                                    <li key={i} className="text-xs flex justify-between gap-2">
-                                        <span className="text-white font-semibold truncate">
-                                            <span className={`mr-1.5 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
-                                                  title={(LEG_MARK[legStatus] ?? LEG_MARK.null).title}>
-                                                {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
-                                            </span>
-                                            {bet.game}
-                                        </span>
-                                        <span className="shrink-0 text-zinc-400">
-                                            <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}
-                                            <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
-                                            {bet.price && <span className="font-mono text-zinc-500"> @{bet.price.toFixed(2)}</span>}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                            {status === 'pending' && settled.graded < settled.total && (
-                                <p className="text-[10px] text-zinc-500">
-                                    {settled.graded} of {settled.total} legs settled
-                                    {settled.legs.some(l => UNGRADEABLE.has(l.leg?.stat))
-                                        && ' · one of these is a market we do not settle ourselves'}
-                                    .
-                                </p>
-                            )}
-                            <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
-                                <span>odds {slip.odds ? Number(slip.odds).toFixed(2) : '—'}</span>
-                                <span>stake {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}</span>
-                                <span>
-                                    {status === 'won' || status === 'lost' || status === 'void' ? 'returned' : 'returns'}{' '}
-                                    {(() => {
-                                        const r = slipReturn(slip, settled);
-                                        if (r) return `€${r.returned.toFixed(2)}`;
-                                        return slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—';
-                                    })()}
-                                </span>
-                            </div>
-                        </div>
+                        </details>
                     ))}
                 </>
             )}
