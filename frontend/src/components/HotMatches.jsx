@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, Sparkles, BrainCircuit, X, Play } from 'lucide-react';
+import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, BrainCircuit } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
 import EngineToggle from './EngineToggle';
 import { getStatLabel, STAT_CONFIG, resolveStatKey } from '../utils/statistics';
-import { findBestStrategy, defaultLineFor, MIN_CALLS } from '../utils/backtest';
 import { halfLifeFor } from '../utils/statistics';
 import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
 import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
@@ -18,90 +17,6 @@ import { staggerDelay } from '../utils/stagger';
 import GlowBorder from './originkit/GlowBorder';
 import MatchCard from './MatchCard';
 import { leagueMeta } from '../utils/leaguePickerFx';
-
-const OptimizationSettingsModal = ({ isOpen, onClose, onRun, selectedStatistic }) => {
-    const suggested = defaultLineFor(selectedStatistic);
-    const [line, setLine] = useState('');
-
-    if (!isOpen) return null;
-
-    const options = STAT_CONFIG[resolveStatKey(selectedStatistic)]?.total?.options ?? [];
-    const chosen = line === '' ? suggested : Number(line);
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="glass-panel w-full max-w-md rounded-xl border border-white/10 shadow-2xl bg-zinc-950 p-6 relative">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
-                >
-                    <X className="w-5 h-5" />
-                </button>
-
-                <div className="mb-6">
-                    <h2 className="text-xl font-black text-white flex items-center gap-2">
-                        <BrainCircuit className="w-6 h-6 text-emerald-400" />
-                        Optimization Settings
-                    </h2>
-                    <p className="text-zinc-400 text-sm mt-1">
-                        Finds, per league, the settings whose over/under calls beat simply always
-                        betting the same side.
-                    </p>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1.5">
-                            Line for {getStatLabel(selectedStatistic)}
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {[...new Set([suggested, ...options])].filter(v => v != null).map(v => (
-                                <button
-                                    key={v}
-                                    onClick={() => setLine(String(v))}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${chosen === v
-                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                        : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'}`}
-                                >
-                                    {v}{v === suggested ? ' (default)' : ''}
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-[10px] text-zinc-500 mt-2">
-                            Each match is called over or under this line. The confidence margin -
-                            how far the prediction must sit from the line before a call is made -
-                            is swept automatically, along with the sample size and averaging mode.
-                        </p>
-                    </div>
-
-                    <div className="rounded-lg border border-white/5 bg-zinc-900/60 p-3">
-                        <p className="text-[10px] text-zinc-400 leading-relaxed">
-                            Strategies are ranked by how far they beat the base rate, over at least
-                            {' '}{MIN_CALLS} calls. Some statistics have no edge at all - the result
-                            will say so rather than showing a flattering percentage.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mt-8 pt-4 border-t border-white/5 flex gap-3">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-sm rounded-lg transition-colors border border-white/5"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => onRun({ line: chosen })}
-                        className="flex-[2] py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-sm rounded-lg transition-colors shadow-[0_0_20px_rgba(16,185,129,0.2)] flex items-center justify-center gap-2"
-                    >
-                        <Play className="w-4 h-4 fill-current" />
-                        Run Optimization
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 /**
  * What "hot" means, which is not one question.
@@ -169,9 +84,6 @@ const DEFAULT_PREFS = {
     displayCount: 9,
     selectedLeagues: ['All'],
     selectedDate: null,
-    isOptimizationActive: false,
-    optimizedParams: {},
-    currentBettingParams: {},
     rankBy: 'total',
     maxPrice: null,
 };
@@ -179,8 +91,7 @@ const DEFAULT_PREFS = {
 const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
-        displayCount, selectedLeagues, selectedDate,
-        isOptimizationActive, optimizedParams, rankBy, maxPrice,
+        displayCount, selectedLeagues, selectedDate, rankBy, maxPrice,
     } = prefs;
     const { nGames, useGeneralStats, forceMean } = modelSettings;
 
@@ -201,58 +112,12 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    // Optimization State (transient - not persisted)
-    const [isOptimizing, setIsOptimizing] = useState(false);
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-
     const { availableLeagues, availableDates, candidates } =
         useUpcomingFixtures(fixtures, stats, { selectedLeagues, selectedDate });
 
     const handleLeagueToggle = (league) =>
         setPrefs(prev => ({ selectedLeagues: toggleLeagueSelection(prev.selectedLeagues, league) }));
 
-    // Optimization Handler
-    const handleOptimizationStart = (bettingParams) => {
-        if (!matchData || matchData.length === 0) return;
-
-        setIsSettingsModalOpen(false);
-        setIsOptimizing(true);
-
-        // Yield a frame so the loading state paints before the sweep runs.
-        setTimeout(() => {
-            const leagues = [...new Set(matchData.map(m => m.league).filter(Boolean))];
-            const newOptimizedParams = {};
-
-            leagues.forEach(league => {
-                const leagueMatches = matchData.filter(m => m.league === league);
-                const best = findBestStrategy(leagueMatches, selectedStatistic, bettingParams);
-                if (best) newOptimizedParams[league] = best;
-            });
-
-            setPrefs({
-                currentBettingParams: bettingParams,
-                optimizedParams: newOptimizedParams,
-                isOptimizationActive: true,
-            });
-            setIsOptimizing(false);
-        }, 100);
-    };
-
-    const toggleOptimization = () => {
-        if (isOptimizationActive) {
-            setPrefs({
-                isOptimizationActive: false,
-                optimizedParams: {},
-                currentBettingParams: {},
-            });
-        } else {
-            setIsSettingsModalOpen(true);
-        }
-    };
-
-    // Team histories for whatever statistic actually drives the selected one:
-    // corners are predicted from shots, goals from box touches, everything else
-    // from itself. See utils/predictTotal.js.
     const predictionModel = useMemo(
         // Residual tracking costs one extra prediction per match folded in, so
         // it is only switched on for the engine that needs it.
@@ -266,16 +131,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
     const topMatches = useMemo(() => {
         const scored = candidates
             .map(match => {
-                const optimized = isOptimizationActive ? optimizedParams[match.league] : null;
-
-                const currentNGames = optimized ? optimized.nGames : nGames;
-                const currentUseGeneralStats = optimized ? optimized.useGeneralStats : useGeneralStats;
-                const currentForceMean = optimized ? optimized.forceMean : forceMean;
-
                 const pred = predictFromModel(predictionModel, match.home, match.away, {
-                    nGames: currentNGames,
-                    useGeneralStats: currentUseGeneralStats,
-                    aggregatorOverride: currentForceMean ? 'mean' : null,
+                    nGames,
+                    useGeneralStats,
+                    aggregatorOverride: forceMean ? 'mean' : null,
                     // Kickoff, so a fixture next month is not modelled as if it
                     // were today. Falls back to now for a fixture with no date.
                     asOf: match.date ?? new Date(),
@@ -320,9 +179,6 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     prediction: pred,
                     probability,
                     bestEv,
-                    isOptimized: Boolean(optimized),
-                    strategy: optimized || null,
-                    usedParams: { n: currentNGames, ugs: currentUseGeneralStats, fm: currentForceMean }
                 };
             })
             .filter(m => m.prediction !== null);
@@ -339,7 +195,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
         return scored
             .sort((a, b) => b.prediction.total - a.prediction.total)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, isOptimizationActive, optimizedParams, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
 
     // How much of the candidate set each narrowing mode actually keeps, so the
     // UI can say so instead of just showing a short list.
@@ -392,13 +248,6 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     className="w-[180px]"
                 />
             </Header>
-
-            <OptimizationSettingsModal
-                isOpen={isSettingsModalOpen}
-                onClose={() => setIsSettingsModalOpen(false)}
-                onRun={handleOptimizationStart}
-                selectedStatistic={selectedStatistic}
-            />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
                 <div className="space-y-6 relative">
@@ -586,8 +435,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 </Dropdown>
                             )}
 
-                            {/* Manual Overrides (Disable if optimized) */}
-                            <div className={`flex gap-3 transition-opacity ${isOptimizationActive ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                            <div className="flex gap-3">
                                 {!decayed && (<>
                                 {/* Sample Size */}
                                 <Dropdown
@@ -675,27 +523,6 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 </>)}
                             </div>
 
-                            {/* Optimize Button */}
-                            <div className="flex flex-col flex-1 min-w-[120px]">
-                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mb-0.5 block">AI Optimize</span>
-                                <button
-                                    onClick={toggleOptimization}
-                                    disabled={isOptimizing}
-                                    className={`relative w-full text-sm font-bold uppercase tracking-wider rounded-lg border px-3 py-1.5 flex items-center justify-center gap-2 transition ${isOptimizationActive
-                                        ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                                        : 'bg-zinc-800 text-zinc-400 border-white/5 hover:bg-zinc-700 hover:text-white'
-                                        }`}
-                                >
-                                    {isOptimizing ? (
-                                        <span className="t-shimmer" data-text="Optimizing...">Optimizing...</span>
-                                    ) : (
-                                        <>
-                                            {isOptimizationActive ? <BrainCircuit className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                                            {isOptimizationActive ? 'Active' : 'Optimize'}
-                                        </>
-                                    )}
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -810,33 +637,6 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                     </div>
                                 )}
 
-                                {match.isOptimized && (
-                                    match.strategy?.beatsBaseRate ? (
-                                        <div
-                                            title={`Calls over/under ${match.strategy.line} correctly ${(100 * match.strategy.accuracy).toFixed(1)}% of the time vs a ${(100 * match.strategy.baseRate).toFixed(1)}% base rate, over ${match.strategy.calls} calls.`}
-                                            className="self-center text-[10px] font-bold text-emerald-400 uppercase bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1"
-                                        >
-                                            <BrainCircuit className="w-3 h-3" />
-                                            +{(100 * match.strategy.edge).toFixed(1)}pt edge
-                                        </div>
-                                    ) : (
-                                        <div
-                                            title={`No setting beat simply always betting the same side at ${match.strategy?.line}. Best was ${(100 * (match.strategy?.accuracy ?? 0)).toFixed(1)}% vs a ${(100 * (match.strategy?.baseRate ?? 0)).toFixed(1)}% base rate.`}
-                                            className="self-center text-[10px] font-bold text-zinc-500 uppercase bg-zinc-500/10 px-2 py-0.5 rounded-full border border-zinc-500/20 flex items-center gap-1"
-                                        >
-                                            <BrainCircuit className="w-3 h-3" /> No edge found
-                                        </div>
-                                    )
-                                )}
-
-                                {isOptimizationActive && match.usedParams && (
-                                    <div className="text-[10px] text-zinc-500 font-mono text-center">
-                                        Using: {match.usedParams.n == 'all' ? 'Season' : `Last ${match.usedParams.n}`} • {match.usedParams.ugs ? 'Gen' : 'Spec'} • {match.usedParams.fm ? 'Mean' : 'Median'}
-                                        {match.strategy && (
-                                            <> • margin {match.strategy.margin} • {(100 * match.strategy.accuracy).toFixed(0)}% vs {(100 * match.strategy.baseRate).toFixed(0)}% base ({match.strategy.calls})</>
-                                        )}
-                                    </div>
-                                )}
                             </MatchCard>
                             );
                         })}

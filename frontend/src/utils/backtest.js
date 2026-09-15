@@ -3,11 +3,8 @@ import {
     addMatchToPredictionModel,
     predictFromModel,
 } from './predictTotal.js';
-import {
-    sortMatchesChronologically,
-    actualTotalFor,
-} from './backtestEngine.js';
-import { STAT_CONFIG, resolveStatKey, halfLifeFor } from './statistics.js';
+import { actualTotalFor } from './backtestEngine.js';
+import { STAT_CONFIG, resolveStatKey } from './statistics.js';
 
 /**
  * Walk-forward evaluation of the prediction model.
@@ -22,58 +19,17 @@ import { STAT_CONFIG, resolveStatKey, halfLifeFor } from './statistics.js';
  * best. See docs/prediction-model.md for the measurements behind the change.
  */
 
-// Model parameters to sweep
-const N_GAMES_OPTIONS = [3, 5, 10, 'all'];
-const FORCE_MEAN_OPTIONS = [false, true];
-const USE_GENERAL_STATS_OPTIONS = [false, true];
-
 // Only call a match when the prediction is at least this far from the line. Filtering on
 // confidence improves accuracy monotonically for every statistic measured.
 export const MARGIN_OPTIONS = [0, 0.5, 1, 1.5, 2, 3];
 
 // Below this many calls a win rate is noise - goals at margin 3 scores 100% on four
-// matches. The optimizer will not select a combination that calls fewer than this.
+// matches. A result below this is reported as noise rather than as an edge.
 export const MIN_CALLS = 50;
 
 /** The line a statistic is judged at, unless the caller overrides it. */
 export const defaultLineFor = (statistic) =>
     STAT_CONFIG[resolveStatKey(statistic)]?.total?.default ?? null;
-
-/**
- * The parameter combinations to sweep, in a fixed order.
- *
- * Order matters: ties are broken by "first one wins unless a later one is strictly
- * better", so changing this order changes which strategy is selected on a tie.
- */
-const buildCombos = (statistic, margins = MARGIN_OPTIONS) => {
-    // A statistic with a fitted half-life goes down the DECAY path, which takes
-    // neither `nGames` nor an aggregator - `predictFromModel` passes them only to
-    // `calculatePrediction`, which is not reached. Sweeping them there produced 8
-    // byte-identical copies of every real combination, and since ties are broken
-    // by loop order (see above), the reported "best strategy" always named
-    // nGames 3 and forceMean false - an artefact of the loop, presented as advice
-    // for settings that cannot move the model. It also cost 8x the runtime.
-    //
-    // All four priced markets have a half-life, so in practice this collapses the
-    // grid wherever anyone is betting. Statistics without one still sweep both.
-    const decayed = halfLifeFor(statistic) != null;
-    const nGamesOptions = decayed ? [N_GAMES_OPTIONS[1]] : N_GAMES_OPTIONS;
-    // Goals are not volatile enough for the median to help, so only the mean is
-    // worth testing there.
-    const forceMeanOptions = decayed ? [false]
-        : resolveStatKey(statistic) === 'goals' ? [true] : FORCE_MEAN_OPTIONS;
-    const combos = [];
-    for (const nGames of nGamesOptions) {
-        for (const forceMean of forceMeanOptions) {
-            for (const useGeneralStats of USE_GENERAL_STATS_OPTIONS) {
-                for (const margin of margins) {
-                    combos.push({ nGames, forceMean, useGeneralStats, margin });
-                }
-            }
-        }
-    }
-    return combos;
-};
 
 const summarise = ({ correct, calls, overs, seen }) => {
     const accuracy = calls > 0 ? correct / calls : 0;
@@ -144,79 +100,4 @@ export const evaluateStrategy = (matches, statistic, modelParams, options = {}) 
     }
 
     return summarise({ correct, calls, overs, seen });
-};
-
-/**
- * Finds the parameter combination with the largest edge over the base rate.
- *
- * Walks the season once and scores every combination against the same running history,
- * rather than replaying the season once per combination.
- *
- * Returns null when there is not enough data, and a result with `beatsBaseRate: false`
- * when nothing genuinely beat always betting one side - which is the honest answer for
- * some statistics, and the caller should say so rather than showing the percentage alone.
- */
-export const findBestStrategy = (matches, statistic, options = {}) => {
-    if (!matches || matches.length < 5) return null;
-
-    const line = options.line ?? defaultLineFor(statistic);
-    if (line === null) return null;
-
-    const sortedMatches = sortMatchesChronologically(matches, statistic);
-    const combos = buildCombos(statistic, options.margins);
-    const tallies = combos.map(() => ({ correct: 0, calls: 0 }));
-
-    let overs = 0, seen = 0;
-    const model = createPredictionModel(statistic);
-
-    for (const match of sortedMatches) {
-        const actual = actualTotalFor(match, statistic);
-
-        if (actual !== null) {
-            const home = match.home || match.squadre?.home;
-            const away = match.away || match.squadre?.away;
-            const isOver = actual > line;
-            let counted = false;
-
-            for (let c = 0; c < combos.length; c++) {
-                const { nGames, forceMean, useGeneralStats, margin } = combos[c];
-                const prediction = predictFromModel(model, home, away, {
-                    nGames, useGeneralStats,
-                    aggregatorOverride: forceMean ? 'mean' : null,
-                    asOf: match.date,
-                });
-                if (!prediction || !(prediction.total > 0)) continue;
-
-                // Every combination that could predict this match sees it, so they all
-                // share one base rate and stay comparable.
-                if (!counted) { seen++; if (isOver) overs++; counted = true; }
-
-                if (Math.abs(prediction.total - line) >= margin) {
-                    tallies[c].calls++;
-                    if ((prediction.total > line) === isOver) tallies[c].correct++;
-                }
-            }
-        }
-
-        addMatchToPredictionModel(model, match);
-    }
-
-    let best = null;
-    for (let c = 0; c < combos.length; c++) {
-        const result = summarise({ ...tallies[c], overs, seen });
-        // Too few calls to mean anything, however good the percentage looks.
-        if (result.calls < MIN_CALLS) continue;
-        if (!best || result.edge > best.edge) best = { ...combos[c], ...result, line };
-    }
-
-    if (best) return best;
-
-    // Nothing cleared the sample-size floor. Report the widest-sampled combination so the
-    // caller has something truthful to show, flagged as not beating the base rate.
-    let widest = null;
-    for (let c = 0; c < combos.length; c++) {
-        const result = summarise({ ...tallies[c], overs, seen });
-        if (!widest || result.calls > widest.calls) widest = { ...combos[c], ...result, line };
-    }
-    return widest && widest.calls > 0 ? { ...widest, beatsBaseRate: false } : null;
 };
