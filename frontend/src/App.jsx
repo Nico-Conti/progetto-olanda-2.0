@@ -121,6 +121,20 @@ export default function App() {
     setActiveTab(tab);
   };
 
+  // Opening a match is going to a fixture, not entering a section, so it is
+  // instant - the rule above, which the team page already followed and these
+  // three did not. It also keeps the league stinger where it belongs: only
+  // `handleLeagueChange` sets `pendingLeague` now, so only the landing page's
+  // league picker plays it.
+  const openMatchFrom = (match, from, label) => {
+    setPreSelectedMatch(match);
+    setBackView(from);
+    setBackLabel(label);
+    setSelectedLeague(match.league);
+    setActiveTab('predictor');
+    setView('dashboard');
+  };
+
   const handleLeagueChange = (league) => {
     if ((league === selectedLeague && view === 'dashboard') || isAnimating) return;
 
@@ -422,15 +436,7 @@ export default function App() {
             addToBet={addToBet}
             removeFromBet={removeFromBet}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
-            onMatchClick={(match) => {
-              setPreSelectedMatch(match);
-              setBackView('highest-winning-factor');
-              setBackLabel(tk('Back to Winning Factor'));
-              setPendingLeague(match.league);
-              setPendingTab('predictor');
-              setPendingView('dashboard');
-              setIsAnimating(true);
-            }}
+            onMatchClick={(match) => openMatchFrom(match, 'highest-winning-factor', tk('Back to Winning Factor'))}
           />
         </div>
       )}
@@ -451,15 +457,7 @@ export default function App() {
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
-            onMatchClick={(match) => {
-              setPreSelectedMatch(match);
-              setBackView('hot-matches');
-              setBackLabel(tk('Back to Hot Matches'));
-              setPendingLeague(match.league);
-              setPendingTab('predictor');
-              setPendingView('dashboard');
-              setIsAnimating(true);
-            }}
+            onMatchClick={(match) => openMatchFrom(match, 'hot-matches', tk('Back to Hot Matches'))}
           />
         </div>
       )}
@@ -476,15 +474,7 @@ export default function App() {
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
-            onMatchClick={(match) => {
-              setPreSelectedMatch(match);
-              setBackView('safest-bets');
-              setBackLabel(tk('Back to Safest Bets'));
-              setPendingLeague(match.league);
-              setPendingTab('predictor');
-              setPendingView('dashboard');
-              setIsAnimating(true);
-            }}
+            onMatchClick={(match) => openMatchFrom(match, 'safest-bets', tk('Back to Safest Bets'))}
           />
         </div>
       )}
@@ -616,7 +606,10 @@ export default function App() {
                       if (selectedTeam) setActiveTab('team-details');
                       else setPredictorKey(k => k + 1);
                     } else {
-                      handleViewChange(backView);
+                      // Instant, like the way in: `openMatchFrom` does not
+                      // animate, so animating the way out was a spiral on one
+                      // leg of the same round trip.
+                      setView(backView);
                     }
                   }}
                   backButtonLabel={backLabel}
