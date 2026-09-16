@@ -8,8 +8,6 @@ const Header = ({
     logoSrc = "/logo.png",
     onLogoClick,
     title,
-    showBackendStatus = false,
-    isBackendOnline = false,
     children,
     showSound = false,
     showBetSlip = false,
@@ -51,15 +49,6 @@ const Header = ({
                     )}
 
                     {title}
-
-                    {showBackendStatus && (
-                        <div className="flex items-center gap-2 mt-1" title={isBackendOnline ? t('Backend online') : t('Backend offline')}>
-                            <div className={`w-2 h-2 rounded-full ${isBackendOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
-                            <span className={`hidden sm:inline text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${isBackendOnline ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {isBackendOnline ? t('Backend Online') : t('Backend Offline')}
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 {pageName && (

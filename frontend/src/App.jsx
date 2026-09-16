@@ -14,7 +14,6 @@ import { processData } from './utils/stats';
 import { seasonsForLeague, latestSeasonForLeague, modelSeasonsForLeague } from './utils/seasons';
 import { useOdds } from './hooks/useOdds';
 import { useModelSettings } from './hooks/useModelSettings';
-import { useBackendHealth } from './hooks/useBackendHealth';
 import StatisticSelector from './components/StatisticSelector';
 import BetSlipModal from './components/BetSlipModal';
 import AccountModal from './components/AccountModal';
@@ -46,7 +45,6 @@ export default function App() {
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
-  const isBackendOnline = useBackendHealth();
   // Where Back on a team page leads: one entry per team page opened, holding
   // the tab, team page and open match it was opened from, so hopping from
   // opponent to opponent unwinds one step at a time and a badge clicked on a
@@ -504,8 +502,6 @@ export default function App() {
                 Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
               </h1>
             }
-            showBackendStatus={true}
-            isBackendOnline={isBackendOnline}
             showSound={true}
             showBetSlip={true}
             betsCount={bets.length}
