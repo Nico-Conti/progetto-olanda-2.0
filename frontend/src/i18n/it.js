@@ -71,6 +71,7 @@ export default {
     "Standings": "Classifica",
     "Back to Hot Matches": "Torna a Partite calde",
     "Back to Fixtures": "Torna alle partite",
+    "{league} fixtures": "Partite di {league}",
     "Loading matches": "Caricamento partite",
     "Back to Winning Factor": "Torna a Fattore vincente",
     "Back to Safest Bets": "Torna a Scommesse sicure",

@@ -8,6 +8,7 @@ import FormPanel from './predictor/FormPanel';
 import ModelControls, { Group } from './predictor/ModelControls';
 import Select from './ui/Select';
 import TeamBadge from './TeamBadge';
+import { LeagueLogo } from './LeagueTag';
 import PredictionHero from './predictor/PredictionHero';
 import ProbabilityLadder from './predictor/ProbabilityLadder';
 import StatsAnalysis from './predictor/StatsAnalysis';
@@ -25,7 +26,7 @@ import { t, tk, dateLocale } from '../i18n';
 // STAT_OPTIONS holds it, so take it from there rather than writing a label here.
 const MAIN_OPTION = STAT_OPTIONS.filter((o) => o.value === 'main');
 
-const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel, onTeamClick }) => {
+const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, onExitToLeague, backButtonLabel, onTeamClick }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
     // league's own and still drives the league averages, the backtest and the
     // distribution, all of which are claims about THIS league.
@@ -344,21 +345,39 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
 
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <button
-                    onClick={() => {
-                        if (preSelectedMatch && onExitPreview) {
-                            onExitPreview();
-                        } else {
-                            setSelectedMatch(null);
-                        }
-                    }}
-                    className="group inline-flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full border border-white/10 bg-zinc-900/60 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 transition-colors"
-                >
-                    <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-                    <span className="font-bold text-xs uppercase tracking-wider">
-                        {preSelectedMatch ? t(backButtonLabel || tk('Back to Previous')) : t('Back to Fixtures')}
-                    </span>
-                </button>
+                {/* Two ways out, and they are different places: back to the
+                    section you came from, and across to this match's own league.
+                    App only passes the second when it is not where the first
+                    already goes. */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={() => {
+                            if (preSelectedMatch && onExitPreview) {
+                                onExitPreview();
+                            } else {
+                                setSelectedMatch(null);
+                            }
+                        }}
+                        className="group inline-flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full border border-white/10 bg-zinc-900/60 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+                        <span className="font-bold text-xs uppercase tracking-wider">
+                            {preSelectedMatch ? t(backButtonLabel || tk('Back to Previous')) : t('Back to Fixtures')}
+                        </span>
+                    </button>
+
+                    {preSelectedMatch && onExitToLeague && selectedMatch.league && (
+                        <button
+                            onClick={onExitToLeague}
+                            className="group inline-flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full border border-white/10 bg-zinc-900/60 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 transition-colors"
+                        >
+                            <LeagueLogo meta={leagueMeta(leagues, selectedMatch.league)} className="w-4 h-4 rounded" />
+                            <span className="font-bold text-xs uppercase tracking-wider">
+                                {t('{league} fixtures', { league: leagueMeta(leagues, selectedMatch.league).name })}
+                            </span>
+                        </button>
+                    )}
+                </div>
 
                 {/* relative z-50: glass-panel applies backdrop-blur, which creates a
                     stacking context, so the statistic dropdown inside would open

@@ -612,6 +612,12 @@ export default function App() {
                       setView(backView);
                     }
                   }}
+                  // Only when it is somewhere else: from the fixture list the
+                  // back button already lands on the league.
+                  onExitToLeague={backView === 'dashboard' ? undefined : () => {
+                    setPreSelectedMatch(null);
+                    setPredictorKey(k => k + 1);
+                  }}
                   backButtonLabel={backLabel}
                   onTeamClick={handleTeamClick}
                 />
