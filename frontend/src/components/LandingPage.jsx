@@ -6,7 +6,7 @@ import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
-import { confettiBurst, flagWipe, flagColors, flagStripes, flagRing, motionAllowed } from '../utils/leaguePickerFx';
+import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
 import { t, tk, countryName } from '../i18n';
 
 const SUBTITLE = tk('Advanced football analytics.');
@@ -439,12 +439,11 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <button
                                         key={country}
                                         onClick={(event) => pickNation(country, event)}
-                                        // The flag's colours, for the hover ring and bar (.flag-hover in index.css).
-                                        style={{ '--flag-ring': flagRing(flagColors(country)), '--flag-stripes': flagStripes(flagColors(country)) }}
+                                        // The flag's colours, for the hover bar (.flag-hover in index.css).
+                                        style={{ '--flag-stripes': flagStripes(flagColors(country)) }}
                                         className="group relative flex flex-col items-center justify-center p-4 bg-amber-500/[0.04] hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/40 rounded-xl transition duration-200 hover:shadow-[0_8px_24px_rgba(245,158,11,0.12)] hover:-translate-y-1 flag-hover"
                                     >
                                         <div className="relative mb-3">
-                                            <span className="flag-ring" aria-hidden="true" />
                                             <div className="relative w-12 h-12 rounded-full bg-white flex items-center justify-center border border-amber-200/60 overflow-hidden">
                                                 {flag ? (
                                                     <img src={flag} alt={country} className="w-full h-full object-cover" />

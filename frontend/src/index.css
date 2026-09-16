@@ -535,25 +535,12 @@ input[type=number] {
     from { transform: scaleX(0); }
 }
 
-/* League picker, nation cards: on hover a ring in the flag's colours spins in
-   around the flag and a stripe bar draws along the bottom. The card sets
-   --flag-ring / --flag-stripes; `.flag-hover` is only on while animations are. */
-.flag-ring,
+/* League picker, nation cards: on hover a stripe bar in the flag's colours draws
+   along the bottom. The card sets --flag-stripes; `.flag-hover` is only on while
+   animations are. */
 .flag-bar {
     opacity: 0;
     pointer-events: none;
-}
-
-.flag-hover .flag-ring {
-    position: absolute;
-    inset: -4px;
-    border-radius: 9999px;
-    background: var(--flag-ring);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px));
-    scale: 0.85;
-    transition: opacity 150ms ease-out, scale 150ms ease-out;
-    animation: flag-spin 3s linear infinite paused;
 }
 
 .flag-hover .flag-bar {
@@ -568,29 +555,11 @@ input[type=number] {
     transition: opacity 150ms ease-out, transform 150ms ease-out;
 }
 
-.flag-hover:hover .flag-ring {
-    opacity: 1;
-    scale: 1;
-    animation-play-state: running;
-    transition-duration: 250ms;
-    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 .flag-hover:hover .flag-bar {
     opacity: 1;
     transform: scaleX(1);
     transition-duration: 300ms;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes flag-spin {
-    to { rotate: 360deg; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .flag-hover .flag-ring {
-        animation: none;
-    }
 }
 
 /* "Select Your League": its trophy redraws on hover, like the intro draws it. */
