@@ -32,7 +32,7 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
     // distribution, all of which are claims about THIS league.
     const modelData = modelMatchData ?? matchData;
     const [selectedMatch, setSelectedMatch] = useState(null);
-    // Shared with Hot Matches and Safest Bets. These were local useState, which
+    // Shared with Hot Matches and Market Moves. These were local useState, which
     // meant they reset to the defaults on every mount while the other two
     // screens remembered theirs - so the same fixture could show two different
     // expected values. See hooks/useModelSettings.js.

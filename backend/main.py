@@ -274,6 +274,54 @@ def get_odds(market: str | None = None):
     return list(latest.values())
 
 
+@app.get("/odds/moves")
+def get_odds_moves(market: str, days: int = 14):
+    """First and closing price per priced line, for one market.
+
+    The input to closing-line value: backend/odds/domusbet.py prune_history
+    keeps exactly these two endpoints of every played price path. A fixture not
+    yet played still has its whole path, and its "close" is simply the newest
+    price so far - `final` says which one a row is.
+    """
+    if market not in MODELLED_MARKETS:
+        raise HTTPException(status_code=400, detail=f"unknown market {market!r}")
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=min(max(days, 1), 60))).isoformat()
+    try:
+        rows = fetch_all_data("odds_snapshots", "captured_at",
+                              columns="league,home_team,away_team,match_date,market,"
+                                      "line,selection,price,captured_at,is_closing",
+                              gte=("match_date", cutoff), in_=("market", [market]))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # Ascending by capture, so the first row per key is the opening price.
+    moves = {}
+    for r in rows:
+        key = (r["league"], r["home_team"], r["away_team"], r["match_date"],
+               r["line"], r["selection"])
+        m = moves.get(key)
+        if m is None:
+            m = moves[key] = {k: r[k] for k in ("league", "home_team", "away_team",
+                                                  "match_date", "market", "line", "selection")}
+            m["open"] = m["close"] = r["price"]
+            m["opened_at"] = m["closed_at"] = r["captured_at"]
+            m["_marked"] = False
+        # The flagged close wins outright. Before prune_history has flagged a
+        # played fixture, fall back to the last capture before kickoff: a later
+        # one is a live price, not a close (see prune_history).
+        if m["_marked"]:
+            continue
+        if r.get("is_closing") or r["captured_at"] < r["match_date"]:
+            m["close"], m["closed_at"] = r["price"], r["captured_at"]
+            m["_marked"] = bool(r.get("is_closing"))
+
+    for m in moves.values():
+        del m["_marked"]
+        m["final"] = m["match_date"] < now.isoformat()
+    return list(moves.values())
+
+
 @app.get("/leagues")
 def get_leagues():
     try:

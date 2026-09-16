@@ -21,7 +21,7 @@ const Side = ({ team, logo, label }) => (
 );
 
 /**
- * One fixture card, shared by Hot Matches and Safest Bets. The header says
+ * One fixture card, shared by Hot Matches and Market Moves. The header says
  * which league it is - logo, name, nation - over the nation's flag, washed in
  * behind the league.
  * `center` is the headline number between the teams; `children` go below.

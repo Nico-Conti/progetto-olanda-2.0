@@ -78,7 +78,7 @@ const linesFor = (stat, extra = []) => {
 
 const STORAGE_KEY = 'olanda_hotmatches_prefs';
 // nGames / useGeneralStats / forceMean deliberately do NOT live here: they are
-// shared with Safest Bets and the Predictor through useModelSettings, so the
+// shared with Market Moves and the Predictor through useModelSettings, so the
 // same fixture cannot carry a different expected value on two screens.
 const DEFAULT_PREFS = {
     displayCount: 9,

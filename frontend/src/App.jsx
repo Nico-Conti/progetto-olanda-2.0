@@ -4,7 +4,7 @@ import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
 import HighestWinningFactor from './components/HighestWinningFactor';
-import SafestBets from './components/SafestBets';
+import MarketMoves from './components/MarketMoves';
 import TransitionAnimation from './components/TransitionAnimation';
 import LeagueStinger from './components/LeagueStinger';
 import { leagueMeta } from './utils/leaguePickerFx';
@@ -38,7 +38,7 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('predictor');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | safest-bets | highest-winning-factor
+  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | market-moves | highest-winning-factor
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   // Standings-only: null follows the league's current season, a label pins to
   // a past one. The Predictor always stays on the current season.
@@ -114,7 +114,7 @@ export default function App() {
   };
 
   // The spiral transition is for entering a section - a league, Hot Matches,
-  // Safest Bets, Winning Factor. Moving around inside one (these tabs, a team,
+  // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
   // a match) is instant.
   const handleTabChange = (tab) => {
     if (tab === activeTab || isAnimating) return;
@@ -280,7 +280,7 @@ export default function App() {
     );
   }, [fixturesData, selectedLeague, latestSeason]);
 
-  // Cross-league views (Hot Matches / Safest Bets) model the same two seasons
+  // Cross-league views (Hot Matches / Market Moves) model the same two seasons
   // per league as the Predictor, for the same reason - and per league, since
   // Brazil's calendar season turns over at a different time from everyone else's.
   const currentSeasonMatchData = useMemo(() => {
@@ -419,7 +419,7 @@ export default function App() {
           onSelectLeague={handleLeagueChange}
           onOpenTopCorners={() => handleViewChange('hot-matches')}
           onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}
-          onOpenSafestBets={() => handleViewChange('safest-bets')}
+          onOpenMarketMoves={() => handleViewChange('market-moves')}
         />
       )}
 
@@ -462,19 +462,17 @@ export default function App() {
         </div>
       )}
 
-      {view === 'safest-bets' && (
+      {view === 'market-moves' && (
         <div className="animate-in fade-in slide-in-from-bottom-4">
-          <SafestBets
-            {...modelSettingsApi}
-            stats={allStats}
-            fixtures={currentSeasonFixtures}
+          <MarketMoves
+            modelSettings={modelSettingsApi.modelSettings}
             teamLogos={teamLogos}
             leagues={leagues}
             selectedStatistic={selectedStatistic}
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
-            onMatchClick={(match) => openMatchFrom(match, 'safest-bets', tk('Back to Safest Bets'))}
+            onMatchClick={(match) => openMatchFrom(match, 'market-moves', tk('Back to Market Moves'))}
           />
         </div>
       )}
@@ -582,7 +580,7 @@ export default function App() {
                   loadMarket={loadMarket}
                   stats={predictorStats}
                   // The prediction MODEL is built on every league, exactly as Hot
-                  // Matches and Safest Bets build theirs. One pooled model measured
+                  // Matches and Market Moves build theirs. One pooled model measured
                   // better than seven per-league ones, and more immediately: goals
                   // are converted from box touches by a ratio taken over whatever
                   // the model was trained on, so a league-only model gave the same

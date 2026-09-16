@@ -28,12 +28,11 @@ const isAlreadyPlayed = (fixture, stats) => {
 };
 
 /**
- * The shared fixture pipeline behind Hot Matches and Safest Bets.
+ * The fixture pipeline behind Hot Matches.
  *
- * Both screens need the same four things: which leagues can be filtered on,
- * which upcoming dates can be picked, which matchday is "next" per league, and
- * the resulting candidate fixtures. They differ only in how they rank the
- * candidates afterwards.
+ * Four things: which leagues can be filtered on, which upcoming dates can be
+ * picked, which matchday is "next" per league, and the resulting candidate
+ * fixtures, which the screen then ranks.
  *
  * @param {Array}  fixtures        Flat fixture list from useMatchData.
  * @param {Object} stats           processData output, used for the played check.

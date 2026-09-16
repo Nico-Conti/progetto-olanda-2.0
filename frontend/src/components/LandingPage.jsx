@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Shield, Star } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
@@ -29,8 +29,17 @@ const particles = (count, { left, dur, sway }) => Array.from({ length: count }, 
 });
 const EMBERS = particles(16, { left: [12, 88], dur: [1.1, 1.9], sway: 14 })
     .map(style => ({ ...style, width: 3 + Math.random() * 3, height: 3 + Math.random() * 3 }));
-const SPARKLES = particles(10, { left: [4, 94], dur: [2.6, 4.2], sway: 12 })
-    .map(style => ({ ...style, top: `${-10 + Math.random() * 40}%` }));
+// Odds deltas floating off the ticker card, rising and falling in equal measure.
+const TICKS = particles(8, { left: [6, 90], dur: [1.8, 2.8], sway: 10 })
+    .map((style, i) => {
+        const up = i % 2 === 0;
+        return {
+            style: { ...style, bottom: `${10 + Math.random() * 50}%`, color: up ? '#34d399' : '#f87171' },
+            text: `${up ? '+' : '−'}${(0.5 + Math.random() * 4).toFixed(1)}%`,
+        };
+    });
+// A jagged price path across the card, in a 100x40 box.
+const CHART_POINTS = '0,30 8,27 16,31 24,22 32,25 40,17 48,20 56,12 64,16 72,9 80,13 88,6 100,8';
 const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
     .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
 
@@ -42,10 +51,22 @@ const HoverFx = ({ kind }) => {
             {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
         </div>
     );
-    if (kind === 'frost') return (
+    if (kind === 'ticker') return (
         <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
-            <div className="absolute inset-0 overflow-hidden rounded-2xl"><div className="fx-glint" /></div>
-            {SPARKLES.map((style, i) => <span key={i} className="sparkle fx-sparkle" style={style} />)}
+            <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                <svg className="fx-chart absolute inset-0 w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="fx-chart-fill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stopColor="rgb(52 211 153 / 0.22)" />
+                            <stop offset="1" stopColor="rgb(52 211 153 / 0)" />
+                        </linearGradient>
+                    </defs>
+                    <polygon points={`${CHART_POINTS} 100,40 0,40`} fill="url(#fx-chart-fill)" />
+                    <polyline points={CHART_POINTS} fill="none" stroke="rgb(52 211 153 / 0.6)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                </svg>
+                <div className="fx-cursor" />
+            </div>
+            {TICKS.map(({ style, text }, i) => <span key={i} className="fx-tick" style={style}>{text}</span>)}
         </div>
     );
     return null;
@@ -69,11 +90,11 @@ const FEATURES = [
         title: 'group-hover:text-purple-300', arrow: 'group-hover:text-purple-400',
     },
     {
-        id: 'safe', label: tk('Safest Bets'), caption: tk('Low Variance'), Icon: Shield, fx: 'frost',
-        card: 'hover-ice', glow: 'bg-cyan-500/20',
-        iconBox: 'bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-500/50',
-        icon: 'text-cyan-500 group-hover:text-cyan-400',
-        title: 'group-hover:text-cyan-300', arrow: 'group-hover:text-cyan-400',
+        id: 'moves', label: tk('Market Moves'), caption: tk('Closing Line Value'), Icon: Activity, fx: 'ticker',
+        card: 'hover-ticker', glow: 'bg-emerald-500/20',
+        iconBox: 'bg-emerald-500/10 border-emerald-500/20 group-hover:border-emerald-500/50',
+        icon: 'text-emerald-500 group-hover:text-emerald-400', iconFx: 'fx-beat',
+        title: 'group-hover:text-emerald-300', arrow: 'group-hover:text-emerald-400',
     },
 ];
 
@@ -111,12 +132,6 @@ const FeatureCard = ({ feature, onClick }) => {
 
             <div className="flex items-center gap-4 relative z-10">
                 <div className={`relative w-12 h-12 rounded-xl flex items-center justify-center border transition-colors ${feature.iconBox}`}>
-                    {feature.fx === 'frost' && (
-                        <>
-                            <span className="fx-shield-ring" />
-                            <span className="fx-shield-ring" />
-                        </>
-                    )}
                     <Icon className={`w-6 h-6 transition-colors ${feature.icon} ${feature.iconFx ?? ''}`} />
                 </div>
                 <div className="text-left">
@@ -167,12 +182,12 @@ const ScrambleText = ({ text, delay = 300, duration = 1500 }) => {
     );
 };
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenSafestBets }) => {
+const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
-    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, safe: onOpenSafestBets };
+    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves };
     // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
     const { user } = useAccount();
     const favourites = (user?.user_metadata?.favourite_leagues ?? []).filter(l => availableLeagues.includes(l));
@@ -270,7 +285,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                             className="group relative w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                         >
                             {/* A champion's glory, the gold counterpart of the fire,
-                                lightning and frost cards below: rays turn behind the
+                                lightning and ticker cards below: rays turn behind the
                                 trophy, gold dust rises, a light sweeps the card and a
                                 golden edge runs round it. See "League picker hover"
                                 in index.css. */}

@@ -525,8 +525,7 @@ export const predictFromModel = (model, home, away, options = {}) => {
         hAg: raw.hAg * scale * factor,
         aFor: raw.aFor * scale * factor,
         aAg: raw.aAg * scale * factor,
-        // Blending against a constant scales the spread by w; SafestBets ranks on
-        // this, and a common factor leaves that ranking untouched.
+        // Blending against a constant scales the spread by w.
         totalStd: raw.totalStd * scale * w,
         expHomeStd: raw.expHomeStd * scale * w,
         expAwayStd: raw.expAwayStd * scale * w,

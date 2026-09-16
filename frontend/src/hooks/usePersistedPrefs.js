@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * State backed by localStorage, for the filter/model settings the Hot Matches
- * and Safest Bets screens remember between visits.
+ * screen remembers between visits.
  *
  * `selectedDate` is stored as an ISO string by JSON.stringify, so it is
  * rehydrated back into a Date on read.
