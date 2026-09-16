@@ -141,6 +141,30 @@ const settleTotal = (leg, match) => {
 };
 
 /**
+ * What actually happened, for the leg to be read beside its verdict: the number
+ * that decided the bet.
+ *
+ * Deliberately silent in exactly the cases `settleLeg` refuses - the match not
+ * played, the statistic missing, or a market in UNGRADEABLE. Printing "29
+ * shots" against a bet the bookmaker settles on a narrower count would put our
+ * number where the settling one belongs, which is the misreading the whole
+ * UNGRADEABLE list exists to avoid.
+ *
+ * Goals-derived markets (1X2, GG/NG, multigol, the combos) show the SCORE:
+ * "2-1" answers every one of them at once, where a bare total would not say
+ * who scored what.
+ */
+export const actualFor = (leg, match) => {
+    if (!leg || !match || UNGRADEABLE.has(leg.stat)) return null;
+    const goals = statPair(match, 'goals');
+    const score = goals && goals.home != null && goals.away != null
+        ? `${Number(goals.home)}-${Number(goals.away)}` : null;
+    if (leg.stat === 'main' || isSlipOnly(leg.stat)) return score;
+    const total = totalFor(match, resolveStatKey(leg.stat), leg.team);
+    return total == null || !Number.isFinite(total) ? null : String(total);
+};
+
+/**
  * Grade one leg. `null` whenever we cannot answer honestly: the match has not
  * been played or scraped, the statistic is missing, the market is one we do not
  * settle on the book's basis, or the selection uses a word we do not know.
@@ -247,7 +271,7 @@ export const matchForLeg = (leg, matches, savedAt = null) => {
 export const settleSlip = (slip, matches) => {
     const legs = (slip?.legs ?? []).map((leg) => {
         const match = matchForLeg(leg, matches, slip?.created_at);
-        return { leg, match, status: settleLeg(leg, match) };
+        return { leg, match, status: settleLeg(leg, match), actual: actualFor(leg, match) };
     });
     const graded = legs.filter(l => l.status != null).length;
 

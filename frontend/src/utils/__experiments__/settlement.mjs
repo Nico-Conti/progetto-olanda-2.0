@@ -10,7 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import {
-    settleLeg, settleSlip, slipReturn, matchForLeg, WON, LOST, VOID,
+    settleLeg, settleSlip, slipReturn, matchForLeg, actualFor, WON, LOST, VOID,
 } from '../settle.js';
 
 const match = (home, away, extra = {}, date = '2026-09-13T18:00:00Z') => ({
@@ -94,6 +94,29 @@ const one = (l, m) => settleLeg(l, m);
     assert.equal(one(s('combo_1x_ou', '1x + ov', 3), m), VOID);
     // An outcome word we do not know must NOT be guessed at.
     assert.equal(one(s('combo_1x_ou', '1x + zz', 2.5), m), null);
+}
+
+// ------------------------------------ the result shown beside the verdict
+{
+    const m = match(2, 1);
+    // The number that decided the bet, for a statistic...
+    assert.equal(actualFor(leg({ stat: 'corners', option: 'O', value: 9.5 }), m), '10');
+    assert.equal(actualFor({ ...leg({ stat: 'corners', option: 'O', value: 5.5 }), team: 'home' }, m), '6');
+    // ...and the SCORE for everything decided by goals, which answers 1X2,
+    // GG/NG, multigol and the combos in one.
+    assert.equal(actualFor({ ...leg({ stat: 'main', option: 'Result', value: '1' }), team: 'match' }, m), '2-1');
+    assert.equal(actualFor(leg({ stat: 'gg_ng', option: 'gg', value: null }), m), '2-1');
+    assert.equal(actualFor(leg({ stat: 'combo_1x_ou', option: '1x + ov', value: 2.5 }), m), '2-1');
+    // Silent wherever we refuse to grade: printing our shot count next to a bet
+    // the book settles on a narrower one is the misreading UNGRADEABLE exists
+    // to prevent.
+    assert.equal(actualFor(leg({ stat: 'shots', option: 'O', value: 22.5 }), m), null);
+    assert.equal(actualFor(leg({ stat: 'multigol_1h', option: '1-2', value: null }), m), null);
+    // A missing statistic is not a zero here either.
+    assert.equal(actualFor(leg({ stat: 'fouls', option: 'U', value: 25.5 }),
+        match(2, 1, { fouls: { home: null, away: null } })), null);
+    // Not played yet: no match, no result.
+    assert.equal(actualFor(leg({ stat: 'corners', option: 'O', value: 9.5 }), null), null);
 }
 
 // --------------------------------------------------------- whole-slip grading

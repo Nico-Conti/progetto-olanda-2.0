@@ -401,7 +401,7 @@ const HistoryTab = ({ matchData }) => {
 
                             <div className="px-3 pb-3 space-y-2">
                                 <ul className="space-y-1">
-                                    {settled.legs.map(({ leg: bet, status: legStatus }, i) => (
+                                    {settled.legs.map(({ leg: bet, status: legStatus, actual }, i) => (
                                         // Stacked at EVERY width, and that is the
                                         // unusual part. A combo's market and pick
                                         // together are wider than this card, and a
@@ -425,6 +425,16 @@ const HistoryTab = ({ matchData }) => {
                                                 <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}
                                                 <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
                                                 {bet.price && <span className="font-mono text-zinc-500"> @{bet.price.toFixed(2)}</span>}
+                                                {/* What actually happened, beside the
+                                                    verdict. Absent for a market we do
+                                                    not settle ourselves, so it never
+                                                    shows our count where the
+                                                    bookmaker's belongs. */}
+                                                {actual && (
+                                                    <span className="font-mono text-zinc-300" title={t('Actual result')}>
+                                                        {' · '}{actual}
+                                                    </span>
+                                                )}
                                             </span>
                                         </li>
                                     ))}
