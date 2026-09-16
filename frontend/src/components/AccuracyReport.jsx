@@ -8,6 +8,8 @@ import { defaultLineFor, MARGIN_OPTIONS, MIN_CALLS } from '../utils/backtest';
 import { resolveStatKey, statPair, STAT_CONFIG } from '../utils/statistics';
 import { sortMatchesChronologically } from '../utils/backtestEngine';
 import { ChevronDown, Play, AlertCircle, CheckCircle, TrendingUp, X, Sparkles } from 'lucide-react';
+import { t, tx, dateLocale } from '../i18n';
+import { getStatLabel } from '../utils/statistics';
 
 const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
     const [nGames, setNGames] = useState(5);
@@ -188,10 +190,10 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                     <div>
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                             <TrendingUp className="w-6 h-6 text-emerald-400" />
-                            Accuracy Analysis
+                            {t('Accuracy Analysis')}
                         </h2>
                         <p className="text-zinc-400 text-sm mt-1">
-                            Backtest betting lines against past results for <span className="text-emerald-400 font-bold uppercase">{selectedStatistic}</span>.
+                            {tx('Backtest betting lines against past results for {stat}.', { stat: <span className="text-emerald-400 font-bold uppercase">{getStatLabel(selectedStatistic)}</span> })}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
@@ -204,7 +206,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                     <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Sample Size */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sample Size</label>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Sample Size')}</label>
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
                                 {[3, 5, 'all'].map(n => (
                                     <button
@@ -212,7 +214,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                         onClick={() => setNGames(n)}
                                         className={`flex-1 text-[10px] font-bold uppercase rounded transition ${nGames === n ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                     >
-                                        {n === 'all' ? 'Season' : `Last ${n}`}
+                                        {n === 'all' ? t('Season') : t('Last {n}', { n })}
                                     </button>
                                 ))}
                             </div>
@@ -220,45 +222,45 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
 
                         {/* Aggregator */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Aggregator</label>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Aggregator')}</label>
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
                                 <button
                                     onClick={() => setForceMean(false)}
                                     className={`flex-1 text-[10px] font-bold uppercase rounded transition ${!forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Median
+                                    {t('Median')}
                                 </button>
                                 <button
                                     onClick={() => setForceMean(true)}
                                     className={`flex-1 text-[10px] font-bold uppercase rounded transition ${forceMean ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Mean
+                                    {t('Mean')}
                                 </button>
                             </div>
                         </div>
 
                         {/* Trend Mode */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Trend Mode</label>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Trend Mode')}</label>
                             <div className="flex bg-zinc-950 border border-white/10 rounded-lg p-1 h-9">
                                 <button
                                     onClick={() => setUseGeneralStats(false)}
                                     className={`flex-1 text-[10px] font-bold uppercase rounded transition ${!useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Specific
+                                    {t('Specific')}
                                 </button>
                                 <button
                                     onClick={() => setUseGeneralStats(true)}
                                     className={`flex-1 text-[10px] font-bold uppercase rounded transition ${useGeneralStats ? 'bg-zinc-800 text-white shadow-sm border border-white/5' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    General
+                                    {t('General')}
                                 </button>
                             </div>
                         </div>
 
                         {/* Line */}
                         <div className="flex flex-col gap-2">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Line</label>
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Line')}</label>
                             <select
                                 value={line}
                                 onChange={(e) => setLine(Number(e.target.value))}
@@ -277,9 +279,9 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                         <div className="flex flex-col gap-2">
                             <label
                                 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider"
-                                title="Only call a match when the prediction is at least this far from the line."
+                                title={t('Only call a match when the prediction is at least this far from the line.')}
                             >
-                                Margin
+                                {t('Margin')}
                             </label>
                             <select
                                 value={margin}
@@ -287,7 +289,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                 className="bg-zinc-950 border border-white/10 rounded-lg h-9 px-3 text-white text-xs font-bold focus:outline-none"
                             >
                                 {MARGIN_OPTIONS.map(v => (
-                                    <option key={v} value={v}>{v === 0 ? 'Call every match' : `>= ${v}`}</option>
+                                    <option key={v} value={v}>{v === 0 ? t('Call every match') : `>= ${v}`}</option>
                                 ))}
                             </select>
                         </div>
@@ -299,13 +301,13 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                             onClick={optimizeSettings}
                             disabled={isCalculating}
                             className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-black uppercase tracking-widest text-sm rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border border-white/5 hover:border-emerald-500/50"
-                            title="Automatically find the best combination of settings"
+                            title={t('Automatically find the best combination of settings')}
                         >
                             {isCalculating ? (
-                                <span className="t-shimmer" data-text="Optimizing...">Optimizing...</span>
+                                <span className="t-shimmer" data-text={t('Optimizing...')}>{t('Optimizing...')}</span>
                             ) : (
                                 <>
-                                    <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400/20" /> Auto-Optimize
+                                    <Sparkles className="w-4 h-4 text-emerald-400 fill-emerald-400/20" /> {t('Auto-Optimize')}
                                 </>
                             )}
                         </button>
@@ -319,13 +321,13 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                 <span
                                     // Dark text on the emerald button, so the shimmer is retuned to match.
                                     className="t-shimmer [--shimmer-base:rgb(9_9_11/0.55)] [--shimmer-highlight:#09090b]"
-                                    data-text="Computing Matches..."
+                                    data-text={t('Computing Matches...')}
                                 >
-                                    Computing Matches...
+                                    {t('Computing Matches...')}
                                 </span>
                             ) : (
                                 <>
-                                    <Play className="w-4 h-4 fill-current" /> Run Backtest Analysis
+                                    <Play className="w-4 h-4 fill-current" /> {t('Run Backtest Analysis')}
                                 </>
                             )}
                         </button>
@@ -340,44 +342,42 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                 ? 'border-emerald-500/25 bg-emerald-500/10'
                                 : 'border-amber-500/25 bg-amber-500/5'}`}>
                                 <div className="text-xs font-bold uppercase mb-1 tracking-wide text-zinc-400">
-                                    {summary.beatsBaseRate ? 'Beats the base rate' : 'No edge over the base rate'}
+                                    {summary.beatsBaseRate ? t('Beats the base rate') : t('No edge over the base rate')}
                                 </div>
                                 <div className="flex items-baseline gap-3 flex-wrap">
                                     <span className={`text-3xl font-black ${summary.beatsBaseRate ? 'text-emerald-400' : 'text-amber-400'}`}>
                                         {(100 * summary.accuracy).toFixed(1)}%
                                     </span>
                                     <span className="text-sm text-zinc-400">
-                                        vs <span className="font-bold text-zinc-300">{(100 * summary.baseRate).toFixed(1)}%</span> from
-                                        always betting the same side
+                                        {tx('vs {rate} from always betting the same side', { rate: <span className="font-bold text-zinc-300">{(100 * summary.baseRate).toFixed(1)}%</span> })}
                                     </span>
                                     <span className={`text-sm font-black ${summary.edge >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                         {summary.edge >= 0 ? '+' : ''}{(100 * summary.edge).toFixed(1)}pt
                                     </span>
                                 </div>
                                 <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-                                    Called over/under <span className="font-bold text-zinc-400">{summary.line}</span> on{' '}
-                                    <span className="font-bold text-zinc-400">{summary.calls}</span> of {summary.seen} matches
-                                    {summary.margin > 0 && <> (only when the prediction sat {summary.margin}+ away from the line)</>}.
-                                    {summary.calls < MIN_CALLS && <> Fewer than {MIN_CALLS} calls, so treat this as noise.</>}
+                                    {tx('Called over/under {line} on {calls} of {seen} matches', { line: <span className="font-bold text-zinc-400">{summary.line}</span>, calls: <span className="font-bold text-zinc-400">{summary.calls}</span>, seen: summary.seen })}
+                                    {summary.margin > 0 && <> {t('(only when the prediction sat {margin}+ away from the line)', { margin: summary.margin })}</>}.
+                                    {summary.calls < MIN_CALLS && <> {t('Fewer than {n} calls, so treat this as noise.', { n: MIN_CALLS })}</>}
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="glass-panel p-4 rounded-lg border border-white/10 bg-zinc-900/50">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">Calls Made</div>
+                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">{t('Calls Made')}</div>
                                     <div className="text-2xl font-black text-white">{summary.calls}</div>
                                     <div className="text-[9px] text-zinc-600 mt-0.5">of {summary.seen} predictable</div>
                                 </div>
                                 <div className="glass-panel p-4 rounded-lg border border-white/10 bg-zinc-900/50">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">Correct</div>
+                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">{t('Correct')}</div>
                                     <div className="text-2xl font-black text-emerald-400">{summary.correct}</div>
                                 </div>
                                 <div className="glass-panel p-4 rounded-lg border border-white/10 bg-zinc-900/50">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">Wrong</div>
+                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">{t('Wrong')}</div>
                                     <div className="text-2xl font-black text-red-400">{summary.calls - summary.correct}</div>
                                 </div>
                                 <div className="glass-panel p-4 rounded-lg border border-white/10 bg-zinc-900/50">
-                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">Avg Abs Error</div>
+                                    <div className="text-xs font-bold text-zinc-500 uppercase mb-1">{t('Avg Abs Error')}</div>
                                     <div className="text-2xl font-black text-white">{summary.avgError.toFixed(2)}</div>
                                 </div>
                             </div>
@@ -389,11 +389,11 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                         <table className="w-full min-w-[520px] text-left text-zinc-300">
                             <thead className="text-xs text-zinc-500 uppercase border-b border-white/5 bg-zinc-950/50">
                                 <tr>
-                                    <th className="py-4 pl-4 w-[40%] whitespace-nowrap">Match</th>
-                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Date</th>
-                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Call</th>
-                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Actual</th>
-                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">Result</th>
+                                    <th className="py-4 pl-4 w-[40%] whitespace-nowrap">{t('Match')}</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">{t('Date')}</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">{t('Call')}</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">{t('Actual')}</th>
+                                    <th className="py-4 text-center w-[15%] whitespace-nowrap">{t('Result')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 text-sm">
@@ -406,7 +406,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                                 </div>
                                                 <div className="flex gap-1">
                                                     <img src={teamLogos[res.home]} alt={res.home} className="w-5 h-5 object-contain" />
-                                                    <span className="text-zinc-600 text-xs font-bold">vs</span>
+                                                    <span className="text-zinc-600 text-xs font-bold">{t('vs')}</span>
                                                     <img src={teamLogos[res.away]} alt={res.away} className="w-5 h-5 object-contain" />
                                                 </div>
                                                 <div className="flex flex-col w-24">
@@ -416,22 +416,22 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                                         </td>
                                         <td className="py-3 text-center text-zinc-500 text-xs">
                                             {res.match.date
-                                                ? new Date(res.match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                                ? new Date(res.match.date).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' })
                                                 : (res.match.giornata || '-')}
                                         </td>
                                         <td className="py-3 text-center">
                                             <div className="flex flex-col items-center">
                                                 <span className={`font-mono font-bold ${res.calledOver ? 'text-emerald-400' : 'text-blue-400'}`}>
-                                                    {res.calledOver ? 'OVER' : 'UNDER'} {res.line}
+                                                    {res.calledOver ? t('Over') : t('Under')} {res.line}
                                                 </span>
-                                                <span className="text-[9px] text-zinc-600">Pred: {res.prediction.total.toFixed(1)}</span>
+                                                <span className="text-[9px] text-zinc-600">{t('Pred: {n}', { n: res.prediction.total.toFixed(1) })}</span>
                                             </div>
                                         </td>
                                         <td className="py-3 text-center font-mono font-bold text-white">
                                             {res.actual.total}
                                         </td>
                                         <td className={`py-3 text-center font-bold ${res.isNoBet ? 'text-zinc-600' : (res.isCorrect ? 'text-emerald-500' : 'text-red-500')}`}>
-                                            {res.isNoBet ? 'NO CALL' : (res.isCorrect ? 'CORRECT' : 'WRONG')}
+                                            {res.isNoBet ? t('No call') : (res.isCorrect ? t('Correct') : t('Wrong'))}
                                         </td>
                                     </tr>
                                 ))}
@@ -441,7 +441,7 @@ const AccuracyReport = ({ matches, selectedStatistic, teamLogos, onClose }) => {
                     ) : (
                         <div className="text-center text-zinc-500 py-20 flex flex-col items-center">
                             <TrendingUp className="w-12 h-12 mb-4 opacity-20" />
-                            <p>Click "Run Backtest" to analyze historical performance.</p>
+                            <p>{t('Click "Run Backtest Analysis" to analyze historical performance.')}</p>
                         </div>
                     )}
                 </div>

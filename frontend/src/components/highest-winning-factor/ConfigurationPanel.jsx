@@ -2,6 +2,7 @@ import React from 'react';
 import { Calculator, ChevronDown, Plus, Minus } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import Select from '../ui/Select';
+import { t } from '../../i18n';
 
 const ConfigurationPanel = ({
     selectedLeague,
@@ -17,24 +18,24 @@ const ConfigurationPanel = ({
     currentConfig
 }) => {
 
-    const leagueOptions = availableLeagues.map(l => ({ value: l, label: l }));
+    const leagueOptions = availableLeagues.map(l => ({ value: l, label: l === 'All' ? t('All') : l }));
     const thresholdOptions = currentConfig.options.map(opt => ({ value: opt, label: opt.toString() }));
 
     return (
         <GlassPanel className="p-4 sm:p-6 rounded-2xl sticky top-24">
             <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-purple-400" />
-                Configuration
+                {t('Configuration')}
             </h2>
 
             <div className="space-y-6">
                 {/* Section 1: Analysis Scope */}
                 <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Analysis Scope</h3>
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">{t('Analysis Scope')}</h3>
 
                     {/* League Selection */}
                     <div className="space-y-2">
-                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">League</label>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('League')}</label>
                         <Select
                             value={selectedLeague}
                             onChange={setSelectedLeague}
@@ -44,7 +45,7 @@ const ConfigurationPanel = ({
 
                     {/* Mode Selection */}
                     <div className="space-y-2">
-                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Mode</label>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Mode')}</label>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => setAnalysisMode('total')}
@@ -53,7 +54,7 @@ const ConfigurationPanel = ({
                                     : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                     }`}
                             >
-                                Match Total
+                                {t('Match Total')}
                             </button>
                             <button
                                 onClick={() => setAnalysisMode('individual')}
@@ -62,7 +63,7 @@ const ConfigurationPanel = ({
                                     : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                     }`}
                             >
-                                Team Stats
+                                {t('Team Stats')}
                             </button>
                         </div>
                     </div>
@@ -70,7 +71,7 @@ const ConfigurationPanel = ({
 
                 {/* Section 2: Winning Criteria */}
                 <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Winning Criteria</h3>
+                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">{t('Winning Criteria')}</h3>
 
                     {/* Statistic Selection */}
 
@@ -78,7 +79,7 @@ const ConfigurationPanel = ({
                     <div className="grid grid-cols-1 gap-4">
                         {/* Operator Selection */}
                         <div className="space-y-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Operator</label>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Operator')}</label>
                             <div className="grid grid-cols-2 gap-2">
                                 <button
                                     onClick={() => setOperator('over')}
@@ -87,7 +88,7 @@ const ConfigurationPanel = ({
                                         : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                         }`}
                                 >
-                                    Over
+                                    {t('Over')}
                                 </button>
                                 <button
                                     onClick={() => setOperator('under')}
@@ -96,14 +97,14 @@ const ConfigurationPanel = ({
                                         : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
                                         }`}
                                 >
-                                    Under
+                                    {t('Under')}
                                 </button>
                             </div>
                         </div>
 
                         {/* Threshold Selection */}
                         <div className="space-y-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Threshold</label>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Threshold')}</label>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => adjustThreshold(-currentConfig.step)}

@@ -414,6 +414,98 @@
     }
 }
 
+/* Match view (PredictionHero, StatsAnalysis). The sides slide in from their
+   own edges, a spotlight breathes behind the predicted total, bars grow from
+   their origin (set inline), and a hot match's chip flickers like a flame. */
+.hero-in-left,
+.hero-in-right {
+    animation: hero-in 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.hero-in-left { --hero-from: -28px; }
+.hero-in-right { --hero-from: 28px; }
+
+@keyframes hero-in {
+    from { opacity: 0; transform: translateX(var(--hero-from)); }
+}
+
+.hero-spot {
+    animation: hero-spot 4.5s ease-in-out infinite;
+}
+
+@keyframes hero-spot {
+    0%, 100% { opacity: 0.6; scale: 0.92; }
+    50% { opacity: 1; scale: 1.08; }
+}
+
+.bar-grow {
+    animation: bar-grow 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: 150ms;
+}
+
+@keyframes bar-grow {
+    from { transform: scaleX(0); }
+}
+
+/* Upright bars (the team page's chart) rise from the axis, one after another. */
+.bar-rise {
+    transform-origin: bottom;
+    animation: bar-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes bar-rise {
+    from { transform: scaleY(0); }
+}
+
+.hot-chip {
+    animation: hot-chip 1.8s ease-in-out infinite;
+}
+
+/* A club's kit: fades up when its image arrives and lifts a little on hover. */
+.jersey {
+    animation: jersey-in 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: scale 400ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.jersey:hover {
+    scale: 1.08;
+}
+
+/* A badge that opens its team's page (TeamBadge): it lifts and glows. */
+.team-badge {
+    cursor: pointer;
+}
+
+.team-badge img {
+    transition: scale 300ms cubic-bezier(0.34, 1.45, 0.64, 1), filter 300ms ease-out;
+}
+
+.team-badge:hover img {
+    scale: 1.1;
+    filter: drop-shadow(0 0 10px rgb(52 211 153 / 0.55));
+}
+
+@keyframes jersey-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.9); }
+}
+
+@keyframes hot-chip {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(249 115 22 / 0); }
+    50% { box-shadow: 0 0 18px 2px rgb(249 115 22 / 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-in-left,
+    .hero-in-right,
+    .hero-spot,
+    .bar-grow,
+    .bar-rise,
+    .hot-chip,
+    .jersey {
+        animation: none;
+    }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

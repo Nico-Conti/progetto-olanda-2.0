@@ -4,11 +4,12 @@ import { SlipIcon } from '../BetBuilderCell';
 import { STAT_CONFIG, resolveStatKey, getStatLabel } from '../../utils/statistics';
 import { POISSON_LIMIT, expectedValue, devig } from '../../utils/countModel';
 import { MIN_EFFECTIVE_FOR_EV } from '../../utils/predictTotal';
+import { t } from '../../i18n';
 
 /**
- * What the distribution engine can say that a single number cannot.
+ * What the distribution can say that a single number cannot.
  *
- * The classic engine predicts one total and calls over/under at one hardcoded
+ * A predicted total on its own can only be called over/under at one hardcoded
  * line. Real bookmakers post whichever line suits the match - captured foul
  * prices sit at 20.5, 21.5, 22.5 and 25.5, and only 46% of matches would be
  * priced at the 9.5 corner line the app assumes. This prices every line the
@@ -98,12 +99,12 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
         <div className="glass-panel rounded-xl border border-white/10 p-4 relative z-10">
             <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
                 <h4 className="text-sm font-black text-white uppercase tracking-wide">
-                    {statLabel} — probability by line
+                    {t('{stat} — probability by line', { stat: statLabel })}
                 </h4>
                 <span className="text-[10px] text-zinc-500 uppercase font-bold">
-                    mean {prediction.total.toFixed(2)}
+                    {t('mean {n}', { n: prediction.total.toFixed(2) })}
                     {' · '}
-                    {prediction.dispersion >= POISSON_LIMIT ? 'Poisson' : `dispersion ${prediction.dispersion}`}
+                    {prediction.dispersion >= POISSON_LIMIT ? 'Poisson' : t('dispersion {n}', { n: prediction.dispersion })}
                 </span>
             </div>
 
@@ -112,15 +113,11 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                     <p className="text-[11px] text-amber-200/80 leading-relaxed">
                         {prediction.measured === false
-                            ? `${getStatLabel(statistic)} has no measured half-life or signal, so this `
-                              + 'model has never been validated for it — and we could not confirm the '
-                              + 'bookmaker prices the same quantity. '
-                            : `Thin history for this fixture`
-                              + (prediction.effectiveMatches != null
-                                  ? ` (${prediction.effectiveMatches.toFixed(1)} effective matches, want ${MIN_EFFECTIVE_FOR_EV}). `
-                                  : '. ')}
-                        Expected value is shown but greyed out: it is arithmetic on an estimate
-                        we do not yet trust.
+                            ? t('{stat} has no measured half-life or signal, so this model has never been validated for it — and we could not confirm the bookmaker prices the same quantity.', { stat: getStatLabel(statistic) })
+                            : prediction.effectiveMatches != null
+                                ? t('Thin history for this fixture ({n} effective matches, want {want}).', { n: prediction.effectiveMatches.toFixed(1), want: MIN_EFFECTIVE_FOR_EV })
+                                : t('Thin history for this fixture.')}
+                        {' '}{t('Expected value is shown but greyed out: it is arithmetic on an estimate we do not yet trust.')}
                     </p>
                 </div>
             )}
@@ -132,13 +129,13 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                 <table className="w-full table-fixed text-sm">
                     <thead>
                         <tr className="text-[10px] uppercase text-zinc-500 font-bold">
-                            <th className="w-[5.25rem] sm:w-24 text-left py-1 pr-2 whitespace-nowrap">Line</th>
+                            <th className="w-[5.25rem] sm:w-24 text-left py-1 pr-2 whitespace-nowrap">{t('Line')}</th>
                             {rows.map(r => (
                                 <th key={r.line}
                                     className={`px-1 sm:px-2 py-1 text-center whitespace-nowrap ${(r.overPrice || r.underPrice) ? 'text-emerald-400' : ''}`}>
                                     {r.line}
                                     {Number(slipBet?.value) === r.line && (
-                                        <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle" title="In the slip" />
+                                        <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 align-middle" title={t('In the slip')} />
                                     )}
                                 </th>
                             ))}
@@ -146,7 +143,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                     </thead>
                     <tbody className="tabular-nums">
                         <tr className="border-t border-white/5">
-                            <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-400 whitespace-nowrap">Over</td>
+                            <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-400 whitespace-nowrap">{t('Over')}</td>
                             {rows.map(r => (
                                 <td key={r.line} className={`px-1 sm:px-2 py-1.5 text-center font-black ${shade(r.over)}`}>
                                     {(100 * r.over).toFixed(0)}%
@@ -154,7 +151,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                             ))}
                         </tr>
                         <tr className="border-t border-white/5">
-                            <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-400 whitespace-nowrap">Under</td>
+                            <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-400 whitespace-nowrap">{t('Under')}</td>
                             {rows.map(r => (
                                 <td key={r.line} className={`px-1 sm:px-2 py-1.5 text-center font-black ${shade(1 - r.over)}`}>
                                     {(100 * (1 - r.over)).toFixed(0)}%
@@ -165,7 +162,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                         {hasPrices ? (
                             <>
                                 <tr className="border-t border-white/10">
-                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">Book O / U</td>
+                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">{t('Book O / U')}</td>
                                     {rows.map((r, i) => {
                                         const picked = Number(slipBet?.value) === r.line;
                                         // The card hangs inward at the ends so it never leaves the panel.
@@ -176,7 +173,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                                             <td key={r.line} className="px-0.5 sm:px-1 py-1 text-center">
                                                 <div
                                                     tabIndex={0}
-                                                    aria-label={`${statLabel} ${r.line}: add Over or Under to the slip`}
+                                                    aria-label={t('{stat} {line}: add Over or Under to the slip', { stat: statLabel, line: r.line })}
                                                     className={`quota relative mx-auto w-fit rounded-md px-1.5 sm:px-2 py-1 text-[11px] text-zinc-300 cursor-pointer outline-none transition-colors hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-emerald-400 ${picked ? 'bg-emerald-500/10 ring-1 ring-emerald-500/40' : ''}`}
                                                 >
                                                     <span className="flex flex-col sm:flex-row items-center sm:gap-1">
@@ -188,9 +185,9 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                                                     <div className={`quota-pop absolute top-full z-30 pt-1.5 w-56 ${align}`}>
                                                         <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 space-y-1 text-left">
                                                             <div className="px-2 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                                                                {statLabel} {r.line} · add to slip
+                                                                {statLabel} {r.line} · {t('add to slip')}
                                                             </div>
-                                                            {[['O', 'Over', r.overPrice, r.evOver], ['U', 'Under', r.underPrice, r.evUnder]].map(([opt, label, price, ev]) => {
+                                                            {[['O', t('Over'), r.overPrice, r.evOver], ['U', t('Under'), r.underPrice, r.evUnder]].map(([opt, label, price, ev]) => {
                                                                 const on = inSlip(r.line, opt);
                                                                 return (
                                                                     <button
@@ -212,7 +209,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                                                             })}
                                                             {slipBet && !picked && (
                                                                 <div className="px-2 pb-1 text-[10px] text-zinc-500">
-                                                                    Replaces {slipBet.option === 'O' ? 'Over' : 'Under'} {slipBet.value} in the slip
+                                                                    {t('Replaces {pick} in the slip', { pick: `${slipBet.option === 'O' ? t('Over') : t('Under')} ${slipBet.value}` })}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -223,13 +220,13 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                                     })}
                                 </tr>
                                 <tr className="border-t border-white/5">
-                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">EV Over</td>
+                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">{t('EV Over')}</td>
                                     {rows.map(r => (
                                         <td key={r.line} className="px-1 sm:px-2 py-1.5 text-center font-black text-[12px]">{evCell(r.evOver)}</td>
                                     ))}
                                 </tr>
                                 <tr className="border-t border-white/5">
-                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">EV Under</td>
+                                    <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">{t('EV Under')}</td>
                                     {rows.map(r => (
                                         <td key={r.line} className="px-1 sm:px-2 py-1.5 text-center font-black text-[12px]">{evCell(r.evUnder)}</td>
                                     ))}
@@ -238,7 +235,7 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
                         ) : (
                             <tr className="border-t border-white/10">
                                 <td className="text-left py-1.5 pr-2 text-[11px] uppercase font-bold text-zinc-500 whitespace-nowrap">
-                                    Break-even odds
+                                    {t('Break-even odds')}
                                 </td>
                                 {rows.map(r => (
                                     <td key={r.line} className="px-2 py-1.5 text-center text-[11px] text-zinc-500">
@@ -253,14 +250,12 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
 
             <p className="text-[10px] text-zinc-500 mt-3 leading-relaxed">
                 {prediction.dispersionFitted
-                    ? `Spread fitted on ${prediction.residualCount} past predictions. `
-                    : 'Not enough history to fit the spread yet, so a Poisson is assumed. '}
+                    ? t('Spread fitted on {n} past predictions.', { n: prediction.residualCount })
+                    : t('Not enough history to fit the spread yet, so a Poisson is assumed.')}
+                {' '}
                 {hasPrices
-                    ? 'Only the lines the bookmaker prices are shown. EV is the expected profit per unit '
-                      + 'staked at the price shown; positive means the price is longer than our probability '
-                      + 'justifies. Hover or tap a price to add it to the slip.'
-                    : 'No captured prices for this fixture, so break-even odds are shown instead: '
-                      + 'the price at which a bet on Over is a coin flip.'}
+                    ? t('Only the lines the bookmaker prices are shown. EV is the expected profit per unit staked at the price shown; positive means the price is longer than our probability justifies. Hover or tap a price to add it to the slip.')
+                    : t('No captured prices for this fixture, so break-even odds are shown instead: the price at which a bet on Over is a coin flip.')}
             </p>
         </div>
     );

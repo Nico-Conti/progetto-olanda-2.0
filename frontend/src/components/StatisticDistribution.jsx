@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, BarChart2, TrendingUp, X } from 'lucide-react';
 import { getStatLabel } from '../utils/statistics';
+import { t } from '../i18n';
 
 // Deliberately narrower than the full registry: a possession histogram is not
 // meaningful, so that option is left out here.
 const DISTRIBUTION_STATS = [
     'goals', 'corners', 'shots', 'shots_on_target', 'fouls', 'yellow_cards', 'red_cards',
 ];
-const STAT_OPTIONS = DISTRIBUTION_STATS.map(value => ({ value, label: getStatLabel(value) }));
 
 const StatisticDistribution = ({ matches, onClose }) => {
     const [selectedStat, setSelectedStat] = useState('goals');
@@ -84,10 +84,10 @@ const StatisticDistribution = ({ matches, onClose }) => {
                     <div>
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                             <BarChart2 className="w-6 h-6 text-emerald-400" />
-                            Statistic Distribution
+                            {t('Statistic Distribution')}
                         </h2>
                         <p className="text-zinc-400 text-sm mt-1">
-                            Analyze the frequency of <span className="text-emerald-400 font-bold uppercase">{selectedStat.replace('_', ' ')}</span> across the league.
+                            {t('Analyze the frequency of')} <span className="text-emerald-400 font-bold uppercase">{getStatLabel(selectedStat)}</span> {t('across the league.')}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
@@ -99,14 +99,14 @@ const StatisticDistribution = ({ matches, onClose }) => {
                 <div className="p-4 sm:p-6 border-b border-white/5 bg-zinc-900/50 flex flex-col xl:flex-row gap-6 items-center justify-between shrink-0">
                     <div className="flex flex-col md:flex-row gap-6 items-center w-full xl:w-auto">
                         <div className="flex flex-col gap-2 w-full md:w-auto">
-                            <label className="text-xs font-bold text-zinc-500 uppercase">Statistic</label>
+                            <label className="text-xs font-bold text-zinc-500 uppercase">{t('Statistic')}</label>
                             <div className="relative">
                                 <select
                                     value={selectedStat}
                                     onChange={(e) => setSelectedStat(e.target.value)}
                                     className="w-full md:w-48 bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-bold uppercase"
                                 >
-                                    {STAT_OPTIONS.map(opt => (
+                                    {DISTRIBUTION_STATS.map(value => ({ value, label: getStatLabel(value) })).map(opt => (
                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                     ))}
                                 </select>
@@ -115,25 +115,25 @@ const StatisticDistribution = ({ matches, onClose }) => {
                         </div>
 
                         <div className="flex flex-col gap-2 w-full md:w-auto">
-                            <label className="text-xs font-bold text-zinc-500 uppercase">Metric</label>
+                            <label className="text-xs font-bold text-zinc-500 uppercase">{t('Metric')}</label>
                             <div className="flex bg-zinc-900 border border-white/10 rounded-lg p-1">
                                 <button
                                     onClick={() => setViewMode('total')}
                                     className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'total' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Total
+                                    {t('Total')}
                                 </button>
                                 <button
                                     onClick={() => setViewMode('home')}
                                     className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'home' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Home
+                                    {t('Home')}
                                 </button>
                                 <button
                                     onClick={() => setViewMode('away')}
                                     className={`px-4 py-1.5 text-xs font-bold uppercase rounded-md transition ${viewMode === 'away' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
                                 >
-                                    Away
+                                    {t('Away')}
                                 </button>
                             </div>
                         </div>
@@ -142,15 +142,15 @@ const StatisticDistribution = ({ matches, onClose }) => {
                     {distribution && (
                         <div className="flex items-center gap-3 w-full xl:w-auto justify-center xl:justify-end border-t xl:border-t-0 border-white/5 pt-4 xl:pt-0">
                             <div className="flex flex-col items-center justify-center p-2.5 bg-white/5 border border-white/10 rounded-xl min-w-[90px] shadow-lg">
-                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Mean</div>
+                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">{t('Mean')}</div>
                                 <div className="text-xl font-black text-white">{distribution.stats.mean.toFixed(2)}</div>
                             </div>
                             <div className="flex flex-col items-center justify-center p-2.5 bg-white/5 border border-white/10 rounded-xl min-w-[90px] shadow-lg">
-                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Median</div>
+                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">{t('Median')}</div>
                                 <div className="text-xl font-black text-white">{distribution.stats.median}</div>
                             </div>
                             <div className="flex flex-col items-center justify-center p-2.5 bg-white/5 border border-white/10 rounded-xl min-w-[90px] shadow-lg">
-                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Samples</div>
+                                <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">{t('Samples')}</div>
                                 <div className="text-xl font-black text-white">{distribution.stats.totalSamples}</div>
                             </div>
                         </div>
@@ -174,7 +174,7 @@ const StatisticDistribution = ({ matches, onClose }) => {
                                             >
                                                 {/* Tooltip */}
                                                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/10 text-white text-xs font-bold px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                                                    {d.count} matches ({d.percentage.toFixed(1)}%)
+                                                    {t('{n} matches', { n: d.count })} ({d.percentage.toFixed(1)}%)
                                                 </div>
                                             </div>
                                             {/* Label */}
@@ -185,7 +185,7 @@ const StatisticDistribution = ({ matches, onClose }) => {
                             </div>
 
                             <div className="text-center text-xs text-zinc-500 font-mono shrink-0">
-                                Distribution of {selectedStat.toUpperCase()} per match ({viewMode})
+                                {t('Distribution of {stat} per match ({view})', { stat: getStatLabel(selectedStat), view: t(viewMode === 'total' ? 'Total' : viewMode === 'home' ? 'Home' : 'Away') })}
                             </div>
                         </div>
                     )}

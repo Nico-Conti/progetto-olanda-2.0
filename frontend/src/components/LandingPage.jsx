@@ -7,9 +7,10 @@ import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import { confettiBurst, flagWipe, flagColors, flagStripes, flagRing, motionAllowed } from '../utils/leaguePickerFx';
+import { t, tk, countryName } from '../i18n';
 
-const SUBTITLE = 'Advanced football analytics.';
-const CREDITS = 'Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude.';
+const SUBTITLE = tk('Advanced football analytics.');
+const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
 
 /**
  * Randomised placement and timing for the hover particles, drawn once at load
@@ -54,21 +55,21 @@ const HoverFx = ({ kind }) => {
 // it can read literally in the source.
 const FEATURES = [
     {
-        id: 'hot', label: 'Hot Matches', caption: 'Best Matchups', Icon: Flame, fx: 'fire',
+        id: 'hot', label: tk('Hot Matches'), caption: tk('Best Matchups'), Icon: Flame, fx: 'fire',
         card: 'hover-fire', glow: 'bg-orange-500/20',
         iconBox: 'bg-orange-500/10 border-orange-500/20 group-hover:border-orange-500/50',
         icon: 'text-orange-500 group-hover:text-orange-400', iconFx: 'fx-flame',
         title: 'group-hover:text-orange-300', arrow: 'group-hover:text-orange-400',
     },
     {
-        id: 'factor', label: 'Winning Factor', caption: 'Bet Analysis', Icon: Zap, fx: 'lightning',
+        id: 'factor', label: tk('Winning Factor'), caption: tk('Bet Analysis'), Icon: Zap, fx: 'lightning',
         card: 'hover-lightning', glow: 'bg-purple-500/20',
         iconBox: 'bg-purple-500/10 border-purple-500/20 group-hover:border-purple-500/50',
         icon: 'text-purple-500 group-hover:text-purple-400', iconFx: 'fx-zap',
         title: 'group-hover:text-purple-300', arrow: 'group-hover:text-purple-400',
     },
     {
-        id: 'safe', label: 'Safest Bets', caption: 'Low Variance', Icon: Shield, fx: 'frost',
+        id: 'safe', label: tk('Safest Bets'), caption: tk('Low Variance'), Icon: Shield, fx: 'frost',
         card: 'hover-ice', glow: 'bg-cyan-500/20',
         iconBox: 'bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-500/50',
         icon: 'text-cyan-500 group-hover:text-cyan-400',
@@ -120,9 +121,9 @@ const FeatureCard = ({ feature, onClick }) => {
                 </div>
                 <div className="text-left">
                     <h3 className={`text-lg font-bold text-white transition-colors ${feature.title}`}>
-                        {feature.label}
+                        {t(feature.label)}
                     </h3>
-                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">{feature.caption}</span>
+                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">{t(feature.caption)}</span>
                 </div>
             </div>
             <ArrowRight className={`w-5 h-5 text-zinc-600 transform group-hover:translate-x-1 transition relative z-10 ${feature.arrow}`} />
@@ -245,14 +246,14 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                             Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                         </h1>
                         <p className="text-zinc-400 text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
-                            <span className="sr-only">{SUBTITLE}</span>
+                            <span className="sr-only">{t(SUBTITLE)}</span>
                             <span className="colour-sweep" aria-hidden="true">
-                                {SUBTITLE.split('').map((char, i) => (
+                                {t(SUBTITLE).split('').map((char, i) => (
                                     <span key={i} style={{ '--i': i }}>{char}</span>
                                 ))}
                             </span>
                             <br />
-                            <span className="text-zinc-500">Select a league to begin male pisello...</span>
+                            <span className="text-zinc-500">{t('Select a league to begin male pisello...')}</span>
                         </p>
                     </div>
 
@@ -310,12 +311,12 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                 </div>
                                 <div className="text-left">
                                     <h3 className="text-lg font-bold text-white fx-gold-text">
-                                        Select Your League
+                                        {t('Select Your League')}
                                     </h3>
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
                                         {availableLeagues.length > 0
-                                            ? `${availableLeagues.length} leagues \u00b7 ${nations.length} nations`
-                                            : 'No leagues found - activate backend'}
+                                            ? t('{leagues} leagues · {nations} nations', { leagues: availableLeagues.length, nations: nations.length })
+                                            : t('No leagues found - activate backend')}
                                     </span>
                                 </div>
                             </div>
@@ -365,7 +366,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                 className="py-8 text-center text-zinc-600 text-base uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
                 style={{ fontFamily: "'Silkscreen', monospace", animationDelay: '300ms', animationFillMode: 'backwards' }}
             >
-                <ScrambleText text={CREDITS} />
+                <ScrambleText text={t('Powered by {names}.', { names: CREDIT_NAMES })} />
             </div>
 
             <TrophyIntro
@@ -392,7 +393,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <button
                                         onClick={() => setModalCountry(null)}
                                         className="p-2 -ml-2 hover:bg-amber-500/10 rounded-full transition-colors"
-                                        aria-label="Back to nations"
+                                        aria-label={t('Back to nations')}
                                     >
                                         <ArrowLeft className="w-5 h-5 text-zinc-400 hover:text-amber-300" />
                                     </button>
@@ -400,13 +401,13 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <TrophyIcon className="w-6 h-6 mr-1" aria-hidden="true" />
                                 )}
                                 <h2 className="text-2xl font-bold capitalize text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-400">
-                                    {openNation ? openNation[0] : 'Select Nation'}
+                                    {openNation ? countryName(openNation[0]) : t('Select Nation')}
                                 </h2>
                             </div>
                             <button
                                 onClick={closeModal}
                                 className="p-2 hover:bg-amber-500/10 rounded-full transition-colors"
-                                aria-label="Close"
+                                aria-label={t('Close')}
                             >
                                 <X className="w-6 h-6 text-zinc-400 hover:text-amber-300" />
                             </button>
@@ -454,10 +455,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                         </div>
                                         <span className="flag-bar" aria-hidden="true" />
                                         <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors capitalize text-center">
-                                            {country}
+                                            {countryName(country)}
                                         </h3>
                                         <span className="text-[10px] text-amber-200/45 font-medium uppercase tracking-wider mt-1">
-                                            {leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}
+                                            {leagues.length === 1 ? t('1 league') : t('{n} leagues', { n: leagues.length })}
                                         </span>
                                     </button>
                                 ))}

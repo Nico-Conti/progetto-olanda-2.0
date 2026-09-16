@@ -24,7 +24,7 @@ const FLAG_COLORS = {
     Olanda: ['#ae1c28', '#ffffff', '#21468b'],
     Portogallo: [['#006600', 2], ['#ff0000', 3]],
     Scozia: ['#005eb8', '#ffffff'],
-    Spagna: ['#aa151b', '#f1bf00', '#aa151b'],
+    Spagna: ['#aa151b', ['#f1bf00', 2], '#aa151b'],
     Turchia: ['#e30a17', '#ffffff'],
 };
 
@@ -46,8 +46,24 @@ export const leagueMeta = (leagues, name) => {
         logo: row?.logo_url ?? null,
         country: row?.country ?? null,
         flag: row?.country_flag ?? null,
+        bands: HORIZONTAL_BANDS.has(row?.country) ? flagStripes(flagColors(row.country), 180) : null,
     };
 };
+
+// Flags striped across rather than down. A header-shaped strip cropped out of
+// the image shows only the middle band - the Netherlands came out as a white
+// slab, Germany as a red one - so these are drawn from their colours instead.
+const HORIZONTAL_BANDS = new Set(['Germania', 'Olanda', 'Spagna']);
+
+/**
+ * Style for the see-through flag behind a league's header or row: the flag
+ * image, or the bands for a horizontally striped one, faded out by `mask`.
+ */
+export const flagWash = (meta, mask) => ({
+    background: meta.bands ?? `url("${meta.flag}") center / cover no-repeat`,
+    maskImage: mask,
+    WebkitMaskImage: mask,
+});
 
 /** Each stripe's colour with its start and end, as fractions of the whole. */
 const spans = (stripes) => {
@@ -60,8 +76,8 @@ const spans = (stripes) => {
     });
 };
 
-/** Hard-stop stripes, for a bar in the flag's colours. */
-export const flagStripes = (stripes) => `linear-gradient(90deg, ${spans(stripes)
+/** Hard-stop stripes, for a bar in the flag's colours; `angle` 180 stacks them top to bottom. */
+export const flagStripes = (stripes, angle = 90) => `linear-gradient(${angle}deg, ${spans(stripes)
     .map(({ color, from, to }) => `${color} ${100 * from}% ${100 * to}%`)
     .join(', ')})`;
 

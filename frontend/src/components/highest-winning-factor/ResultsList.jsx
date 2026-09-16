@@ -3,7 +3,8 @@ import { Trophy, Minus, Plus, X, Check } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import Select from '../ui/Select';
 import LeagueTag from '../LeagueTag';
-import { leagueMeta } from '../../utils/leaguePickerFx';
+import { flagWash, leagueMeta } from '../../utils/leaguePickerFx';
+import { t, dateLocale } from '../../i18n';
 
 const ResultsList = ({
     rankedTeams,
@@ -63,7 +64,7 @@ const ResultsList = ({
         }
         return defaults.map(n => ({
             value: n,
-            label: n === 'all' ? 'Season' : n.toString()
+            label: n === 'all' ? t('Season') : n.toString()
         }));
     }, [nGames]);
 
@@ -73,7 +74,7 @@ const ResultsList = ({
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-black text-white flex items-center gap-2">
                         <Trophy className="w-5 h-5 text-yellow-500" />
-                        Top
+                        {t('Top')}
                     </h2>
                     <div className="flex items-center gap-1">
                         <button
@@ -100,12 +101,12 @@ const ResultsList = ({
                         </button>
                     </div>
                     <h2 className="text-xl font-black text-white">
-                        Teams
+                        {t('Teams')}
                     </h2>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider mr-2">
-                        Last Games:
+                        {t('Last Games:')}
                     </span>
                     <div className="flex items-center gap-1">
                         <button
@@ -159,11 +160,11 @@ const ResultsList = ({
                             className={`relative overflow-hidden bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5'}`}
                             onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
                         >
-                            {meta.flag && (
+                            {(meta.flag || meta.bands) && (
                                 <span
                                     aria-hidden="true"
-                                    className="absolute inset-x-0 top-0 h-16 bg-cover bg-center opacity-[0.14] pointer-events-none"
-                                    style={{ backgroundImage: `url("${meta.flag}")`, maskImage: 'linear-gradient(to bottom right, black, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom right, black, transparent 70%)' }}
+                                    className="absolute inset-x-0 top-0 h-16 opacity-[0.14] pointer-events-none"
+                                    style={flagWash(meta, 'linear-gradient(to bottom right, black, transparent 70%)')}
                                 />
                             )}
                             <div className="relative flex justify-between items-start gap-3">
@@ -181,7 +182,7 @@ const ResultsList = ({
                                 </div>
                                 <button
                                     onClick={slip.toggle}
-                                    aria-label={slip.exact ? `Remove ${team.team} from the slip` : `Add ${team.team} to the slip`}
+                                    aria-label={slip.exact ? t('Remove {team} from the slip', { team: team.team }) : t('Add {team} to the slip', { team: team.team })}
                                     className={`shrink-0 p-2 rounded-lg transition ${slip.added
                                         ? 'bg-red-500/20 text-red-500 border border-red-500/50'
                                         : 'bg-white/5 text-zinc-400'
@@ -193,11 +194,11 @@ const ResultsList = ({
 
                             <div className="relative grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
-                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Record</span>
+                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">{t('Record')}</span>
                                     <span className="font-mono text-white font-bold">{team.winCount} / {team.totalGames}</span>
                                 </div>
                                 <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
-                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">Win Rate</span>
+                                    <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">{t('Win Rate')}</span>
                                     <span className={`font-black ${team.winRate >= 80 ? 'text-emerald-500' :
                                         team.winRate >= 60 ? 'text-emerald-400' :
                                             team.winRate >= 40 ? 'text-yellow-500' :
@@ -212,14 +213,14 @@ const ResultsList = ({
                         {/* Match History (Mobile) */}
                         {expandedTeam === team.team && (
                             <div className="bg-zinc-950/50 border border-white/5 rounded-xl p-3 space-y-2 animate-in slide-in-from-top-2">
-                                <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Recent Match History</h4>
+                                <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">{t('Recent Match History')}</h4>
                                 {team.matches.map((match, mIdx) => {
                                     const value = analysisMode === 'total' ? match.total : match.statFor;
                                     const success = operator === 'over' ? value > threshold : value < threshold;
                                     return (
                                         <div key={mIdx} className="flex items-center justify-between p-2 rounded-lg bg-zinc-900/40 border border-white/5">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `MD ${match.giornata}`}</span>
+                                                <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' }) : t('MD {n}', { n: match.giornata })}</span>
                                                 <span className="text-xs font-bold text-white">vs {match.opponent}</span>
                                             </div>
                                             <div className={`px-3 py-1 rounded-md font-mono font-bold text-sm ${success ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-500/50 border border-red-500/10'}`}>
@@ -232,7 +233,7 @@ const ResultsList = ({
                                     onClick={() => onTeamClick && onTeamClick(team.team)}
                                     className="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-tighter transition"
                                 >
-                                    See next fixture details
+                                    {t('See next fixture details')}
                                 </button>
                             </div>
                         )}
@@ -241,7 +242,7 @@ const ResultsList = ({
                 })}
                 {rankedTeams.length === 0 && (
                     <div className="text-center py-8 text-zinc-500">
-                        No data available.
+                        {t('No data available.')}
                     </div>
                 )}
             </div>
@@ -250,11 +251,11 @@ const ResultsList = ({
                 <table className="w-full text-left">
                     <thead className="bg-zinc-950/50 text-xs uppercase text-zinc-500 font-bold tracking-wider">
                         <tr>
-                            <th className="px-6 py-4 text-center w-16 whitespace-nowrap">Rank</th>
-                            <th className="px-6 py-4 whitespace-nowrap">Team</th>
-                            <th className="px-6 py-4 text-center whitespace-nowrap">Record</th>
-                            <th className="px-6 py-4 text-center whitespace-nowrap">Win Rate</th>
-                            <th className="px-6 py-4 text-center whitespace-nowrap">Add to Slip</th>
+                            <th className="px-6 py-4 text-center w-16 whitespace-nowrap">{t('Rank')}</th>
+                            <th className="px-6 py-4 whitespace-nowrap">{t('Team')}</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">{t('Record')}</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">{t('Win Rate')}</th>
+                            <th className="px-6 py-4 text-center whitespace-nowrap">{t('Add to Slip')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -270,8 +271,17 @@ const ResultsList = ({
                                     <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
                                         #{index + 1}
                                     </td>
-                                    <td className="px-6 py-3">
-                                        <div className="flex items-center gap-3">
+                                    <td className="relative px-6 py-3">
+                                        {/* The see-through flag, a card-sized strip as on
+                                            the fixture cards. */}
+                                        {(meta.flag || meta.bands) && (
+                                            <span
+                                                aria-hidden="true"
+                                                className="absolute inset-y-0 left-0 w-80 max-w-full opacity-[0.14] group-hover:opacity-25 transition-opacity pointer-events-none"
+                                                style={flagWash(meta, 'linear-gradient(to right, black, transparent 75%)')}
+                                            />
+                                        )}
+                                        <div className="relative flex items-center gap-3">
                                             <img
                                                 src={teamLogos[team.team]}
                                                 alt=""
@@ -316,7 +326,7 @@ const ResultsList = ({
                                     <td className="px-6 py-4 text-center">
                                         <button
                                             onClick={slip.toggle}
-                                            aria-label={slip.exact ? `Remove ${team.team} from the slip` : `Add ${team.team} to the slip`}
+                                            aria-label={slip.exact ? t('Remove {team} from the slip', { team: team.team }) : t('Add {team} to the slip', { team: team.team })}
                                             className={`p-2 rounded-lg transition ${slip.added
                                                 ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
                                                 : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
@@ -331,12 +341,12 @@ const ResultsList = ({
                                         <td colSpan="5" className="px-6 py-4 bg-zinc-950/30 border-y border-white/5">
                                             <div className="flex flex-col gap-3 py-2 animate-in slide-in-from-top-2">
                                                 <div className="flex items-center justify-between">
-                                                    <h4 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Past {team.totalGames} Games Match History</h4>
+                                                    <h4 className="text-xs font-black text-zinc-500 uppercase tracking-widest">{t('Past {n} Games Match History', { n: team.totalGames })}</h4>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); onTeamClick && onTeamClick(team.team); }}
                                                         className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-tighter border-b border-emerald-400/50 pb-0.5 transition"
                                                     >
-                                                        See next fixture details
+                                                        {t('See next fixture details')}
                                                     </button>
                                                 </div>
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
@@ -346,11 +356,11 @@ const ResultsList = ({
                                                         return (
                                                             <div key={mIdx} className="bg-zinc-900/60 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
                                                                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
-                                                                    <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `MD ${match.giornata}`}</span>
+                                                                    <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' }) : t('MD {n}', { n: match.giornata })}</span>
                                                                     <span className={`w-2 h-2 rounded-full ${success ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`}></span>
                                                                 </div>
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-[10px] font-black text-zinc-600 uppercase">vs Opponent</span>
+                                                                    <span className="text-[10px] font-black text-zinc-600 uppercase">{t('vs Opponent')}</span>
                                                                     <span className="text-xs font-bold text-white truncate" title={match.opponent}>{match.opponent}</span>
                                                                 </div>
                                                                 <div className={`mt-1 text-center py-1.5 rounded-lg font-mono font-black text-lg ${success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-zinc-500'}`}>
@@ -371,7 +381,7 @@ const ResultsList = ({
                         {rankedTeams.length === 0 && (
                             <tr>
                                 <td colSpan="5" className="px-6 py-12 text-center text-zinc-500">
-                                    No data available for the selected criteria.
+                                    {t('No data available for the selected criteria.')}
                                 </td>
                             </tr>
                         )}

@@ -3,37 +3,39 @@ import { ArrowDown, ArrowUp, BarChart3, ChevronDown, ChevronRight, ChevronUp, Cr
 import Select from './ui/Select';
 import SlidingTabs from './ui/SlidingTabs';
 import SeasonResults from './SeasonResults';
-import { STAT_OPTIONS, resolveStatKey, statPair } from '../utils/statistics';
+import { getStatLabel, resolveStatKey } from '../utils/statistics';
+import { teamGames, sampleOf, leagueTable } from '../utils/standings';
 import { staggerDelay } from '../utils/stagger';
 import { motionAllowed } from '../utils/leaguePickerFx';
+import { t, tk, dateLocale } from '../i18n';
 
 const VIEWS = [
-    { id: 'table', label: 'Table', Icon: Trophy },
-    { id: 'results', label: 'Results', Icon: ListOrdered },
+    { id: 'table', label: tk('Table'), Icon: Trophy },
+    { id: 'results', label: tk('Results'), Icon: ListOrdered },
 ];
 // "Last" drops on phones, where four "Last N" tabs do not fit the width.
 const SAMPLES = ['all', '5', '10', '15'].map(id => ({
     id,
-    label: id === 'all' ? 'All' : <><span className="hidden sm:inline">Last </span>{id}</>,
+    label: id === 'all' ? tk('All') : id,
 }));
 const VENUES = [
-    { id: 'all', label: 'Total' },
-    { id: 'home', label: 'Home' },
-    { id: 'away', label: 'Away' },
+    { id: 'all', label: tk('Total') },
+    { id: 'home', label: tk('Home') },
+    { id: 'away', label: tk('Away') },
 ];
 
 const ZONE = {
-    ucl: { label: 'Champions League', text: 'text-sky-400' },
-    uel: { label: 'Europa League', text: 'text-orange-400' },
-    uecl: { label: 'Conference League', text: 'text-emerald-400' },
-    eplay: { label: 'European play-offs', text: 'text-teal-300' },
-    lib: { label: 'Libertadores', text: 'text-sky-400' },
-    libq: { label: 'Libertadores qualifiers', text: 'text-sky-200' },
-    sud: { label: 'Sudamericana', text: 'text-orange-400' },
-    promo: { label: 'Promotion', text: 'text-emerald-400' },
-    pplay: { label: 'Promotion play-offs', text: 'text-lime-300' },
-    rplay: { label: 'Relegation play-off', text: 'text-amber-400' },
-    rel: { label: 'Relegation', text: 'text-red-500' },
+    ucl: { label: tk('Champions League'), text: 'text-sky-400' },
+    uel: { label: tk('Europa League'), text: 'text-orange-400' },
+    uecl: { label: tk('Conference League'), text: 'text-emerald-400' },
+    eplay: { label: tk('European play-offs'), text: 'text-teal-300' },
+    lib: { label: tk('Libertadores'), text: 'text-sky-400' },
+    libq: { label: tk('Libertadores qualifiers'), text: 'text-sky-200' },
+    sud: { label: tk('Sudamericana'), text: 'text-orange-400' },
+    promo: { label: tk('Promotion'), text: 'text-emerald-400' },
+    pplay: { label: tk('Promotion play-offs'), text: 'text-lime-300' },
+    rplay: { label: tk('Relegation play-off'), text: 'text-amber-400' },
+    rel: { label: tk('Relegation'), text: 'text-red-500' },
 };
 
 // Where each place leads: `top` counts down from 1st, `bottom` lists the last
@@ -69,43 +71,6 @@ const zoneAt = (league, pos, size) => {
     for (const [kind, n] of [...(z.bottom ?? [])].reverse()) if (pos >= (edge -= n)) return kind;
     return null;
 };
-
-const newestFirst = (a, b) =>
-    String(b.date ?? '').localeCompare(String(a.date ?? '')) || (b.giornata ?? 0) - (a.giornata ?? 0);
-
-/** Every team's matches seen from its own side, newest first. Matches without `statKey` are skipped. */
-const teamGames = (matches, statKey) => {
-    const games = {};
-    for (const m of matches) {
-        const s = statPair(m, statKey);
-        if (!s) continue;
-        const { home, away } = m.squadre;
-        (games[home] ??= []).push({ match: m, opponent: away, home: true, for: s.home, ag: s.away });
-        (games[away] ??= []).push({ match: m, opponent: home, home: false, for: s.away, ag: s.home });
-    }
-    Object.values(games).forEach(list => list.sort((a, b) => newestFirst(a.match, b.match)));
-    return games;
-};
-
-const sampleOf = (list, limit, venue) => {
-    const here = venue === 'all' ? list : list.filter(g => g.home === (venue === 'home'));
-    return limit === 'all' ? here : here.slice(0, Number(limit));
-};
-
-const leagueTable = (games, limit, venue) => Object.entries(games)
-    .map(([team, list]) => {
-        const played = sampleOf(list, limit, venue);
-        const r = { team, mp: played.length, w: 0, d: 0, l: 0, gf: 0, ga: 0, form: played.slice(0, 5).reverse() };
-        for (const g of played) {
-            r.gf += g.for;
-            r.ga += g.ag;
-            if (g.for > g.ag) r.w++;
-            else if (g.for === g.ag) r.d++;
-            else r.l++;
-        }
-        return { ...r, gd: r.gf - r.ga, pts: 3 * r.w + r.d };
-    })
-    .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team));
 
 const statTable = (games, limit, venue, sort) => Object.entries(games)
     .map(([team, list]) => {
@@ -156,7 +121,7 @@ const FORM = {
 const outcome = (g) => (g.for > g.ag ? 'W' : g.for === g.ag ? 'D' : 'L');
 const shortDate = (d) => {
     const when = d ? new Date(d) : null;
-    return when && !isNaN(when) ? when.toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : '';
+    return when && !isNaN(when) ? when.toLocaleDateString(dateLocale(), { day: '2-digit', month: 'short' }) : '';
 };
 /** "Home 2-1 Away", always in fixture order. */
 const scoreline = (team, g) => g.home
@@ -176,11 +141,11 @@ const Movement = ({ n }) => {
     return (
         <span
             className={`flex items-center text-[10px] font-bold tabular-nums ${n > 0 ? 'text-emerald-400' : 'text-red-400'}`}
-            title={`${n > 0 ? 'Up' : 'Down'} ${Math.abs(n)} since the previous matchday`}
+            title={n > 0 ? t('Up {n} since the previous matchday', { n }) : t('Down {n} since the previous matchday', { n: -n })}
         >
             <Icon className="w-3 h-3" strokeWidth={3} aria-hidden="true" />
             <span className="hidden md:inline">{Math.abs(n)}</span>
-            <span className="sr-only">{n > 0 ? 'up' : 'down'} {Math.abs(n)}</span>
+            <span className="sr-only">{n > 0 ? t('up {n}', { n }) : t('down {n}', { n: -n })}</span>
         </span>
     );
 };
@@ -194,7 +159,7 @@ const Group = ({ label, children }) => (
 
 const Chip = ({ label, value, tone = 'text-white' }) => (
     <div className="rounded-lg bg-white/[0.03] border border-white/5 py-1.5 text-center">
-        <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">{label}</div>
+        <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-500">{t(label)}</div>
         <div className={`text-sm font-black tabular-nums ${tone}`}>{value}</div>
     </div>
 );
@@ -230,7 +195,6 @@ const Standings = ({
     const glide = (set) => (value) => { capture(); set(value); };
 
     const statKey = resolveStatKey(selectedStatistic);
-    const statLabel = STAT_OPTIONS.find(o => o.value === statKey)?.label ?? statKey;
     // Ranking by goals would only repeat GF and GA, so the switch hides for it.
     const byStat = rankBy === 'stat' && statKey !== 'goals';
     const fullTable = !byStat && limit === 'all' && venue === 'all';
@@ -250,6 +214,9 @@ const Standings = ({
         ? statTable(teamGames(matchData, statKey), limit, venue, sort)
         : leagueTable(games, limit, venue)
     ), [byStat, matchData, statKey, games, limit, venue, sort]);
+    // After the memo: handing statKey to a function first reads, to the React
+    // Compiler, as a possible mutation of a memo dependency.
+    const statLabel = getStatLabel(statKey);
 
     const top = rows.length ? Math.max(...rows.map(r => (byStat ? r.tot : r.pts)), 1) : 1;
     const finished = season && latestSeason && season !== latestSeason;
@@ -289,28 +256,28 @@ const Standings = ({
             {/* z-30 keeps the Select's dropdown and the stuck bar above the rows. */}
             <div className="relative z-30 md:sticky md:top-[var(--app-header-h,0px)]">
                 <div className={`bg-zinc-900 border border-white/10 shadow-xl px-3 py-3 md:px-4 flex flex-wrap items-center gap-x-6 gap-y-3 ${view === 'table' ? 'rounded-t-xl' : 'rounded-xl'}`}>
-                    <Group label="Season">
+                    <Group label={t('Season')}>
                         {seasons.length > 1 ? (
                             <Select
                                 accent="emerald"
                                 value={season}
                                 onChange={glide(onSeasonChange)}
-                                options={seasons.map(sn => ({ value: sn, label: sn === latestSeason ? `${sn} (current)` : sn }))}
+                                options={seasons.map(sn => ({ value: sn, label: sn === latestSeason ? t('{season} (current)', { season: sn }) : sn }))}
                                 className="w-[200px]"
                             />
                         ) : (
                             <span className="text-sm font-bold text-white px-1">{season ?? '-'}</span>
                         )}
                     </Group>
-                    <SlidingTabs items={VIEWS} value={view} onChange={onViewChange} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
+                    <SlidingTabs items={VIEWS.map(v => ({ ...v, label: t(v.label) }))} value={view} onChange={onViewChange} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
 
                     {view === 'table' && (
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:ml-auto animate-in fade-in duration-300">
                             {statKey !== 'goals' && (
-                                <Group label="Rank by">
+                                <Group label={t('Rank by')}>
                                     <SlidingTabs
                                         items={[
-                                            { id: 'points', label: 'Points', Icon: Trophy },
+                                            { id: 'points', label: t('Points'), Icon: Trophy },
                                             { id: 'stat', label: statLabel, Icon: BarChart3 },
                                         ]}
                                         value={rankBy}
@@ -320,11 +287,11 @@ const Standings = ({
                                     />
                                 </Group>
                             )}
-                            <Group label="Sample">
-                                <SlidingTabs items={SAMPLES} value={limit} onChange={glide(setLimit)} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
+                            <Group label={t('Sample')}>
+                                <SlidingTabs items={SAMPLES.map(s => ({ ...s, label: s.id === 'all' ? t(s.label) : <><span className="hidden sm:inline">{t('Last')} </span>{s.id}</> }))} value={limit} onChange={glide(setLimit)} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
                             </Group>
-                            <Group label="Venue">
-                                <SlidingTabs items={VENUES} value={venue} onChange={glide(setVenue)} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
+                            <Group label={t('Venue')}>
+                                <SlidingTabs items={VENUES.map(v => ({ ...v, label: t(v.label) }))} value={venue} onChange={glide(setVenue)} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
                             </Group>
                         </div>
                     )}
@@ -333,25 +300,25 @@ const Standings = ({
                 {view === 'table' && rows.length > 0 && (
                     <div role="row" className={`grid ${cols} items-center gap-x-1.5 px-3 md:px-4 h-9 bg-zinc-950 border-x border-b border-white/10 text-[10px] font-bold text-zinc-500 uppercase tracking-wider`}>
                         <div role="columnheader" className="text-center">#</div>
-                        <div role="columnheader">Team</div>
+                        <div role="columnheader">{t('Team')}</div>
                         {byStat ? (
                             <>
-                                <div role="columnheader" className="hidden md:block text-center">MP</div>
-                                {sortHeader('for', 'For')}
-                                {sortHeader('ag', 'Ag')}
-                                {sortHeader('tot', 'Total')}
+                                <div role="columnheader" className="hidden md:block text-center">{t('MP')}</div>
+                                {sortHeader('for', t('For'))}
+                                {sortHeader('ag', t('Ag'))}
+                                {sortHeader('tot', t('Total'))}
                             </>
                         ) : (
                             <>
-                                <div role="columnheader" className="hidden md:block text-center">MP</div>
-                                <div role="columnheader" className="hidden md:block text-center">W</div>
-                                <div role="columnheader" className="hidden md:block text-center">D</div>
-                                <div role="columnheader" className="hidden md:block text-center">L</div>
-                                <div role="columnheader" className="hidden lg:block text-center">GF</div>
-                                <div role="columnheader" className="hidden lg:block text-center">GA</div>
-                                <div role="columnheader" className="text-center">GD</div>
-                                <div role="columnheader" className="text-center text-white">Pts</div>
-                                <div role="columnheader" className="text-center" title="Oldest to latest, left to right">Form</div>
+                                <div role="columnheader" className="hidden md:block text-center">{t('MP')}</div>
+                                <div role="columnheader" className="hidden md:block text-center">{t('W')}</div>
+                                <div role="columnheader" className="hidden md:block text-center">{t('D')}</div>
+                                <div role="columnheader" className="hidden md:block text-center">{t('L')}</div>
+                                <div role="columnheader" className="hidden lg:block text-center">{t('GF')}</div>
+                                <div role="columnheader" className="hidden lg:block text-center">{t('GA')}</div>
+                                <div role="columnheader" className="text-center">{t('GD')}</div>
+                                <div role="columnheader" className="text-center text-white">{t('Pts')}</div>
+                                <div role="columnheader" className="text-center" title={t('Oldest to latest, left to right')}>{t('Form')}</div>
                             </>
                         )}
                         <div aria-hidden="true" />
@@ -361,17 +328,17 @@ const Standings = ({
 
             {view === 'results' ? (
                 <div className="mt-4">
-                    <SeasonResults matchData={matchData} teamLogos={teamLogos} season={season} />
+                    <SeasonResults matchData={matchData} teamLogos={teamLogos} season={season} onTeamClick={onTeamClick} />
                 </div>
             ) : rows.length === 0 ? (
                 <div className="bg-zinc-900/50 border-x border-b border-white/10 rounded-b-xl p-10 text-center">
-                    <p className="text-zinc-300 text-sm font-bold">No matches played yet in {season || 'this season'}</p>
+                    <p className="text-zinc-300 text-sm font-bold">{season ? t('No matches played yet in {season}', { season }) : t('No matches played yet this season')}</p>
                     <p className="text-zinc-500 text-xs mt-2 max-w-sm mx-auto">
-                        The table fills in as results come in. Pick an earlier season above to see a finished one.
+                        {t('The table fills in as results come in. Pick an earlier season above to see a finished one.')}
                     </p>
                 </div>
             ) : (
-                <div role="table" aria-label={byStat ? `${statLabel} per game` : 'League table'} className="bg-zinc-900/50 backdrop-blur-md border-x border-b border-white/10 rounded-b-xl shadow-xl">
+                <div role="table" aria-label={byStat ? t('{stat} per game', { stat: statLabel }) : t('League table')} className="bg-zinc-900/50 backdrop-blur-md border-x border-b border-white/10 rounded-b-xl shadow-xl">
                     <div ref={listRef} className="divide-y divide-white/5">
                         {rows.map((row, i) => {
                             const zone = fullTable ? zoneAt(league, i + 1, rows.length) : null;
@@ -411,11 +378,11 @@ const Standings = ({
                                                 <span className="truncate text-sm md:text-[15px] font-bold text-zinc-200 group-hover:text-white transition-colors">
                                                     {row.team}
                                                 </span>
-                                                {zone && <span className="sr-only">, {ZONE[zone].label}</span>}
+                                                {zone && <span className="sr-only">, {t(ZONE[zone].label)}</span>}
                                                 {finished && fullTable && i === 0 && (
                                                     <span className="champion-pill flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-400/10 border border-amber-400/30 px-1.5 md:px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
                                                         <Crown className="w-3 h-3" aria-hidden="true" />
-                                                        <span className="hidden sm:inline">Champions</span>
+                                                        <span className="hidden sm:inline">{t('Champions')}</span>
                                                     </span>
                                                 )}
                                             </button>
@@ -459,13 +426,13 @@ const Standings = ({
                                                         return (
                                                             <span key={k} className="t-tt-wrap">
                                                                 <span className={`flex items-center justify-center rounded-full md:rounded-md md:border md:w-6 md:h-6 text-[10px] font-black ${latest ? 'w-2 h-2 md:ring-2 md:ring-white/20 md:ring-offset-1 md:ring-offset-zinc-900' : 'w-1.5 h-1.5'} ${FORM[res]}`}>
-                                                                    <span className="hidden md:inline">{res}</span>
-                                                                    <span className="sr-only md:hidden">{res}</span>
+                                                                    <span className="hidden md:inline">{t(res)}</span>
+                                                                    <span className="sr-only md:hidden">{t(res)}</span>
                                                                 </span>
                                                                 <span className="t-tt hidden md:block text-xs font-bold z-10">
                                                                     {scoreline(row.team, g)}
                                                                     <span className="block text-[10px] font-medium text-zinc-400 text-center">
-                                                                        {[latest && 'Latest', shortDate(g.match.date)].filter(Boolean).join(' · ')}
+                                                                        {[latest && t('Latest'), shortDate(g.match.date)].filter(Boolean).join(' · ')}
                                                                     </span>
                                                                 </span>
                                                             </span>
@@ -508,8 +475,8 @@ const Standings = ({
                                                                     const res = outcome(g);
                                                                     return (
                                                                         <li key={k} className="flex items-center gap-2 text-xs">
-                                                                            <span className={`w-5 h-5 flex-shrink-0 rounded flex items-center justify-center text-[10px] font-black text-zinc-950 ${FORM[res].split(' ')[0]}`}>{res}</span>
-                                                                            <span className="w-3 text-[10px] font-bold text-zinc-500">{g.home ? 'H' : 'A'}</span>
+                                                                            <span className={`w-5 h-5 flex-shrink-0 rounded flex items-center justify-center text-[10px] font-black text-zinc-950 ${FORM[res].split(' ')[0]}`}>{t(res)}</span>
+                                                                            <span className="w-3 text-[10px] font-bold text-zinc-500">{g.home ? t('H') : t('A')}</span>
                                                                             {teamLogos[g.opponent] && <img src={teamLogos[g.opponent]} alt="" className="w-4 h-4 object-contain" />}
                                                                             <span className="flex-1 truncate text-zinc-300">{g.opponent}</span>
                                                                             <span className="font-black text-white tabular-nums">{g.for}-{g.ag}</span>
@@ -526,7 +493,7 @@ const Standings = ({
                                                     onClick={() => onTeamClick?.(row.team)}
                                                     className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 py-2 text-xs font-bold uppercase tracking-wider text-emerald-400 active:bg-emerald-500/20"
                                                 >
-                                                    Team details <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                                                    {t('Team details')} <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                                                 </button>
                                             </div>
                                         </div>
@@ -539,21 +506,21 @@ const Standings = ({
                     <div className="px-4 py-3 border-t border-white/5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-zinc-500">
                         {byStat ? (
                             <span>
-                                {statLabel} per game over the sample, for and against each team. <span className="hidden md:inline">Click</span><span className="md:hidden">Tap</span> a column to sort.
+                                {t('{stat} per game over the sample, for and against each team.', { stat: statLabel })} <span className="hidden md:inline">{t('Click a column to sort.')}</span><span className="md:hidden">{t('Tap a column to sort.')}</span>
                             </span>
                         ) : zones.size > 0 ? (
                             <>
                                 {[...zones].map(z => (
                                     <span key={z} className="flex items-center gap-1.5">
                                         <span className={`w-2 h-2 rounded-full bg-current ${ZONE[z].text}`} aria-hidden="true" />
-                                        {ZONE[z].label}
+                                        {t(ZONE[z].label)}
                                     </span>
                                 ))}
-                                <span className="text-zinc-600">Indicative: cup winners and coefficients can move places.</span>
+                                <span className="text-zinc-600">{t('Indicative: cup winners and coefficients can move places.')}</span>
                             </>
                         ) : (
                             <span>
-                                {fullTable ? 'Arrows show movement since the previous matchday.' : `${limit === 'all' ? 'All matches' : `Last ${limit}`} · ${VENUES.find(v => v.id === venue).label}: points from these matches only. Arrows compare with a matchday earlier.`}
+                                {fullTable ? t('Arrows show movement since the previous matchday.') : t('{sample} · {venue}: points from these matches only. Arrows compare with a matchday earlier.', { sample: limit === 'all' ? t('All matches') : t('Last {n}', { n: limit }), venue: t(VENUES.find(v => v.id === venue).label) })}
                             </span>
                         )}
                     </div>

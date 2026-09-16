@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import MatchStatsModal from './MatchStatsModal';
+import TeamBadge from './TeamBadge';
+import { t, dateLocale } from '../i18n';
 
 /**
  * Every result of one season, newest matchday first.
@@ -8,7 +10,7 @@ import MatchStatsModal from './MatchStatsModal';
  * Expects `matchData` already narrowed to a single league and season - the
  * caller owns that filtering, the same way LeagueTable receives its slice.
  */
-const SeasonResults = ({ matchData, teamLogos, season }) => {
+const SeasonResults = ({ matchData, teamLogos, season, onTeamClick }) => {
     // The row that has been opened into the stats popup, if any.
     const [openMatch, setOpenMatch] = useState(null);
 
@@ -36,10 +38,10 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
         return (
             <div className="glass-panel rounded-xl border border-white/10 p-10 text-center">
                 <p className="text-zinc-300 text-sm font-bold">
-                    No results yet in {season || 'this season'}
+                    {season ? t('No results yet in {season}', { season }) : t('No results yet this season')}
                 </p>
                 <p className="text-zinc-500 text-xs mt-2">
-                    Matches appear here as they are played.
+                    {t('Matches appear here as they are played.')}
                 </p>
             </div>
         );
@@ -58,10 +60,10 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
                     <div className="px-4 py-2 bg-zinc-900/60 border-b border-white/5 flex items-center gap-2">
                         <ChevronRight className="w-3 h-3 text-emerald-500" />
                         <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
-                            Giornata {giornata}
+                            {t('Matchday {n}', { n: giornata })}
                         </span>
                         <span className="text-[10px] text-zinc-600 font-bold ml-auto">
-                            {matches.length} {matches.length === 1 ? 'match' : 'matches'}
+                            {matches.length === 1 ? t('1 match') : t('{n} matches', { n: matches.length })}
                         </span>
                     </div>
 
@@ -82,12 +84,12 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
                                             setOpenMatch(m);
                                         }
                                     }}
-                                    title={`${m.squadre.home} vs ${m.squadre.away} - full statistics`}
+                                    title={t('{home} vs {away} - full statistics', { home: m.squadre.home, away: m.squadre.away })}
                                     className="flex items-center gap-3 px-4 py-2 text-sm cursor-pointer hover:bg-white/5 focus:bg-white/5 focus:outline-none transition-colors"
                                 >
                                     <span className="hidden sm:block w-14 text-[10px] font-bold text-zinc-600 uppercase tracking-wider flex-shrink-0">
                                         {when && !isNaN(when.getTime())
-                                            ? when.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
+                                            ? when.toLocaleDateString(dateLocale(), { day: '2-digit', month: 'short' })
                                             : ''}
                                     </span>
 
@@ -96,7 +98,7 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
                                             {m.squadre.home}
                                         </span>
                                         {teamLogos?.[m.squadre.home] && (
-                                            <img src={teamLogos[m.squadre.home]} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+                                            <TeamBadge team={m.squadre.home} logo={teamLogos[m.squadre.home]} onOpen={onTeamClick} className="w-5 h-5" />
                                         )}
                                     </div>
 
@@ -106,7 +108,7 @@ const SeasonResults = ({ matchData, teamLogos, season }) => {
 
                                     <div className="flex-1 flex items-center gap-2 min-w-0">
                                         {teamLogos?.[m.squadre.away] && (
-                                            <img src={teamLogos[m.squadre.away]} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+                                            <TeamBadge team={m.squadre.away} logo={teamLogos[m.squadre.away]} onOpen={onTeamClick} className="w-5 h-5" />
                                         )}
                                         <span className={`truncate ${ag > hg ? 'text-white font-bold' : 'text-zinc-400'}`}>
                                             {m.squadre.away}

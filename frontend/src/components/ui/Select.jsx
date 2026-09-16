@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { usePresence } from '../../hooks/usePresence';
+import { t } from '../../i18n';
 
 // Written out in full: Tailwind only sees literal class strings, so an
 // interpolated `border-${accent}-500/50` would never be generated.
@@ -19,7 +20,7 @@ const ACCENTS = {
     },
 };
 
-const Select = ({ value, onChange, options, placeholder = "Select...", className = "", accent = "purple" }) => {
+const Select = ({ value, onChange, options, placeholder, className = "", accent = "purple" }) => {
     const theme = ACCENTS[accent] ?? ACCENTS.purple;
     const [isOpen, setIsOpen] = useState(false);
     const isMenuMounted = usePresence(isOpen, '--dropdown-close-dur');
@@ -59,7 +60,7 @@ const Select = ({ value, onChange, options, placeholder = "Select...", className
                 `}
             >
                 <span className={`truncate ${!selectedOption ? 'text-zinc-500' : `${theme.text} transition-colors`}`}>
-                    {selectedOption ? selectedOption.label : placeholder}
+                    {selectedOption ? selectedOption.label : (placeholder ?? t('Select...'))}
                 </span>
                 <ChevronDown
                     className={`w-4 h-4 text-zinc-600 ${theme.text} transition ${isOpen ? 'rotate-180' : ''}`}

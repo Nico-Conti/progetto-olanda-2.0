@@ -4,10 +4,12 @@ import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import { betMarket, betPick } from '../utils/statistics';
+import { t, tk, dateLocale, getLanguage, setLanguage, LANGUAGES } from '../i18n';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
+const STATUS_LABEL = { pending: tk('pending'), won: tk('won'), lost: tk('lost'), void: tk('void') };
 const STATUS_STYLE = {
     pending: 'text-zinc-300', won: 'text-emerald-400', lost: 'text-red-400', void: 'text-zinc-500',
 };
@@ -68,8 +70,8 @@ export const AccountButton = () => {
     return (
         <button
             onClick={openAccount}
-            aria-label={user ? 'Your account' : 'Sign in'}
-            title={user ? 'Your account' : 'Sign in'}
+            aria-label={user ? t('Your account') : t('Sign in')}
+            title={user ? t('Your account') : t('Sign in')}
             className="rounded-full hover:ring-2 hover:ring-emerald-500/50 transition"
         >
             <Avatar user={user} />
@@ -92,7 +94,7 @@ const AuthForm = ({ onSignedIn }) => {
             // An unknown username gets the same answer as a wrong password.
             const data = await run(async () => {
                 const email = await emailFor(login);
-                return email ? supabase.auth.signInWithPassword({ email, password }) : fail('Invalid login credentials');
+                return email ? supabase.auth.signInWithPassword({ email, password }) : fail(t('Invalid login credentials'));
             });
             if (data?.session) onSignedIn();
             return;
@@ -101,28 +103,28 @@ const AuthForm = ({ onSignedIn }) => {
         // The database refuses a duplicate anyway (migration 009); asking first
         // turns its generic "Database error" into a message that says why.
         const data = await run(async () => (await emailFor(username))
-            ? fail('That username is taken.')
+            ? fail(t('That username is taken.'))
             : supabase.auth.signUp({ email: login, password, options: { data: { username } } }));
         // No session back means the project requires email confirmation.
-        if (data && !data.session) setMsg({ ok: true, text: 'Almost there - confirm the link we emailed you, then sign in.' });
+        if (data && !data.session) setMsg({ ok: true, text: t('Almost there - confirm the link we emailed you, then sign in.') });
         else if (data?.session) onSignedIn();
     };
 
     const forgot = (e) => {
         const login = e.currentTarget.form.login.value.trim();
-        if (!login) return setMsg({ text: 'Type your email or username first, then press "Forgot password".' });
+        if (!login) return setMsg({ text: t('Type your email or username first, then press "Forgot password".') });
         run(async () => {
             const email = await emailFor(login);
             return email
                 ? supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-                : fail('No account with that username.');
-        }, 'Reset link sent - open it and set a new password here.');
+                : fail(t('No account with that username.'));
+        }, t('Reset link sent - open it and set a new password here.'));
     };
 
     return (
         <form onSubmit={submit} className="space-y-3">
             <SlidingTabs
-                items={[{ id: 'login', label: 'Sign in' }, { id: 'register', label: 'Register' }]}
+                items={[{ id: 'login', label: t('Sign in') }, { id: 'register', label: t('Register') }]}
                 value={mode}
                 onChange={(m) => { setMode(m); setMsg(null); }}
                 className="w-full"
@@ -130,19 +132,19 @@ const AuthForm = ({ onSignedIn }) => {
             />
             {mode === 'register' && (
                 <label className="block">
-                    <span className={LABEL}>Username</span>
+                    <span className={LABEL}>{t('Username')}</span>
                     <input name="username" required {...USERNAME_RULES} autoComplete="username" className={INPUT} />
                 </label>
             )}
             <label className="block">
-                <span className={LABEL}>{mode === 'login' ? 'Email or username' : 'Email'}</span>
+                <span className={LABEL}>{mode === 'login' ? t('Email or username') : t('Email')}</span>
                 <input
                     name="login" required type={mode === 'login' ? 'text' : 'email'}
                     autoComplete={mode === 'login' ? 'username' : 'email'} className={INPUT}
                 />
             </label>
             <label className="block">
-                <span className={LABEL}>Password</span>
+                <span className={LABEL}>{t('Password')}</span>
                 <input
                     name="password" type="password" required minLength={8}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -151,11 +153,11 @@ const AuthForm = ({ onSignedIn }) => {
             </label>
             <Message msg={msg} />
             <button type="submit" disabled={busy} className={PRIMARY}>
-                {mode === 'login' ? 'Sign in' : 'Create account'}
+                {mode === 'login' ? t('Sign in') : t('Create account')}
             </button>
             {mode === 'login' && (
                 <button type="button" onClick={forgot} disabled={busy} className="w-full text-xs text-zinc-500 hover:text-zinc-300">
-                    Forgot password?
+                    {t('Forgot password?')}
                 </button>
             )}
         </form>
@@ -178,7 +180,7 @@ const ProfileTab = ({ user, leagues }) => {
         if (!ok) return;
         const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(path).data;
         // Same path every time, so bust the browser's cache of the old picture.
-        saveMeta({ avatar_url: `${publicUrl}?v=${Date.now()}` }, 'Picture updated.');
+        saveMeta({ avatar_url: `${publicUrl}?v=${Date.now()}` }, t('Picture updated.'));
     };
 
     const toggleFavourite = (league) => {
@@ -190,14 +192,14 @@ const ProfileTab = ({ user, leagues }) => {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
-                <label className="relative cursor-pointer group" title="Change picture">
+                <label className="relative cursor-pointer group" title={t('Change picture')}>
                     <Avatar user={user} className="w-16 h-16 text-2xl" />
                     <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-center transition">
                         <Camera className="w-5 h-5 text-white" />
                     </span>
                     <input
                         type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only"
-                        aria-label="Upload profile picture" disabled={busy}
+                        aria-label={t('Upload profile picture')} disabled={busy}
                         onChange={(e) => uploadAvatar(e.target.files[0])}
                     />
                 </label>
@@ -209,23 +211,34 @@ const ProfileTab = ({ user, leagues }) => {
                         run(async () => {
                             const owner = await emailFor(username);
                             return owner && owner !== user.email
-                                ? fail('That username is taken.')
+                                ? fail(t('That username is taken.'))
                                 : supabase.auth.updateUser({ data: { username } });
-                        }, 'Username saved.');
+                        }, t('Username saved.'));
                     }}
                 >
                     <label className="flex-1">
-                        <span className={LABEL}>Username</span>
+                        <span className={LABEL}>{t('Username')}</span>
                         <input name="username" defaultValue={meta.username ?? ''} required {...USERNAME_RULES} className={INPUT} />
                     </label>
-                    <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">Save</button>
+                    <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Save')}</button>
                 </form>
             </div>
             <p className="text-xs text-zinc-500 -mt-4">{user.email}</p>
 
             <div>
-                <span className={LABEL}>Favourite leagues</span>
-                <p className="text-[11px] text-zinc-500 mb-2">Pinned to the landing page for one-click access.</p>
+                <span className={LABEL}>{t('Language')}</span>
+                <SlidingTabs
+                    items={LANGUAGES}
+                    value={getLanguage()}
+                    onChange={(lang) => { setLanguage(lang); saveMeta({ language: lang }); }}
+                    className="w-full"
+                    tabClassName="flex-1 font-semibold"
+                />
+            </div>
+
+            <div>
+                <span className={LABEL}>{t('Favourite leagues')}</span>
+                <p className="text-[11px] text-zinc-500 mb-2">{t('Pinned to the landing page for one-click access.')}</p>
                 <div className="flex flex-wrap gap-2">
                     {leagues.map(league => {
                         const on = favourites.includes(league);
@@ -251,14 +264,14 @@ const ProfileTab = ({ user, leagues }) => {
                 onSubmit={async (e) => {
                     e.preventDefault();
                     const form = e.currentTarget;
-                    if (await run(() => supabase.auth.updateUser({ password: form.password.value }), 'Password changed.')) form.reset();
+                    if (await run(() => supabase.auth.updateUser({ password: form.password.value }), t('Password changed.'))) form.reset();
                 }}
             >
                 <label className="flex-1">
-                    <span className={LABEL}>New password</span>
+                    <span className={LABEL}>{t('New password')}</span>
                     <input name="password" type="password" required minLength={8} autoComplete="new-password" className={INPUT} />
                 </label>
-                <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">Change</button>
+                <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Change')}</button>
             </form>
 
             <Message msg={msg} />
@@ -267,7 +280,7 @@ const ProfileTab = ({ user, leagues }) => {
                 onClick={() => supabase.auth.signOut()}
                 className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 flex items-center justify-center gap-2"
             >
-                <LogOut className="w-4 h-4" /> Sign out
+                <LogOut className="w-4 h-4" /> {t('Sign out')}
             </button>
         </div>
     );
@@ -291,13 +304,13 @@ const HistoryTab = () => {
     };
 
     const remove = async (id) => {
-        if (!window.confirm('Delete this slip from your history?')) return;
+        if (!window.confirm(t('Delete this slip from your history?'))) return;
         const { error } = await supabase.from('slips').delete().eq('id', id);
         if (error) return setError(error.message);
         setSlips(prev => prev.filter(s => s.id !== id));
     };
 
-    if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">Loading…</p>;
+    if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">{t('Loading…')}</p>;
 
     // Profit over settled slips that carry both a stake and odds; void is a refund.
     const settled = slips.filter(s => s.stake && s.odds && (s.status === 'won' || s.status === 'lost'));
@@ -308,13 +321,13 @@ const HistoryTab = () => {
             {error && <Message msg={{ text: error }} />}
             {slips.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">
-                    <p>No played slips yet.</p>
-                    <p className="text-xs mt-1">Use "Save as played" in the bet slip.</p>
+                    <p>{t('No played slips yet.')}</p>
+                    <p className="text-xs mt-1">{t('Use "Save as played" in the bet slip.')}</p>
                 </div>
             ) : (
                 <>
                     <div className="flex justify-between text-xs text-zinc-400 px-1">
-                        <span>{slips.length} slips · {settled.length} settled</span>
+                        <span>{t('{slips} slips · {settled} settled', { slips: slips.length, settled: settled.length })}</span>
                         <span className={`font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             P/L {profit >= 0 ? '+' : '−'}€{Math.abs(profit).toFixed(2)}
                         </span>
@@ -323,18 +336,18 @@ const HistoryTab = () => {
                         <div key={slip.id} className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-zinc-500">
-                                    {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                                    {new Date(slip.created_at).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <select
                                         value={slip.status}
                                         onChange={(e) => setStatus(slip.id, e.target.value)}
-                                        aria-label="Slip outcome"
+                                        aria-label={t('Slip outcome')}
                                         className={`bg-zinc-950/60 border border-white/10 rounded-lg px-2 py-1 text-xs font-bold uppercase ${STATUS_STYLE[slip.status]}`}
                                     >
-                                        {Object.keys(STATUS_STYLE).map(s => <option key={s} value={s}>{s}</option>)}
+                                        {Object.keys(STATUS_STYLE).map(s => <option key={s} value={s}>{t(STATUS_LABEL[s])}</option>)}
                                     </select>
-                                    <button onClick={() => remove(slip.id)} aria-label="Delete slip" className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg">
+                                    <button onClick={() => remove(slip.id)} aria-label={t('Delete slip')} className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -352,9 +365,9 @@ const HistoryTab = () => {
                                 ))}
                             </ul>
                             <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
-                                <span>odds {slip.odds ? Number(slip.odds).toFixed(2) : '—'}</span>
-                                <span>stake {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}</span>
-                                <span>returns {slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—'}</span>
+                                <span>{t('odds')} {slip.odds ? Number(slip.odds).toFixed(2) : '—'}</span>
+                                <span>{t('stake')} {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}</span>
+                                <span>{t('returns')} {slip.odds && slip.stake ? `€${(slip.odds * slip.stake).toFixed(2)}` : '—'}</span>
                             </div>
                         </div>
                     ))}
@@ -365,8 +378,8 @@ const HistoryTab = () => {
 };
 
 const TABS = [
-    { id: 'profile', label: 'Profile', Icon: User },
-    { id: 'history', label: 'Slip history', Icon: History },
+    { id: 'profile', label: tk('Profile'), Icon: User },
+    { id: 'history', label: tk('Slip history'), Icon: History },
 ];
 
 const AccountModal = ({ isOpen, onClose, leagues }) => {
@@ -389,22 +402,22 @@ const AccountModal = ({ isOpen, onClose, leagues }) => {
     return (
         <div className={`fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity starting:opacity-0 ${isOpen ? 'duration-250' : 'duration-150 opacity-0'}`}>
             <div
-                role="dialog" aria-modal="true" aria-label="Account"
+                role="dialog" aria-modal="true" aria-label={t('Account')}
                 className={`t-modal ${isOpen ? 'is-open' : 'is-closing'} bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[85vh]`}
             >
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
                         {user && !signedOutAtOpen ? <Avatar user={user} className="w-7 h-7 text-sm" /> : <User className="w-5 h-5 text-emerald-400" />}
-                        <span className="truncate">{user && !signedOutAtOpen ? (user.user_metadata?.username || 'Your account') : 'Welcome'}</span>
+                        <span className="truncate">{user && !signedOutAtOpen ? (user.user_metadata?.username || t('Your account')) : t('Welcome')}</span>
                     </h3>
-                    <button onClick={onClose} aria-label="Close" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white">
+                    <button onClick={onClose} aria-label={t('Close')} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <div className="p-4 overflow-y-auto custom-scrollbar space-y-4">
                     {!user || signedOutAtOpen ? <AuthForm onSignedIn={onClose} /> : (
                         <>
-                            <SlidingTabs items={TABS} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
+                            <SlidingTabs items={TABS.map(tab => ({ ...tab, label: t(tab.label) }))} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
                             {tab === 'profile'
                                 ? <ProfileTab key={user.id} user={user} leagues={leagues} />
                                 : <HistoryTab key={user.id} />}
