@@ -1,3 +1,5 @@
+import { t, tk } from '../i18n/index.js';
+
 /**
  * Single source of truth for the statistics the app can analyse.
  *
@@ -7,30 +9,30 @@
  */
 
 export const STAT_OPTIONS = [
-    { value: 'main', label: '1X2' },
-    { value: 'corners', label: 'Corners' },
-    { value: 'goals', label: 'Goals' },
-    { value: 'shots', label: 'Shots' },
-    { value: 'shots_on_target', label: 'Shots on Target' },
-    { value: 'fouls', label: 'Fouls' },
-    { value: 'yellow_cards', label: 'Yellow Cards' },
-    { value: 'red_cards', label: 'Red Cards' },
-    { value: 'card_points', label: 'Card Points' },
-    { value: 'possession', label: 'Possession' },
+    { value: 'main', label: tk('1X2') },
+    { value: 'corners', label: tk('Corners') },
+    { value: 'goals', label: tk('Goals') },
+    { value: 'shots', label: tk('Shots') },
+    { value: 'shots_on_target', label: tk('Shots on Target') },
+    { value: 'fouls', label: tk('Fouls') },
+    { value: 'yellow_cards', label: tk('Yellow Cards') },
+    { value: 'red_cards', label: tk('Red Cards') },
+    { value: 'card_points', label: tk('Card Points') },
+    { value: 'possession', label: tk('Possession') },
     // Scraped since the start but only served by /matches recently, so none of
     // these have ever reached the model. They are unmeasured - deliberately
     // absent from STAT_SIGNAL below rather than given a made-up badge.
-    { value: 'xg', label: 'xG' },
-    { value: 'xgot', label: 'xGOT' },
-    { value: 'big_chances', label: 'Big Chances' },
-    { value: 'box_touches', label: 'Box Touches' },
-    { value: 'crosses', label: 'Crosses' },
-    { value: 'goalkeeper_saves', label: 'GK Saves' },
+    { value: 'xg', label: tk('xG') },
+    { value: 'xgot', label: tk('xGOT') },
+    { value: 'big_chances', label: tk('Big Chances') },
+    { value: 'box_touches', label: tk('Box Touches') },
+    { value: 'crosses', label: tk('Crosses') },
+    { value: 'goalkeeper_saves', label: tk('GK Saves') },
     // Labelled for what the number *is*, not for the column it lives in: the
     // scraper reads diretta's "Palle intercettate" and the syncer writes it to
     // `blocked_shots` on purpose (backend/services/supabase_syncer.py:92). The
     // key follows the column, the label follows the data.
-    { value: 'blocked_shots', label: 'Interceptions' },
+    { value: 'blocked_shots', label: tk('Interceptions') },
 ];
 
 /**
@@ -44,7 +46,7 @@ export const resolveStatKey = (statistic) => (statistic === 'main' ? 'goals' : s
  * App statistic -> the market name the capture stores in `odds_snapshots`.
  *
  * This is the single source of truth for "is this priced". `useOdds` reads it to
- * look up a quote, and PRICED_STAT_OPTIONS below derives the selector's option
+ * look up a quote, and PREDICTED_STAT_OPTIONS below derives the selector's option
  * list from it, so a market added to or removed from the capture changes what
  * the UI offers without a second list having to be kept in step.
  *
@@ -187,7 +189,7 @@ export const formatSelection = (selection, line = null) =>
         .split('+')
         .map((raw) => {
             const token = raw.trim().toLowerCase();
-            const label = SELECTION_TOKENS[token] ?? raw.trim();
+            const label = t(SELECTION_TOKENS[token] ?? raw.trim());
             const takesLine = token === 'ov' || token === 'un'
                 || token === 'over' || token === 'under';
             return takesLine && line != null ? `${label} ${line}` : label;
@@ -203,12 +205,11 @@ export const VOLATILE_STATS = ['corners', 'fouls', 'yellow_cards', 'red_cards', 
 // median helps is a measurement, not a guess, and the backtest optimizer
 // already sweeps forceMean so it can find the median where it wins.
 
-export const getStatLabel = (statistic) =>
-    STAT_OPTIONS.find(o => o.value === statistic)?.label
-    // A slip-only market is not in STAT_OPTIONS on purpose (nothing models it),
-    // but it still has to have a name wherever a bet is written out.
-    ?? SLIP_ONLY_OPTIONS.find(o => o.value === statistic)?.label
-    ?? String(statistic ?? '').replace(/_/g, ' ');
+/** A statistic's or market's name, in the page's language. */
+export const getStatLabel = (statistic) => {
+    const label = [...STAT_OPTIONS, ...SLIP_ONLY_OPTIONS].find(o => o.value === statistic)?.label;
+    return label ? t(label) : String(statistic ?? '').replace(/_/g, ' ');
+};
 
 /**
  * How much predictive signal each statistic actually carries.
@@ -373,10 +374,10 @@ export const weightFor = (statistic) =>
     PREDICTOR_MODEL[resolveStatKey(statistic)]?.weight ?? 1;
 
 export const SIGNAL_LABELS = {
-    strong: 'Strong signal',
-    moderate: 'Moderate signal',
-    weak: 'Weak signal',
-    none: 'No measurable edge',
+    strong: tk('Strong signal'),
+    moderate: tk('Moderate signal'),
+    weak: tk('Weak signal'),
+    none: tk('No measurable edge'),
 };
 
 /** Betting lines offered per statistic in Highest Winning Factor. */
@@ -481,13 +482,15 @@ export const statPair = (match, statKey) => {
 
 /** A slip leg's market and pick as the bet slip prints them; the slip history shows the same. */
 // The 'main' builder covers two markets a book keeps apart, so name the one the
-// bet is actually in rather than the group it was picked from.
-export const betMarket = (bet) =>
-    bet.stat === 'main' ? (/^(gg|ng)$/i.test(bet.value) ? 'GG/NG' : '1X2')
-        : isSlipOnly(bet.stat) ? getStatLabel(bet.stat)
-            // getStatLabel, not the raw column: "Card Points", not "card points".
-            : (bet.team !== 'total' ? `${bet.team[0].toUpperCase()}${bet.team.slice(1)} ` : '')
-              + (getStatLabel(bet.stat) || 'Stat');
+// bet is actually in rather than the group it was picked from. Both names are
+// the book's own and identical in either language, so neither goes through t().
+export const betMarket = (bet) => {
+    if (bet.stat === 'main') return /^(gg|ng)$/i.test(bet.value) ? 'GG/NG' : '1X2';
+    if (isSlipOnly(bet.stat)) return getStatLabel(bet.stat);
+    const side = { home: t('Home'), away: t('Away') }[bet.team] ?? (bet.team !== 'total' ? bet.team : '');
+    // getStatLabel, not the raw column: "Card Points", not "card points".
+    return (side ? `${side} ` : '') + (bet.stat ? getStatLabel(bet.stat) : t('Stat'));
+};
 
 // A slip-only bet's `option` is the book's own outcome name ("1x + ov"), not the
 // 'O'/'U' the over/under path uses, so it needs the composite formatter. Reading
@@ -496,4 +499,4 @@ export const betMarket = (bet) =>
 export const betPick = (bet) =>
     bet.stat === 'main' ? bet.value
         : isSlipOnly(bet.stat) ? formatSelection(bet.option, bet.value)
-            : `${bet.option === 'O' ? 'Over' : 'Under'} ${bet.value}`;
+            : `${bet.option === 'O' ? t('Over') : t('Under')} ${bet.value}`;

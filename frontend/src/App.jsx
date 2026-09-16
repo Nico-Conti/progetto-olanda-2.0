@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calculator, Trophy, Home } from 'lucide-react';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -10,7 +10,6 @@ import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
 import { seasonsForLeague, latestSeasonForLeague, modelSeasonsForLeague } from './utils/seasons';
-import { usePredictionEngine } from './hooks/usePredictionEngine';
 import { useOdds } from './hooks/useOdds';
 import { useModelSettings } from './hooks/useModelSettings';
 import { useBackendHealth } from './hooks/useBackendHealth';
@@ -24,13 +23,14 @@ import Standings from './components/Standings';
 import Select from './components/ui/Select';
 import SlidingTabs from './components/ui/SlidingTabs';
 import { cssMs } from './hooks/usePresence';
+import { t, tk, useLanguage, setLanguage } from './i18n';
 
 // Per-dot pulse order for the loading screen's matrix loader (transitions.dev #31).
 const MATRIX_TWINKLE = [7, 2, 11, 5, 14, 9, 0, 12, 3, 15, 6, 10, 13, 1, 8, 4];
 
 const TABS = [
-  { id: 'predictor', label: 'Predictor', Icon: Calculator },
-  { id: 'standings', label: 'Standings', Icon: Trophy },
+  { id: 'predictor', label: tk('Predictor'), Icon: Calculator },
+  { id: 'standings', label: tk('Standings'), Icon: Trophy },
 ];
 
 export default function App() {
@@ -44,7 +44,14 @@ export default function App() {
   const [standingsView, setStandingsView] = useState('table');
   const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
   const isBackendOnline = useBackendHealth();
-  const [previousTab, setPreviousTab] = useState('predictor');
+  // Where Back on a team page leads: one entry per team page opened, holding
+  // the tab, team page and open match it was opened from, so hopping from
+  // opponent to opponent unwinds one step at a time and a badge clicked on a
+  // match page returns to that match.
+  const [teamTrail, setTeamTrail] = useState([]);
+  // Bumped to remount the Predictor on its fixture list, when a match it was
+  // showing as a preview is closed while its tab stays open.
+  const [predictorKey, setPredictorKey] = useState(0);
 
   // Animation State
   const [isAnimating, setIsAnimating] = useState(false);
@@ -55,7 +62,7 @@ export default function App() {
   const [preSelectedMatch, setPreSelectedMatch] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [backView, setBackView] = useState('hot-matches');
-  const [backLabel, setBackLabel] = useState('Back to Hot Matches');
+  const [backLabel, setBackLabel] = useState(tk('Back to Hot Matches'));
 
   // Bet Slip State
   const [bets, setBets] = useState([]);
@@ -66,6 +73,13 @@ export default function App() {
   const openAccount = useCallback(() => setIsAccountOpen(true), []);
   const user = useAuthUser(openAccount);
   const account = useMemo(() => ({ user, openAccount }), [user, openAccount]);
+
+  // English unless chosen otherwise. Subscribing here re-renders the whole app
+  // on a switch; a signed-in user's saved choice (Profile) wins once known.
+  useLanguage();
+  const savedLanguage = user?.user_metadata?.language;
+  useEffect(() => { if (savedLanguage) setLanguage(savedLanguage); }, [savedLanguage]);
+  const tabs = TABS.map(tab => ({ ...tab, label: t(tab.label) }));
 
   // `date` is the fixture's kickoff, and it is here so a SAVED slip can be
   // settled later. "Milan vs Lecce" does not identify a fixture - the same
@@ -114,6 +128,7 @@ export default function App() {
     setPendingTab('predictor'); // A league opens on the Predictor
     setIsAnimating(true);
     setSelectedTeam(null); // Clear selected team
+    setTeamTrail([]);
   };
 
   const handleViewChange = (newView) => {
@@ -132,10 +147,41 @@ export default function App() {
     }
   };
 
-  const handleTeamClick = (team) => {
-    setPreviousTab(activeTab);
+  // `fromMatch`: the match on screen when the badge was clicked, to return to.
+  const handleTeamClick = (team, fromMatch = null) => {
+    if (isAnimating) return;
+    setTeamTrail(trail => [...trail, {
+      tab: activeTab, team: selectedTeam, match: fromMatch,
+      preview: Boolean(preSelectedMatch), backView, backLabel,
+    }]);
     setSelectedTeam(team);
-    handleTabChange('team-details');
+    setActiveTab('team-details');
+  };
+
+  const handleTeamBack = () => {
+    const back = teamTrail.at(-1);
+    setTeamTrail(trail => trail.slice(0, -1));
+    if (!back) {
+      setSelectedTeam(null);
+      setActiveTab('standings');
+      return;
+    }
+    setSelectedTeam(back.team);
+    if (back.match) {
+      // Reopened as a preview. One opened from the fixture list closes back to
+      // that list; one that was already a preview closes where it did before.
+      setPreSelectedMatch(back.match);
+      setBackView(back.preview ? back.backView : 'dashboard');
+      setBackLabel(back.preview ? back.backLabel : tk('Back to Fixtures'));
+    }
+    setActiveTab(back.tab);
+  };
+
+  // The header's tabs start afresh: no team page to return to.
+  const handleNavTab = (tab) => {
+    setTeamTrail([]);
+    setSelectedTeam(null);
+    handleTabChange(tab);
   };
 
   // Extract unique leagues from data
@@ -280,9 +326,6 @@ export default function App() {
       .sort((a, b) => a.league.localeCompare(b.league));
   }, [winningFactorMatchData, winningFactorSeasons]);
 
-  // Which prediction engine is running. Persisted, and defaulting to the
-  // measured `classic` model - a new engine is opted into, never imposed.
-  const { engine, setEngine } = usePredictionEngine();
   // Bookmaker prices, if any have been captured. Optional throughout.
   const { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl } = useOdds();
   // One copy of the model knobs for every screen that predicts. Held here, not
@@ -305,8 +348,8 @@ export default function App() {
             <i key={i} className="rounded-full" style={{ '--d': Math.round(order * (cycle / 16)) }} />
           ))}
         </div>
-        <span className="t-shimmer text-sm font-semibold uppercase tracking-widest" data-text="Loading matches">
-          Loading matches
+        <span className="t-shimmer text-sm font-semibold uppercase tracking-widest" data-text={t('Loading matches')}>
+          {t('Loading matches')}
         </span>
       </div>
     );
@@ -379,7 +422,7 @@ export default function App() {
             onMatchClick={(match) => {
               setPreSelectedMatch(match);
               setBackView('highest-winning-factor');
-              setBackLabel('Back to Winning Factor');
+              setBackLabel(tk('Back to Winning Factor'));
               setPendingLeague(match.league);
               setPendingTab('predictor');
               setPendingView('dashboard');
@@ -393,8 +436,6 @@ export default function App() {
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <HotMatches
             {...modelSettingsApi}
-            engine={engine}
-            onEngineChange={setEngine}
             priceFor={priceFor}
             pricedLines={pricedLines}
             outcomesFor={outcomesFor}
@@ -410,7 +451,7 @@ export default function App() {
             onMatchClick={(match) => {
               setPreSelectedMatch(match);
               setBackView('hot-matches');
-              setBackLabel('Back to Hot Matches');
+              setBackLabel(tk('Back to Hot Matches'));
               setPendingLeague(match.league);
               setPendingTab('predictor');
               setPendingView('dashboard');
@@ -424,8 +465,6 @@ export default function App() {
         <div className="animate-in fade-in slide-in-from-bottom-4">
           <SafestBets
             {...modelSettingsApi}
-            engine={engine}
-            onEngineChange={setEngine}
             stats={allStats}
             fixtures={currentSeasonFixtures}
             teamLogos={teamLogos}
@@ -437,7 +476,7 @@ export default function App() {
             onMatchClick={(match) => {
               setPreSelectedMatch(match);
               setBackView('safest-bets');
-              setBackLabel('Back to Safest Bets');
+              setBackLabel(tk('Back to Safest Bets'));
               setPendingLeague(match.league);
               setPendingTab('predictor');
               setPendingView('dashboard');
@@ -470,10 +509,10 @@ export default function App() {
                 portrait got a header wider than its own screen. */}
             <div className="flex items-center gap-2 lg:hidden">
               {/* Tooltips open below: the header sits at the top of the page. */}
-              {TABS.map(tab => (
+              {tabs.map(tab => (
                 <span key={tab.id} className="t-tt-wrap">
                   <button
-                    onClick={() => handleTabChange(tab.id)}
+                    onClick={() => handleNavTab(tab.id)}
                     aria-label={tab.label}
                     aria-describedby={`tab-tt-${tab.id}`}
                     className={`t-tt-trigger p-2.5 rounded-lg border transition ${activeTab === tab.id
@@ -510,9 +549,9 @@ export default function App() {
               />
 
               <SlidingTabs
-                items={TABS}
+                items={tabs}
                 value={activeTab}
-                onChange={handleTabChange}
+                onChange={handleNavTab}
                 className="border border-white/5 shadow-lg shadow-black/20"
                 tabClassName="font-semibold"
               />
@@ -521,7 +560,7 @@ export default function App() {
                 <button
                   onClick={() => handleViewChange('landing')}
                   className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
-                  title="Change League"
+                  title={t('Change League')}
                 >
                   <Home className="w-5 h-5" />
                 </button>
@@ -533,16 +572,22 @@ export default function App() {
             {activeTab === 'team-details' && selectedTeam && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <TeamDetails
+                  key={selectedTeam}
                   team={selectedTeam}
-                  teamLogo={teamLogos[selectedTeam]}
-                  stats={stats[selectedTeam]}
-                  fixtures={filteredFixtures}
-                  onBack={() => handleTabChange(previousTab)}
                   teamLogos={teamLogos}
+                  matches={filteredMatchData}
+                  fixtures={filteredFixtures}
+                  leagues={leagues}
+                  league={selectedLeague}
+                  season={latestResultSeason}
+                  modelMatchData={currentSeasonMatchData}
+                  modelSettings={modelSettingsApi.modelSettings}
+                  onBack={handleTeamBack}
+                  onTeamClick={(team) => handleTeamClick(team)}
                   selectedStatistic={selectedStatistic}
                   onMatchClick={(match) => {
                     setBackView('dashboard');
-                    setBackLabel('Back to ' + selectedTeam + '\'s details');
+                    setBackLabel(t('Back to {team}', { team: selectedTeam }));
                     setPreSelectedMatch(match);
                     handleTabChange('predictor');
                   }}
@@ -553,9 +598,8 @@ export default function App() {
             {activeTab === 'predictor' && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <Predictor
+                  key={predictorKey}
                   {...modelSettingsApi}
-                  engine={engine}
-                  onEngineChange={setEngine}
                   priceFor={priceFor}
                   pricedLines={pricedLines}
                   outcomesFor={outcomesFor}
@@ -572,6 +616,7 @@ export default function App() {
                   fixtures={filteredFixtures}
                   teams={teams}
                   teamLogos={teamLogos}
+                  leagues={leagues}
                   selectedStatistic={selectedStatistic}
                   matchData={predictorMatchData}
                   matchStatistics={matchStatistics}
@@ -584,12 +629,13 @@ export default function App() {
                     setPreSelectedMatch(null);
                     if (backView === 'dashboard') {
                       if (selectedTeam) setActiveTab('team-details');
-                      else setActiveTab('predictor');
+                      else setPredictorKey(k => k + 1);
                     } else {
                       handleViewChange(backView);
                     }
                   }}
                   backButtonLabel={backLabel}
+                  onTeamClick={handleTeamClick}
                 />
               </div>
             )}

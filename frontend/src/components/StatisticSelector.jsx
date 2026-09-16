@@ -4,6 +4,7 @@ import { PREDICTED_STAT_OPTIONS } from '../utils/statistics';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { t } from '../i18n';
 
 const StatisticSelector = ({ value, onChange, className = "" }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -40,7 +41,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                     ${isOpen ? 'ring-2 ring-emerald-500/50 bg-zinc-900 border-emerald-500/50' : ''}
                 `}
             >
-                <span className="truncate">{selectedOption.label}</span>
+                <span className="truncate">{t(selectedOption.label)}</span>
                 <ChevronDown
                     className={`w-4 h-4 text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-emerald-400' : ''}`}
                 />
@@ -71,7 +72,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                             `}
                         >
                             <span className="flex items-center gap-2">
-                                {option.label}
+                                {t(option.label)}
                                 <SignalBadge statistic={option.value} />
                                 <DerivedBadge statistic={option.value} />
                             </span>

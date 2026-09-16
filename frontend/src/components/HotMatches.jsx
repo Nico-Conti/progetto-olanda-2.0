@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, BrainCircuit } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
-import EngineToggle from './EngineToggle';
 import { getStatLabel, STAT_CONFIG, resolveStatKey, UNJOINED_STATS } from '../utils/statistics';
 import { halfLifeFor } from '../utils/statistics';
 import { usePersistedPrefs, toggleLeagueSelection } from '../hooks/usePersistedPrefs';
@@ -17,6 +16,7 @@ import { staggerDelay } from '../utils/stagger';
 import GlowBorder from './originkit/GlowBorder';
 import MatchCard from './MatchCard';
 import { leagueMeta } from '../utils/leaguePickerFx';
+import { t, tk, tx, dateLocale } from '../i18n';
 
 /**
  * What "hot" means, which is not one question.
@@ -41,8 +41,8 @@ import { leagueMeta } from '../utils/leaguePickerFx';
  * per-match, this stops being true and the mode becomes worth adding.
  */
 const RANK_MODES = {
-    total: { value: 'total', label: 'Expected total', needsCount: false, needsPrice: false },
-    ev: { value: 'ev', label: 'Expected value', needsCount: true, needsPrice: true },
+    total: { value: 'total', label: tk('Expected total'), needsCount: false, needsPrice: false },
+    ev: { value: 'ev', label: tk('Expected value'), needsCount: true, needsPrice: true },
 };
 
 /**
@@ -88,16 +88,15 @@ const DEFAULT_PREFS = {
     maxPrice: null,
 };
 
-const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
+const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
         displayCount, selectedLeagues, selectedDate, rankBy, maxPrice,
     } = prefs;
     const { nGames, useGeneralStats, forceMean } = modelSettings;
 
-    // Only the count engine produces a distribution, so the two ranking modes
-    // that need one fall back rather than ranking on undefined.
-    const effectiveRankBy = (engine === ENGINES.COUNT && RANK_MODES[rankBy]) ? rankBy : 'total';
+    // A stale stored mode falls back rather than ranking on undefined.
+    const effectiveRankBy = RANK_MODES[rankBy] ? rankBy : 'total';
 
     // Sample size and mean/median belong to the WINDOW estimator, which lost to
     // recency decay (docs section 10). Anything with a fitted half-life takes the
@@ -119,11 +118,9 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
         setPrefs(prev => ({ selectedLeagues: toggleLeagueSelection(prev.selectedLeagues, league) }));
 
     const predictionModel = useMemo(
-        // Residual tracking costs one extra prediction per match folded in, so
-        // it is only switched on for the engine that needs it.
-        () => buildPredictionModel(matchData, selectedStatistic,
-            { trackResiduals: engine === ENGINES.COUNT }),
-        [matchData, selectedStatistic, engine]
+        // The residuals are what the distribution's spread is fitted from.
+        () => buildPredictionModel(matchData, selectedStatistic, { trackResiduals: true }),
+        [matchData, selectedStatistic]
     );
 
     // Rank the shared candidate set by expected total, applying the optimized
@@ -138,12 +135,11 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     // Kickoff, so a fixture next month is not modelled as if it
                     // were today. Falls back to now for a fixture with no date.
                     asOf: match.date ?? new Date(),
-                    engine,
+                    engine: ENGINES.COUNT,
                 });
 
                 // P(over) at the judged line, and the best expected value across
-                // every line the market offers, both sides. Both are null under
-                // the classic engine, which has no distribution to ask.
+                // every line the market offers, both sides.
                 const line = lineFor(selectedStatistic);
                 const probability = (pred?.probOver && line != null) ? pred.probOver(line) : null;
 
@@ -195,7 +191,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
         return scored
             .sort((a, b) => b.prediction.total - a.prediction.total)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
 
     // How much of the candidate set each narrowing mode actually keeps, so the
     // UI can say so instead of just showing a short list.
@@ -205,7 +201,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
         for (const match of candidates) {
             const pred = predictFromModel(predictionModel, match.home, match.away, {
                 nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
-                asOf: match.date ?? new Date(), engine,
+                asOf: match.date ?? new Date(), engine: ENGINES.COUNT,
             });
             if (!pred?.probOver || !priceFor) continue;
             const hasPrice = linesFor(selectedStatistic,
@@ -217,7 +213,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
             if (pred.confident) confident++;
         }
         return { total: candidates.length, priced, confident };
-    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, engine, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
+    }, [candidates, predictionModel, nGames, useGeneralStats, forceMean, effectiveRankBy, selectedStatistic, priceFor, pricedLines, maxPrice]);
 
     // Close dropdown when clicking outside
     useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
@@ -230,7 +226,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
     const pageName = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none">
-            Hot <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400">Matches</span>
+            {t('Hot Matches').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
         </h1>
     );
 
@@ -259,14 +255,13 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                             </div>
                             <div>
                                 <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
-                                    Hot <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">Matches</span>
+                                    {t('Hot Matches').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
                                 </h2>
                                 <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                     <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide">
-                                        Top {getStatLabel(selectedStatistic)} picks
+                                        {t('Top {stat} picks', { stat: getStatLabel(selectedStatistic) })}
                                     </p>
                                     <SignalBadge statistic={selectedStatistic} showLabel />
-                                    <EngineToggle engine={engine} onChange={onEngineChange} />
                                     <DerivedBadge statistic={selectedStatistic} />
                                 </div>
                             </div>
@@ -275,10 +270,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                         <div className="flex flex-wrap items-center justify-between gap-3 w-full flex-1">
                             {/* League Multi-Filter */}
                             <Dropdown
-                                label="Leagues"
+                                label={t('Leagues')}
                                 active={activeDropdown === 'league'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'league' ? null : 'league')}
-                                value={selectedLeagues.includes('All') ? 'All Leagues' : `${selectedLeagues.length} Selected`}
+                                value={selectedLeagues.includes('All') ? t('All Leagues') : t('{n} selected', { n: selectedLeagues.length })}
                                 width="w-full"
                                 className="flex-[2] min-w-[200px]"
                             >
@@ -289,7 +284,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
                                             : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
                                     >
-                                        All Leagues
+                                        {t('All Leagues')}
                                     </button>
                                     <div className="h-px bg-white/5 my-1" />
                                     {availableLeagues.map(league => (
@@ -313,10 +308,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
                             {/* Date Selector */}
                             <Dropdown
-                                label="Date"
+                                label={t('Date')}
                                 active={activeDropdown === 'date'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}
-                                value={selectedDate ? (selectedDate.toDateString() === new Date().toDateString() ? 'Today' : selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : 'Upcoming'}
+                                value={selectedDate ? (selectedDate.toDateString() === new Date().toDateString() ? t('Today') : selectedDate.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' })) : t('Upcoming')}
                                 width="w-full"
                                 className="flex-[1.5] min-w-[140px]"
                             >
@@ -327,13 +322,13 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
                                             : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
                                     >
-                                        Upcoming Matches
+                                        {t('Upcoming Matches')}
                                     </button>
                                     <div className="h-px bg-white/5 my-1" />
                                     {availableDates.map(date => {
                                         const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
                                         const isToday = date.toDateString() === new Date().toDateString();
-                                        const label = isToday ? 'Today' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                                        const label = isToday ? t('Today') : date.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' });
 
                                         return (
                                             <button
@@ -352,7 +347,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
                             {/* View Count */}
                             <Dropdown
-                                label="View"
+                                label={t('View')}
                                 active={activeDropdown === 'view'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'view' ? null : 'view')}
                                 value={displayCount}
@@ -368,43 +363,40 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n} Matches
+                                            {t('{n} matches', { n })}
                                         </button>
                                     ))}
                                 </div>
                             </Dropdown>
 
-                            {/* Rank by - only the count engine produces the
-                                distribution that P(over) and EV are read from. */}
-                            {engine === ENGINES.COUNT && (
-                                <Dropdown
-                                    label="Rank by"
-                                    active={activeDropdown === 'rank'}
-                                    onToggle={() => setActiveDropdown(activeDropdown === 'rank' ? null : 'rank')}
-                                    value={RANK_MODES[effectiveRankBy].label}
-                                    width="w-full"
-                                    className="flex-1 min-w-[150px]"
-                                >
-                                    <div className="space-y-1">
-                                        {Object.values(RANK_MODES).map(mode => (
-                                            <button
-                                                key={mode.value}
-                                                onClick={() => { setRankBy(mode.value); setActiveDropdown(null); }}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${effectiveRankBy === mode.value
-                                                    ? 'bg-emerald-500/20 text-emerald-400'
-                                                    : 'text-zinc-400 hover:bg-white/5'}`}
-                                            >
-                                                {mode.label}
-                                                {mode.needsPrice && (
-                                                    <span className="block text-[9px] font-medium text-zinc-500 normal-case mt-0.5">
-                                                        needs a captured price
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </Dropdown>
-                            )}
+                            {/* Rank by */}
+                            <Dropdown
+                                label={t('Rank by')}
+                                active={activeDropdown === 'rank'}
+                                onToggle={() => setActiveDropdown(activeDropdown === 'rank' ? null : 'rank')}
+                                value={t(RANK_MODES[effectiveRankBy].label)}
+                                width="w-full"
+                                className="flex-1 min-w-[150px]"
+                            >
+                                <div className="space-y-1">
+                                    {Object.values(RANK_MODES).map(mode => (
+                                        <button
+                                            key={mode.value}
+                                            onClick={() => { setRankBy(mode.value); setActiveDropdown(null); }}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${effectiveRankBy === mode.value
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'text-zinc-400 hover:bg-white/5'}`}
+                                        >
+                                            {t(mode.label)}
+                                            {mode.needsPrice && (
+                                                <span className="block text-[9px] font-medium text-zinc-500 normal-case mt-0.5">
+                                                    {t('needs a captured price')}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </Dropdown>
 
                             {/* Max price - only under an EV ranking, which is the
                                 only thing a price cap can narrow. A long price
@@ -412,10 +404,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 so the top of an EV list is mostly outsiders. */}
                             {effectiveRankBy === 'ev' && (
                                 <Dropdown
-                                    label="Max price"
+                                    label={t('Max price')}
                                     active={activeDropdown === 'maxPrice'}
                                     onToggle={() => setActiveDropdown(activeDropdown === 'maxPrice' ? null : 'maxPrice')}
-                                    value={maxPrice == null ? 'Any' : maxPrice.toFixed(2)}
+                                    value={maxPrice == null ? t('Any') : maxPrice.toFixed(2)}
                                     width="w-full"
                                     className="flex-1 min-w-[110px]"
                                 >
@@ -428,7 +420,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                     ? 'bg-emerald-500/20 text-emerald-400'
                                                     : 'text-zinc-400 hover:bg-white/5'}`}
                                             >
-                                                {v == null ? 'Any price' : `Under ${v.toFixed(2)}`}
+                                                {v == null ? t('Any price') : t('Under {price}', { price: v.toFixed(2) })}
                                             </button>
                                         ))}
                                     </div>
@@ -439,10 +431,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 {!decayed && (<>
                                 {/* Sample Size */}
                                 <Dropdown
-                                    label="Sample"
+                                    label={t('Sample')}
                                     active={activeDropdown === 'sample'}
                                     onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
-                                    value={nGames === 'all' ? 'Season' : `Last ${nGames}`}
+                                    value={nGames === 'all' ? t('Season') : t('Last {n}', { n: nGames })}
                                     width="w-full"
                                     className="flex-1 min-w-[100px]"
                                 >
@@ -455,7 +447,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                     ? 'bg-emerald-500/20 text-emerald-400'
                                                     : 'text-zinc-400 hover:bg-white/5'}`}
                                             >
-                                                {n === 'all' ? 'Whole Season' : `Last ${n} Games`}
+                                                {n === 'all' ? t('Whole Season') : t('Last {n} Games', { n })}
                                             </button>
                                         ))}
                                     </div>
@@ -464,10 +456,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
                                 {/* Trend */}
                                 <Dropdown
-                                    label="Trend"
+                                    label={t('Trend')}
                                     active={activeDropdown === 'trend'}
                                     onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
-                                    value={useGeneralStats ? 'General' : 'Specific'}
+                                    value={useGeneralStats ? t('General') : t('Specific')}
                                     width="w-full"
                                     className="flex-1 min-w-[100px]"
                                 >
@@ -478,7 +470,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            Specific (Home/Away)
+                                            {t('Specific (Home/Away)')}
                                         </button>
                                         <button
                                             onClick={() => { setUseGeneralStats(true); setActiveDropdown(null); }}
@@ -486,7 +478,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            General (All Matches)
+                                            {t('General (All Matches)')}
                                         </button>
                                     </div>
                                 </Dropdown>
@@ -494,10 +486,10 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 {!decayed && (<>
                                 {/* Calc */}
                                 <Dropdown
-                                    label="Calc"
+                                    label={t('Calc')}
                                     active={activeDropdown === 'calc'}
                                     onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}
-                                    value={forceMean ? 'Mean' : 'Median'}
+                                    value={forceMean ? t('Mean') : t('Median')}
                                     width="w-full"
                                     className="flex-1 min-w-[100px]"
                                 >
@@ -508,7 +500,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            Auto (per statistic)
+                                            {t('Auto (per statistic)')}
                                         </button>
                                         <button
                                             onClick={() => { setForceMean(true); setActiveDropdown(null); }}
@@ -516,7 +508,7 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                                 ? 'bg-emerald-500/20 text-emerald-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            Mean (Average)
+                                            {t('Mean (Average)')}
                                         </button>
                                     </div>
                                 </Dropdown>
@@ -530,15 +522,16 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                         <div className="glass-panel rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
                             <BrainCircuit className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                             <p className="text-xs text-zinc-300 leading-relaxed">
-                                Ranking by expected value, so this is not the whole fixture list.
-                                Of <span className="font-bold text-amber-300">{coverage.total}</span> upcoming
-                                matches, <span className="font-bold text-amber-300">{coverage.priced}</span> have
-                                a captured {getStatLabel(selectedStatistic).toLowerCase()} price
-                                {maxPrice != null && <> under <span className="font-bold text-amber-300">{maxPrice.toFixed(2)}</span></>} and{' '}
-                                <span className="font-bold text-amber-300">{coverage.confident}</span> of those
-                                also clear the confidence floor ({MIN_EFFECTIVE_FOR_EV} effective matches, a fitted
-                                spread, and a statistic that has actually been measured). Prices cannot be
-                                backfilled, so a fixture with none is simply absent rather than ranked last.
+                                {tx(maxPrice != null
+                                    ? tk('Ranking by expected value, so this is not the whole fixture list. Of {total} upcoming matches, {priced} have a captured {stat} price under {cap} and {confident} of those also clear the confidence floor ({floor} effective matches, a fitted spread, and a statistic that has actually been measured). Prices cannot be backfilled, so a fixture with none is simply absent rather than ranked last.')
+                                    : tk('Ranking by expected value, so this is not the whole fixture list. Of {total} upcoming matches, {priced} have a captured {stat} price and {confident} of those also clear the confidence floor ({floor} effective matches, a fitted spread, and a statistic that has actually been measured). Prices cannot be backfilled, so a fixture with none is simply absent rather than ranked last.'), {
+                                    total: <span className="font-bold text-amber-300">{coverage.total}</span>,
+                                    priced: <span className="font-bold text-amber-300">{coverage.priced}</span>,
+                                    confident: <span className="font-bold text-amber-300">{coverage.confident}</span>,
+                                    cap: <span className="font-bold text-amber-300">{maxPrice?.toFixed(2)}</span>,
+                                    stat: getStatLabel(selectedStatistic).toLowerCase(),
+                                    floor: MIN_EFFECTIVE_FOR_EV,
+                                })}
                             </p>
                         </div>
                     )}
@@ -575,12 +568,12 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                             {match.prediction.total.toFixed(1)}
                                         </div>
                                         <span className="mt-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                                            Exp. {getStatLabel(selectedStatistic)}
+                                            {t('Exp. {stat}', { stat: getStatLabel(selectedStatistic) })}
                                         </span>
                                         {match.probability != null && (
                                             <span className="mt-1 text-[11px] font-bold text-zinc-200 tabular-nums whitespace-nowrap">
                                                 {(100 * match.probability).toFixed(0)}%
-                                                <span className="text-zinc-500 font-medium"> over {lineFor(selectedStatistic)}</span>
+                                                <span className="text-zinc-500 font-medium"> {t('over {line}', { line: lineFor(selectedStatistic) })}</span>
                                             </span>
                                         )}
                                     </>
@@ -589,8 +582,8 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                 {/* Home vs away expectation, as numbers and as one split bar. */}
                                 <div>
                                     <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
-                                        <span>Home exp.</span>
-                                        <span>Away exp.</span>
+                                        <span>{t('Home exp.')}</span>
+                                        <span>{t('Away exp.')}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-lg font-black text-emerald-400 tabular-nums">{match.prediction.expHome.toFixed(2)}</span>
@@ -604,13 +597,13 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
 
                                 {match.bestEv && (
                                     <div
-                                        title={`Best expected value across every ${getStatLabel(selectedStatistic).toLowerCase()} line with a captured price. ${match.prediction.confident ? '' : 'Below the confidence floor - arithmetic on an estimate we do not yet trust.'}`}
+                                        title={`${t('Best expected value across every {stat} line with a captured price.', { stat: getStatLabel(selectedStatistic).toLowerCase() })}${match.prediction.confident ? '' : ` ${t('Below the confidence floor - arithmetic on an estimate we do not yet trust.')}`}`}
                                         className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs font-bold ${match.prediction.confident
                                             ? 'bg-emerald-500/5 border-emerald-500/20'
                                             : 'bg-white/5 border-white/10'}`}
                                     >
                                         <span className="uppercase tracking-wider text-zinc-300">
-                                            {match.bestEv.side} {match.bestEv.line}
+                                            {t(match.bestEv.side)} {match.bestEv.line}
                                             <span className="text-zinc-500 normal-case font-mono"> @ {match.bestEv.price.toFixed(2)}</span>
                                         </span>
                                         {/* The claim behind the EV, in probability units.
@@ -621,18 +614,18 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                                             instead of hiding it behind the multiplier. */}
                                         {match.bestEv.market != null && (
                                             <span
-                                                title={`We make it ${(100 * match.bestEv.prob).toFixed(0)}%, the market ${(100 * match.bestEv.market).toFixed(0)}% (margin removed). EV is that gap multiplied by the price, so long prices inflate it.`}
+                                                title={t('We make it {ours}%, the market {market}% (margin removed). EV is that gap multiplied by the price, so long prices inflate it.', { ours: (100 * match.bestEv.prob).toFixed(0), market: (100 * match.bestEv.market).toFixed(0) })}
                                                 className="font-mono tabular-nums text-zinc-400 normal-case"
                                             >
                                                 {(100 * match.bestEv.prob).toFixed(0)}%
-                                                <span className="text-zinc-600"> vs </span>
+                                                <span className="text-zinc-600"> {t('vs')} </span>
                                                 {(100 * match.bestEv.market).toFixed(0)}%
                                             </span>
                                         )}
                                         <span className={`font-mono font-black tabular-nums ${!match.prediction.confident ? 'text-zinc-600'
                                             : match.bestEv.ev > 0.02 ? 'text-emerald-400'
                                                 : match.bestEv.ev < -0.02 ? 'text-red-400/70' : 'text-zinc-400'}`}>
-                                            {(match.bestEv.ev >= 0 ? '+' : '') + (100 * match.bestEv.ev).toFixed(0)}% EV
+                                            {(match.bestEv.ev >= 0 ? '+' : '') + (100 * match.bestEv.ev).toFixed(0)}% {t('EV')}
                                         </span>
                                     </div>
                                 )}
@@ -645,13 +638,15 @@ const HotMatches = ({ engine, onEngineChange, priceFor, pricedLines, stats, fixt
                     {topMatches.length === 0 && (
                         <div className="text-center py-12 text-zinc-500 text-sm">
                             {effectiveRankBy === 'ev'
+                                // The book posts these and we capture them; we
+                                // decline to join them, so "no captured price"
+                                // would read as an outage rather than a choice.
                                 ? (UNJOINED_STATS.has(selectedStatistic)
-                                    // The book posts these and we capture them; we
-                                    // decline to join them, so "no captured price"
-                                    // would read as an outage rather than a choice.
-                                    ? `${getStatLabel(selectedStatistic)} is deliberately not priced: the bookmaker settles it on a narrower count than we measure, so an expected value here would be arithmetic on two different quantities. Rank by expected total, or pick another statistic.`
-                                    : `No upcoming ${getStatLabel(selectedStatistic).toLowerCase()} market has both a captured price${maxPrice != null ? ` under ${maxPrice.toFixed(2)}` : ''} and enough history to trust. Try ${maxPrice != null ? 'a higher max price, ' : ''}another statistic, or rank by expected total.`)
-                                : 'No upcoming matches found to analyze.'}
+                                    ? t('{stat} is deliberately not priced: the bookmaker settles it on a narrower count than we measure, so an expected value here would be arithmetic on two different quantities. Rank by expected total, or pick another statistic.', { stat: getStatLabel(selectedStatistic) })
+                                    : maxPrice != null
+                                        ? t('No upcoming {stat} market has both a captured price under {cap} and enough history to trust. Try a higher max price, another statistic, or rank by expected total.', { stat: getStatLabel(selectedStatistic).toLowerCase(), cap: maxPrice.toFixed(2) })
+                                        : t('No upcoming {stat} market has both a captured price and enough history to trust. Try another statistic, or rank by expected total.', { stat: getStatLabel(selectedStatistic).toLowerCase() }))
+                                : t('No upcoming matches found to analyze.')}
                         </div>
                     )}
                 </div>

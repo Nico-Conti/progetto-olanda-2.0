@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { isSlipOnly, formatSelection, UNJOINED_STATS, UNJOINED_REASON } from '../utils/statistics';
+import { t } from '../i18n';
 
 /**
  * The add/remove button's icon: Plus and X cross-fade (transitions.dev icon
@@ -230,10 +231,10 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                             ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
                             : 'bg-zinc-800 text-zinc-400 border border-white/5 hover:bg-zinc-700 hover:text-white hover:border-white/10'
                         }`}
-                    title={justAdded ? 'Added' : (isInSlip ? 'Remove from Slip' : 'Add to Slip')}
+                    title={justAdded ? t('Added') : (isInSlip ? t('Remove from Slip') : t('Add to Slip'))}
                 >
                     <SlipIcon isInSlip={isInSlip} justAdded={justAdded} />
-                    <span>{justAdded ? 'Added' : isInSlip ? 'Remove' : 'Add'}</span>
+                    <span>{justAdded ? t('Added') : isInSlip ? t('Remove') : t('Add')}</span>
                 </button>
             </div>
         );
@@ -248,7 +249,7 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                 {slipOutcomes.length === 0 ? (
                     // About us, not about the book: these markets are only
                     // collected by an occasional --slip-markets run.
-                    <span className="text-[10px] text-zinc-600">no prices captured</span>
+                    <span className="text-[10px] text-zinc-600">{t('no prices captured')}</span>
                 ) : slipOutcomes.map((o, i) => {
                     const on = inSlip(o.selection);
                     return (
@@ -257,7 +258,7 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                             onClick={() => (on
                                 ? onRemove?.(game, stat, 'total')
                                 : onAdd(game, o.selection, o.line, stat, 'total', date))}
-                            title={on ? 'In your slip' : 'Add to slip'}
+                            title={on ? t('In your slip') : t('Add to slip')}
                             className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-colors ${
                                 on
                                     ? 'bg-emerald-500 border-emerald-400 text-white'
@@ -329,16 +330,16 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                             : 'text-zinc-600'
                     }`}
                     title={currentPrice > 1
-                        ? `Bookmaker price for ${option === 'O' ? 'over' : 'under'} ${value}`
+                        ? t('Bookmaker price for {side} {line}', { side: option === 'O' ? t('over') : t('under'), line: value })
                         // "No price captured" would be a lie for shots: the book
                         // posts these and we capture them, we just refuse to join
                         // them to our own count. Saying so stops it reading as a
                         // failed capture, which is what it looks like otherwise.
                         : UNJOINED_STATS.has(stat)
-                            ? UNJOINED_REASON
+                            ? t(UNJOINED_REASON)
                             : currentPrice === undefined
-                                ? 'Loading prices'
-                                : 'No price captured for this line'}
+                                ? t('Loading prices')
+                                : t('No price captured for this line')}
                 >
                     {currentPrice > 1 ? currentPrice.toFixed(2)
                         : currentPrice === undefined ? '·' : '—'}
@@ -369,7 +370,7 @@ const BetBuilderCell = ({ game, date, home, away, teamLogos, stat, prediction, o
                         ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20'
                         : 'bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white border border-white/5'
                     }`}
-                title={justAdded ? 'Added' : (isInSlip ? 'Remove from Slip' : 'Add to Slip')}
+                title={justAdded ? t('Added') : (isInSlip ? t('Remove from Slip') : t('Add to Slip'))}
             >
                 <SlipIcon isInSlip={isInSlip} justAdded={justAdded} />
             </button>

@@ -7,6 +7,7 @@ import { processData } from '../utils/stats';
 import { STAT_CONFIG } from '../utils/statistics';
 
 import StatisticSelector from './StatisticSelector';
+import { t, tx } from '../i18n';
 
 const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixturesData, onMatchClick, teamLogos, leagues, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     const [selectedStatistic, setSelectedStatistic] = useState('corners');
@@ -212,10 +213,9 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
                                 <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                                 <p className="text-xs text-zinc-300 leading-relaxed">
                                     {relevantNotStarted.length === 1
-                                        ? <>No match has been played yet in <span className="font-bold text-amber-300">{relevantNotStarted[0].league} {relevantNotStarted[0].season}</span>, so it cannot be ranked.</>
-                                        : <>{relevantNotStarted.length} leagues have not started their current season yet, so they are not ranked: <span className="font-bold text-amber-300">{relevantNotStarted.map(l => l.league).join(', ')}</span>.</>}
-                                    {' '}Only matches from the season in progress count here - last season's
-                                    form is deliberately excluded. They appear as soon as their first results are in.
+                                        ? tx('No match has been played yet in {league}, so it cannot be ranked.', { league: <span className="font-bold text-amber-300">{relevantNotStarted[0].league} {relevantNotStarted[0].season}</span> })
+                                        : tx('{n} leagues have not started their current season yet, so they are not ranked: {leagues}.', { n: relevantNotStarted.length, leagues: <span className="font-bold text-amber-300">{relevantNotStarted.map(l => l.league).join(', ')}</span> })}
+                                    {' '}{t("Only matches from the season in progress count here - last season's form is deliberately excluded. They appear as soon as their first results are in.")}
                                 </p>
                             </div>
                         )}

@@ -5,10 +5,12 @@ import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
+import { t, tk, dateLocale, getLanguage, setLanguage, LANGUAGES } from '../i18n';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
+const STATUS_LABEL = { pending: tk('pending'), won: tk('won'), lost: tk('lost'), void: tk('void') };
 const STATUS_STYLE = {
     pending: 'text-zinc-300', won: 'text-emerald-400', lost: 'text-red-400', void: 'text-zinc-500',
 };
@@ -16,10 +18,10 @@ const STATUS_STYLE = {
 // Per-leg verdict. `null` is "cannot say" - not played, not scraped, or a market
 // we deliberately do not grade - and it must read differently from a loss.
 const LEG_MARK = {
-    won: { mark: '✓', cls: 'text-emerald-400', title: 'Won' },
-    lost: { mark: '✗', cls: 'text-red-400', title: 'Lost' },
-    void: { mark: '—', cls: 'text-zinc-500', title: 'Void - stake returned for this leg' },
-    null: { mark: '·', cls: 'text-zinc-600', title: 'Not settled yet' },
+    won: { mark: '✓', cls: 'text-emerald-400', title: tk('Won') },
+    lost: { mark: '✗', cls: 'text-red-400', title: tk('Lost') },
+    void: { mark: '—', cls: 'text-zinc-500', title: tk('Void - stake returned for this leg') },
+    null: { mark: '·', cls: 'text-zinc-600', title: tk('Not settled yet') },
 };
 
 /**
@@ -78,8 +80,8 @@ export const AccountButton = () => {
     return (
         <button
             onClick={openAccount}
-            aria-label={user ? 'Your account' : 'Sign in'}
-            title={user ? 'Your account' : 'Sign in'}
+            aria-label={user ? t('Your account') : t('Sign in')}
+            title={user ? t('Your account') : t('Sign in')}
             className="rounded-full hover:ring-2 hover:ring-emerald-500/50 transition"
         >
             <Avatar user={user} />
@@ -102,7 +104,7 @@ const AuthForm = ({ onSignedIn }) => {
             // An unknown username gets the same answer as a wrong password.
             const data = await run(async () => {
                 const email = await emailFor(login);
-                return email ? supabase.auth.signInWithPassword({ email, password }) : fail('Invalid login credentials');
+                return email ? supabase.auth.signInWithPassword({ email, password }) : fail(t('Invalid login credentials'));
             });
             if (data?.session) onSignedIn();
             return;
@@ -111,28 +113,28 @@ const AuthForm = ({ onSignedIn }) => {
         // The database refuses a duplicate anyway (migration 009); asking first
         // turns its generic "Database error" into a message that says why.
         const data = await run(async () => (await emailFor(username))
-            ? fail('That username is taken.')
+            ? fail(t('That username is taken.'))
             : supabase.auth.signUp({ email: login, password, options: { data: { username } } }));
         // No session back means the project requires email confirmation.
-        if (data && !data.session) setMsg({ ok: true, text: 'Almost there - confirm the link we emailed you, then sign in.' });
+        if (data && !data.session) setMsg({ ok: true, text: t('Almost there - confirm the link we emailed you, then sign in.') });
         else if (data?.session) onSignedIn();
     };
 
     const forgot = (e) => {
         const login = e.currentTarget.form.login.value.trim();
-        if (!login) return setMsg({ text: 'Type your email or username first, then press "Forgot password".' });
+        if (!login) return setMsg({ text: t('Type your email or username first, then press "Forgot password".') });
         run(async () => {
             const email = await emailFor(login);
             return email
                 ? supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-                : fail('No account with that username.');
-        }, 'Reset link sent - open it and set a new password here.');
+                : fail(t('No account with that username.'));
+        }, t('Reset link sent - open it and set a new password here.'));
     };
 
     return (
         <form onSubmit={submit} className="space-y-3">
             <SlidingTabs
-                items={[{ id: 'login', label: 'Sign in' }, { id: 'register', label: 'Register' }]}
+                items={[{ id: 'login', label: t('Sign in') }, { id: 'register', label: t('Register') }]}
                 value={mode}
                 onChange={(m) => { setMode(m); setMsg(null); }}
                 className="w-full"
@@ -140,19 +142,19 @@ const AuthForm = ({ onSignedIn }) => {
             />
             {mode === 'register' && (
                 <label className="block">
-                    <span className={LABEL}>Username</span>
+                    <span className={LABEL}>{t('Username')}</span>
                     <input name="username" required {...USERNAME_RULES} autoComplete="username" className={INPUT} />
                 </label>
             )}
             <label className="block">
-                <span className={LABEL}>{mode === 'login' ? 'Email or username' : 'Email'}</span>
+                <span className={LABEL}>{mode === 'login' ? t('Email or username') : t('Email')}</span>
                 <input
                     name="login" required type={mode === 'login' ? 'text' : 'email'}
                     autoComplete={mode === 'login' ? 'username' : 'email'} className={INPUT}
                 />
             </label>
             <label className="block">
-                <span className={LABEL}>Password</span>
+                <span className={LABEL}>{t('Password')}</span>
                 <input
                     name="password" type="password" required minLength={8}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -161,11 +163,11 @@ const AuthForm = ({ onSignedIn }) => {
             </label>
             <Message msg={msg} />
             <button type="submit" disabled={busy} className={PRIMARY}>
-                {mode === 'login' ? 'Sign in' : 'Create account'}
+                {mode === 'login' ? t('Sign in') : t('Create account')}
             </button>
             {mode === 'login' && (
                 <button type="button" onClick={forgot} disabled={busy} className="w-full text-xs text-zinc-500 hover:text-zinc-300">
-                    Forgot password?
+                    {t('Forgot password?')}
                 </button>
             )}
         </form>
@@ -188,7 +190,7 @@ const ProfileTab = ({ user, leagues }) => {
         if (!ok) return;
         const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(path).data;
         // Same path every time, so bust the browser's cache of the old picture.
-        saveMeta({ avatar_url: `${publicUrl}?v=${Date.now()}` }, 'Picture updated.');
+        saveMeta({ avatar_url: `${publicUrl}?v=${Date.now()}` }, t('Picture updated.'));
     };
 
     const toggleFavourite = (league) => {
@@ -200,14 +202,14 @@ const ProfileTab = ({ user, leagues }) => {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
-                <label className="relative cursor-pointer group" title="Change picture">
+                <label className="relative cursor-pointer group" title={t('Change picture')}>
                     <Avatar user={user} className="w-16 h-16 text-2xl" />
                     <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-center transition">
                         <Camera className="w-5 h-5 text-white" />
                     </span>
                     <input
                         type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only"
-                        aria-label="Upload profile picture" disabled={busy}
+                        aria-label={t('Upload profile picture')} disabled={busy}
                         onChange={(e) => uploadAvatar(e.target.files[0])}
                     />
                 </label>
@@ -219,23 +221,34 @@ const ProfileTab = ({ user, leagues }) => {
                         run(async () => {
                             const owner = await emailFor(username);
                             return owner && owner !== user.email
-                                ? fail('That username is taken.')
+                                ? fail(t('That username is taken.'))
                                 : supabase.auth.updateUser({ data: { username } });
-                        }, 'Username saved.');
+                        }, t('Username saved.'));
                     }}
                 >
                     <label className="flex-1">
-                        <span className={LABEL}>Username</span>
+                        <span className={LABEL}>{t('Username')}</span>
                         <input name="username" defaultValue={meta.username ?? ''} required {...USERNAME_RULES} className={INPUT} />
                     </label>
-                    <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">Save</button>
+                    <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Save')}</button>
                 </form>
             </div>
             <p className="text-xs text-zinc-500 -mt-4">{user.email}</p>
 
             <div>
-                <span className={LABEL}>Favourite leagues</span>
-                <p className="text-[11px] text-zinc-500 mb-2">Pinned to the landing page for one-click access.</p>
+                <span className={LABEL}>{t('Language')}</span>
+                <SlidingTabs
+                    items={LANGUAGES}
+                    value={getLanguage()}
+                    onChange={(lang) => { setLanguage(lang); saveMeta({ language: lang }); }}
+                    className="w-full"
+                    tabClassName="flex-1 font-semibold"
+                />
+            </div>
+
+            <div>
+                <span className={LABEL}>{t('Favourite leagues')}</span>
+                <p className="text-[11px] text-zinc-500 mb-2">{t('Pinned to the landing page for one-click access.')}</p>
                 <div className="flex flex-wrap gap-2">
                     {leagues.map(league => {
                         const on = favourites.includes(league);
@@ -261,14 +274,14 @@ const ProfileTab = ({ user, leagues }) => {
                 onSubmit={async (e) => {
                     e.preventDefault();
                     const form = e.currentTarget;
-                    if (await run(() => supabase.auth.updateUser({ password: form.password.value }), 'Password changed.')) form.reset();
+                    if (await run(() => supabase.auth.updateUser({ password: form.password.value }), t('Password changed.'))) form.reset();
                 }}
             >
                 <label className="flex-1">
-                    <span className={LABEL}>New password</span>
+                    <span className={LABEL}>{t('New password')}</span>
                     <input name="password" type="password" required minLength={8} autoComplete="new-password" className={INPUT} />
                 </label>
-                <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">Change</button>
+                <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Change')}</button>
             </form>
 
             <Message msg={msg} />
@@ -277,7 +290,7 @@ const ProfileTab = ({ user, leagues }) => {
                 onClick={() => supabase.auth.signOut()}
                 className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 flex items-center justify-center gap-2"
             >
-                <LogOut className="w-4 h-4" /> Sign out
+                <LogOut className="w-4 h-4" /> {t('Sign out')}
             </button>
         </div>
     );
@@ -295,13 +308,13 @@ const HistoryTab = ({ matchData }) => {
     }, []);
 
     const remove = async (id) => {
-        if (!window.confirm('Delete this slip from your history?')) return;
+        if (!window.confirm(t('Delete this slip from your history?'))) return;
         const { error } = await supabase.from('slips').delete().eq('id', id);
         if (error) return setError(error.message);
         setSlips(prev => prev.filter(s => s.id !== id));
     };
 
-    if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">Loading…</p>;
+    if (!slips) return <p className="text-center text-zinc-500 py-8 text-sm">{t('Loading…')}</p>;
 
     // Every slip graded against what was actually played, and ONLY against that.
     // Derived on read rather than written back: a match re-scraped tomorrow (a
@@ -330,21 +343,21 @@ const HistoryTab = ({ matchData }) => {
             {error && <Message msg={{ text: error }} />}
             {slips.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">
-                    <p>No played slips yet.</p>
-                    <p className="text-xs mt-1">Use "Save as played" in the bet slip.</p>
+                    <p>{t('No played slips yet.')}</p>
+                    <p className="text-xs mt-1">{t('Use "Save as played" in the bet slip.')}</p>
                 </div>
             ) : (
                 <>
                     <div className="flex justify-between text-xs text-zinc-400 px-1">
-                        <span>{slips.length} slips · {counted} settled</span>
+                        <span>{t('{slips} slips · {settled} settled', { slips: slips.length, settled: counted })}</span>
                         <span className={`font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                             P/L {profit >= 0 ? '+' : '−'}€{Math.abs(profit).toFixed(2)}
                         </span>
                     </div>
                     {staked > 0 && (
                         <p className="text-[10px] text-zinc-500 px-1 -mt-1">
-                            €{staked.toFixed(2)} staked · {(100 * profit / staked).toFixed(1)}% ROI,
-                            over settled slips only.
+                            {t('€{staked} staked · {roi}% ROI, over settled slips only.',
+                                { staked: staked.toFixed(2), roi: (100 * profit / staked).toFixed(1) })}
                         </p>
                     )}
                     {rows.map(({ slip, settled, status }) => (
@@ -357,10 +370,10 @@ const HistoryTab = ({ matchData }) => {
                             <summary className="flex items-center gap-2 p-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-white/5">
                                 <ChevronRight className="w-4 h-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-90" />
                                 <span className="text-xs text-zinc-500 shrink-0">
-                                    {new Date(slip.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                    {new Date(slip.created_at).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
                                 </span>
                                 <span className="text-xs text-zinc-500 shrink-0">
-                                    {settled.total} leg{settled.total === 1 ? '' : 's'}
+                                    {t('{n} legs', { n: settled.total })}
                                 </span>
                                 {/* The numbers being scanned for, so the common case
                                     needs no expanding at all. */}
@@ -370,16 +383,16 @@ const HistoryTab = ({ matchData }) => {
                                     {slip.odds ? Number(slip.odds).toFixed(2) : '—'}
                                 </span>
                                 <span
-                                    aria-label="Slip outcome"
+                                    aria-label={t('Slip outcome')}
                                     className={`px-2 py-1 text-xs font-bold uppercase shrink-0 ${STATUS_STYLE[status]}`}
                                 >
-                                    {status}
+                                    {t(STATUS_LABEL[status])}
                                 </span>
                                 <button
                                     // Inside a <summary>, so without this the click
                                     // toggles the card open on its way up.
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); remove(slip.id); }}
-                                    aria-label="Delete slip"
+                                    aria-label={t('Delete slip')}
                                     className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg shrink-0"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -403,7 +416,7 @@ const HistoryTab = ({ matchData }) => {
                                         <li key={i} className="text-xs flex flex-col">
                                             <span className="text-white font-semibold truncate">
                                                 <span className={`mr-1.5 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
-                                                      title={(LEG_MARK[legStatus] ?? LEG_MARK.null).title}>
+                                                      title={t((LEG_MARK[legStatus] ?? LEG_MARK.null).title)}>
                                                     {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
                                                 </span>
                                                 {bet.game}
@@ -418,18 +431,19 @@ const HistoryTab = ({ matchData }) => {
                                 </ul>
                                 {status === 'pending' && settled.graded < settled.total && (
                                     <p className="text-[10px] text-zinc-500">
-                                        {settled.graded} of {settled.total} legs settled
+                                        {t('{graded} of {total} legs settled',
+                                            { graded: settled.graded, total: settled.total })}
                                         {settled.legs.some(l => UNGRADEABLE.has(l.leg?.stat))
-                                            && ' · one of these is a market we do not settle ourselves'}
+                                            && ` · ${t('one of these is a market we do not settle ourselves')}`}
                                         .
                                     </p>
                                 )}
                                 <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
                                     <span>
-                                        {new Date(slip.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                                        {new Date(slip.created_at).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
                                     </span>
                                     <span>
-                                        {status === 'won' || status === 'lost' || status === 'void' ? 'returned' : 'returns'}{' '}
+                                        {status === 'won' || status === 'lost' || status === 'void' ? t('returned') : t('returns')}{' '}
                                         {(() => {
                                             const r = slipReturn(slip, settled);
                                             if (r) return `€${r.returned.toFixed(2)}`;
@@ -439,6 +453,7 @@ const HistoryTab = ({ matchData }) => {
                                 </div>
                             </div>
                         </details>
+
                     ))}
                 </>
             )}
@@ -447,8 +462,8 @@ const HistoryTab = ({ matchData }) => {
 };
 
 const TABS = [
-    { id: 'profile', label: 'Profile', Icon: User },
-    { id: 'history', label: 'Slip history', Icon: History },
+    { id: 'profile', label: tk('Profile'), Icon: User },
+    { id: 'history', label: tk('Slip history'), Icon: History },
 ];
 
 const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
@@ -471,22 +486,22 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
     return (
         <div className={`fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity starting:opacity-0 ${isOpen ? 'duration-250' : 'duration-150 opacity-0'}`}>
             <div
-                role="dialog" aria-modal="true" aria-label="Account"
+                role="dialog" aria-modal="true" aria-label={t('Account')}
                 className={`t-modal ${isOpen ? 'is-open' : 'is-closing'} bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[85vh]`}
             >
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
                         {user && !signedOutAtOpen ? <Avatar user={user} className="w-7 h-7 text-sm" /> : <User className="w-5 h-5 text-emerald-400" />}
-                        <span className="truncate">{user && !signedOutAtOpen ? (user.user_metadata?.username || 'Your account') : 'Welcome'}</span>
+                        <span className="truncate">{user && !signedOutAtOpen ? (user.user_metadata?.username || t('Your account')) : t('Welcome')}</span>
                     </h3>
-                    <button onClick={onClose} aria-label="Close" className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white">
+                    <button onClick={onClose} aria-label={t('Close')} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <div className="p-4 overflow-y-auto custom-scrollbar space-y-4">
                     {!user || signedOutAtOpen ? <AuthForm onSignedIn={onClose} /> : (
                         <>
-                            <SlidingTabs items={TABS} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
+                            <SlidingTabs items={TABS.map(tab => ({ ...tab, label: t(tab.label) }))} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
                             {tab === 'profile'
                                 ? <ProfileTab key={user.id} user={user} leagues={leagues} />
                                 : <HistoryTab key={user.id} matchData={matchData} />}

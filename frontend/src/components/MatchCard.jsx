@@ -1,12 +1,14 @@
 import React from 'react';
 import { LeagueLogo, FlagTile } from './LeagueTag';
+import { flagWash } from '../utils/leaguePickerFx';
+import { t, dateLocale, countryName } from '../i18n';
 
 const kickoff = (date) => {
     const d = date ? new Date(date) : null;
     if (!d || isNaN(d)) return { day: 'TBD', time: null };
     return {
-        day: d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }),
-        time: String(date).includes('T') ? d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null,
+        day: d.toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short' }),
+        time: String(date).includes('T') ? d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' }) : null,
     };
 };
 
@@ -38,15 +40,11 @@ const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, cent
             {overlay}
 
             <div className="relative flex items-center gap-3 px-4 py-3 border-b border-white/5">
-                {meta.flag && (
+                {(meta.flag || meta.bands) && (
                     <div
                         aria-hidden="true"
-                        className="absolute inset-0 bg-cover bg-center opacity-[0.18] transition-opacity duration-300 group-hover:opacity-30"
-                        style={{
-                            backgroundImage: `url("${meta.flag}")`,
-                            maskImage: 'linear-gradient(to right, black, transparent 75%)',
-                            WebkitMaskImage: 'linear-gradient(to right, black, transparent 75%)',
-                        }}
+                        className="absolute inset-0 opacity-[0.18] transition-opacity duration-300 group-hover:opacity-30"
+                        style={flagWash(meta, 'linear-gradient(to right, black, transparent 75%)')}
                     />
                 )}
                 <LeagueLogo meta={meta} />
@@ -55,7 +53,7 @@ const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, cent
                     {meta.country && (
                         <div className="mt-0.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                             <FlagTile meta={meta} />
-                            {meta.country}
+                            {countryName(meta.country)}
                         </div>
                     )}
                 </div>
@@ -72,9 +70,9 @@ const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, cent
 
             <div className="flex-1 flex flex-col gap-4 p-4">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                    <Side team={match.home} logo={teamLogos[match.home]} label="Home" />
+                    <Side team={match.home} logo={teamLogos[match.home]} label={t('Home')} />
                     <div className="flex flex-col items-center text-center px-1">{center}</div>
-                    <Side team={match.away} logo={teamLogos[match.away]} label="Away" />
+                    <Side team={match.away} logo={teamLogos[match.away]} label={t('Away')} />
                 </div>
                 {children}
             </div>

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, Calendar } from 'lucide-react';
 import { getStatLabel } from '../utils/statistics';
+import { t, dateLocale } from '../i18n';
 
 /**
  * Every scraped statistic for one finished match.
@@ -112,7 +113,7 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                 <div className="p-5 border-b border-white/10 bg-zinc-900/50 relative shrink-0">
                     <button
                         onClick={onClose}
-                        title="Close"
+                        title={t('Close')}
                         className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
                     >
                         <X className="w-4 h-4" />
@@ -121,10 +122,10 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                     <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-4">
                         <Calendar className="w-3 h-3" />
                         {when && !isNaN(when.getTime())
-                            ? when.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
-                            : 'Date unknown'}
+                            ? when.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+                            : t('Date unknown')}
                         <span className="text-zinc-700">•</span>
-                        MD {match.giornata}
+                        {t('MD {n}', { n: match.giornata })}
                     </div>
 
                     <div className="flex items-center justify-between gap-3">
@@ -141,7 +142,7 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                             <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
                                 {hg} <span className="text-zinc-700">-</span> {ag}
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mt-1">Full time</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mt-1">{t('Full time')}</span>
                         </div>
 
                         <div className="flex-1 flex flex-col items-center gap-2 min-w-0">
@@ -161,9 +162,9 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                         <>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Home</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{t('Home')}</span>
                                 <span className="flex-1" />
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Away</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{t('Away')}</span>
                                 <span className="w-2 h-2 rounded-full bg-blue-500/80" />
                             </div>
                             <div className="divide-y divide-white/5">
@@ -174,7 +175,7 @@ const MatchStatsModal = ({ match, teamLogos, onClose }) => {
                         </>
                     ) : (
                         <p className="text-center text-zinc-500 text-sm py-10">
-                            Only the score was imported for this match - no detailed statistics were scraped.
+                            {t('Only the score was imported for this match - no detailed statistics were scraped.')}
                         </p>
                     )}
 

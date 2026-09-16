@@ -7,11 +7,11 @@ import { useUpcomingFixtures } from '../hooks/useUpcomingFixtures';
 import { useClickOutside } from '../hooks/useClickOutside';
 import Dropdown from './ui/Dropdown';
 import StatisticSelector from './StatisticSelector';
-import EngineToggle from './EngineToggle';
 import Header from './Header';
 import MatchCard from './MatchCard';
 import { leagueMeta } from '../utils/leaguePickerFx';
 import { staggerDelay } from '../utils/stagger';
+import { t, dateLocale } from '../i18n';
 
 const STORAGE_KEY = 'olanda_safestbets_prefs';
 // The model knobs live in useModelSettings, shared with Hot Matches and the
@@ -37,12 +37,12 @@ const CONFIDENCE_THRESHOLDS = {
 
 const getConfidenceLabel = (stdDev, statType) => {
     const thresholds = CONFIDENCE_THRESHOLDS[statType] || CONFIDENCE_THRESHOLDS.default;
-    if (stdDev <= thresholds.high) return { label: 'High', color: 'text-emerald-400' };
-    if (stdDev <= thresholds.med) return { label: 'Med', color: 'text-yellow-400' };
-    return { label: 'Low', color: 'text-red-400' };
+    if (stdDev <= thresholds.high) return { label: t('High'), color: 'text-emerald-400' };
+    if (stdDev <= thresholds.med) return { label: t('Med'), color: 'text-yellow-400' };
+    return { label: t('Low'), color: 'text-red-400' };
 };
 
-const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, leagues, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
+const SafestBets = ({ stats, fixtures, teamLogos, leagues, selectedStatistic, matchData, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const { displayCount, selectedLeagues, selectedDate } = prefs;
     const { nGames, useGeneralStats, forceMean } = modelSettings;
@@ -62,9 +62,8 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
     // corners are predicted from shots, goals from box touches, everything else
     // from itself. See utils/predictTotal.js.
     const predictionModel = useMemo(
-        () => buildPredictionModel(matchData, selectedStatistic,
-            { trackResiduals: engine === ENGINES.COUNT }),
-        [matchData, selectedStatistic, engine]
+        () => buildPredictionModel(matchData, selectedStatistic, { trackResiduals: true }),
+        [matchData, selectedStatistic]
     );
 
     // Rank the shared candidate set by prediction variance: the lower the
@@ -78,13 +77,13 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                     useGeneralStats,
                     aggregatorOverride: forceMean ? 'mean' : null,
                     asOf: match.date ?? new Date(),
-                    engine,
+                    engine: ENGINES.COUNT,
                 })
             }))
             .filter(m => m.prediction !== null)
             .sort((a, b) => a.prediction.totalStd - b.prediction.totalStd)
             .slice(0, displayCount);
-    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean, engine]);
+    }, [candidates, predictionModel, nGames, displayCount, useGeneralStats, forceMean]);
 
     // Close dropdown when clicking outside
     useClickOutside(activeDropdown, '.dropdown-container', useCallback(() => setActiveDropdown(null), []));
@@ -97,7 +96,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
 
     const pageName = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none">
-            Safest <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">Bets</span>
+            {t('Safest Bets').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">{t('Safest Bets').split(' ').slice(1).join(' ')}</span>
         </h1>
     );
 
@@ -109,7 +108,6 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                 showSound={true}
                 pageName={pageName}
             >
-                <EngineToggle engine={engine} onChange={onEngineChange} />
                 <StatisticSelector
                     value={selectedStatistic}
                     onChange={onStatisticChange}
@@ -127,10 +125,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             </div>
                             <div>
                                 <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
-                                    Safest <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Bets</span>
+                                    {t('Safest Bets').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">{t('Safest Bets').split(' ').slice(1).join(' ')}</span>
                                 </h2>
                                 <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide mt-0.5">
-                                    Low Variance {getStatLabel(selectedStatistic)} Picks
+                                    {t('Low Variance {stat} Picks', { stat: getStatLabel(selectedStatistic) })}
                                 </p>
                             </div>
                         </div>
@@ -139,10 +137,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* League Multi-Filter */}
                             <Dropdown
                                 accent="cyan"
-                                label="Leagues"
+                                label={t('Leagues')}
                                 active={activeDropdown === 'league'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'league' ? null : 'league')}
-                                value={selectedLeagues.includes('All') ? 'All Leagues' : `${selectedLeagues.length} Selected`}
+                                value={selectedLeagues.includes('All') ? t('All Leagues') : t('{n} selected', { n: selectedLeagues.length })}
                                 width="w-full"
                                 className="flex-[2] min-w-[200px]"
                             >
@@ -153,7 +151,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/20'
                                             : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
                                     >
-                                        All Leagues
+                                        {t('All Leagues')}
                                     </button>
                                     <div className="h-px bg-white/5 my-1" />
                                     {availableLeagues.map(league => (
@@ -178,10 +176,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* Date Selector */}
                             <Dropdown
                                 accent="cyan"
-                                label="Date"
+                                label={t('Date')}
                                 active={activeDropdown === 'date'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}
-                                value={selectedDate ? (selectedDate.toDateString() === new Date().toDateString() ? 'Today' : selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : 'Upcoming'}
+                                value={selectedDate ? (selectedDate.toDateString() === new Date().toDateString() ? t('Today') : selectedDate.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' })) : t('Upcoming')}
                                 width="w-full"
                                 className="flex-[1.5] min-w-[140px]"
                             >
@@ -192,13 +190,13 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/20'
                                             : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
                                     >
-                                        Upcoming Matches
+                                        {t('Upcoming Matches')}
                                     </button>
                                     <div className="h-px bg-white/5 my-1" />
                                     {availableDates.map(date => {
                                         const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
                                         const isToday = date.toDateString() === new Date().toDateString();
-                                        const label = isToday ? 'Today' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                                        const label = isToday ? t('Today') : date.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' });
 
                                         return (
                                             <button
@@ -218,7 +216,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* View Count */}
                             <Dropdown
                                 accent="cyan"
-                                label="View"
+                                label={t('View')}
                                 active={activeDropdown === 'view'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'view' ? null : 'view')}
                                 value={displayCount}
@@ -234,7 +232,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                                 ? 'bg-cyan-500/20 text-cyan-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n} Matches
+                                            {t('{n} matches', { n })}
                                         </button>
                                     ))}
                                 </div>
@@ -243,10 +241,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* Sample Size */}
                             <Dropdown
                                 accent="cyan"
-                                label="Sample"
+                                label={t('Sample')}
                                 active={activeDropdown === 'sample'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'sample' ? null : 'sample')}
-                                value={nGames === 'all' ? 'Season' : `Last ${nGames}`}
+                                value={nGames === 'all' ? t('Season') : t('Last {n}', { n: nGames })}
                                 width="w-full"
                                 className="flex-1 min-w-[100px]"
                             >
@@ -259,7 +257,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                                 ? 'bg-cyan-500/20 text-cyan-400'
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
-                                            {n === 'all' ? 'Whole Season' : `Last ${n} Games`}
+                                            {n === 'all' ? t('Whole Season') : t('Last {n} Games', { n })}
                                         </button>
                                     ))}
                                 </div>
@@ -268,10 +266,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* Trend */}
                             <Dropdown
                                 accent="cyan"
-                                label="Trend"
+                                label={t('Trend')}
                                 active={activeDropdown === 'trend'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'trend' ? null : 'trend')}
-                                value={useGeneralStats ? 'General' : 'Specific'}
+                                value={useGeneralStats ? t('General') : t('Specific')}
                                 width="w-full"
                                 className="flex-1 min-w-[100px]"
                             >
@@ -282,7 +280,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400'
                                             : 'text-zinc-400 hover:bg-white/5'}`}
                                     >
-                                        Specific (Home/Away)
+                                        {t('Specific (Home/Away)')}
                                     </button>
                                     <button
                                         onClick={() => { setUseGeneralStats(true); setActiveDropdown(null); }}
@@ -290,7 +288,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400'
                                             : 'text-zinc-400 hover:bg-white/5'}`}
                                     >
-                                        General (All Matches)
+                                        {t('General (All Matches)')}
                                     </button>
                                 </div>
                             </Dropdown>
@@ -298,10 +296,10 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                             {/* Calc */}
                             <Dropdown
                                 accent="cyan"
-                                label="Calc"
+                                label={t('Calc')}
                                 active={activeDropdown === 'calc'}
                                 onToggle={() => setActiveDropdown(activeDropdown === 'calc' ? null : 'calc')}
-                                value={forceMean ? 'Mean' : 'Median'}
+                                value={forceMean ? t('Mean') : t('Median')}
                                 width="w-full"
                                 className="flex-1 min-w-[100px]"
                             >
@@ -312,7 +310,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400'
                                             : 'text-zinc-400 hover:bg-white/5'}`}
                                     >
-                                        Auto (per statistic)
+                                        {t('Auto (per statistic)')}
                                     </button>
                                     <button
                                         onClick={() => { setForceMean(true); setActiveDropdown(null); }}
@@ -320,7 +318,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                             ? 'bg-cyan-500/20 text-cyan-400'
                                             : 'text-zinc-400 hover:bg-white/5'}`}
                                     >
-                                        Mean (Average)
+                                        {t('Mean (Average)')}
                                     </button>
                                 </div>
                             </Dropdown>
@@ -345,18 +343,18 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
                                                 <span className="text-2xl text-zinc-500 align-top">±</span>{match.prediction.totalStd.toFixed(2)}
                                             </div>
                                             <span className="mt-2 text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
-                                                {getStatLabel(selectedStatistic)} spread
+                                                {t('{stat} spread', { stat: getStatLabel(selectedStatistic) })}
                                             </span>
                                         </>
                                     )}
                                 >
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-zinc-950/40 rounded-lg px-3 py-2 border border-white/5 text-center">
-                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Exp. total</span>
+                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Exp. total')}</span>
                                             <span className="block text-lg font-black text-cyan-400 tabular-nums">{match.prediction.total.toFixed(2)}</span>
                                         </div>
                                         <div className="bg-zinc-950/40 rounded-lg px-3 py-2 border border-white/5 text-center">
-                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Confidence</span>
+                                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Confidence')}</span>
                                             <span className={`block text-lg font-black ${color}`}>{label}</span>
                                         </div>
                                     </div>
@@ -367,7 +365,7 @@ const SafestBets = ({ engine, onEngineChange, stats, fixtures, teamLogos, league
 
                     {safestMatches.length === 0 && (
                         <div className="text-center py-12 text-zinc-500">
-                            No upcoming matches found to analyze.
+                            {t('No upcoming matches found to analyze.')}
                         </div>
                     )}
                 </div>

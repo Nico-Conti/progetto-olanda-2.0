@@ -4,11 +4,13 @@ import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
+import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import { confettiBurst, flagWipe, flagColors, flagStripes, flagRing, motionAllowed } from '../utils/leaguePickerFx';
+import { t, tk, countryName } from '../i18n';
 
-const SUBTITLE = 'Advanced football analytics.';
-const CREDITS = 'Powered by NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude.';
+const SUBTITLE = tk('Advanced football analytics.');
+const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
 
 /**
  * Randomised placement and timing for the hover particles, drawn once at load
@@ -29,6 +31,8 @@ const EMBERS = particles(16, { left: [12, 88], dur: [1.1, 1.9], sway: 14 })
     .map(style => ({ ...style, width: 3 + Math.random() * 3, height: 3 + Math.random() * 3 }));
 const SPARKLES = particles(10, { left: [4, 94], dur: [2.6, 4.2], sway: 12 })
     .map(style => ({ ...style, top: `${-10 + Math.random() * 40}%` }));
+const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
+    .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
 
 /** The effect layer behind a feature card's content; see "Landing feature-card hover effects" in index.css. */
 const HoverFx = ({ kind }) => {
@@ -51,21 +55,21 @@ const HoverFx = ({ kind }) => {
 // it can read literally in the source.
 const FEATURES = [
     {
-        id: 'hot', label: 'Hot Matches', caption: 'Best Matchups', Icon: Flame, fx: 'fire',
+        id: 'hot', label: tk('Hot Matches'), caption: tk('Best Matchups'), Icon: Flame, fx: 'fire',
         card: 'hover-fire', glow: 'bg-orange-500/20',
         iconBox: 'bg-orange-500/10 border-orange-500/20 group-hover:border-orange-500/50',
         icon: 'text-orange-500 group-hover:text-orange-400', iconFx: 'fx-flame',
         title: 'group-hover:text-orange-300', arrow: 'group-hover:text-orange-400',
     },
     {
-        id: 'factor', label: 'Winning Factor', caption: 'Bet Analysis', Icon: Zap, fx: 'lightning',
+        id: 'factor', label: tk('Winning Factor'), caption: tk('Bet Analysis'), Icon: Zap, fx: 'lightning',
         card: 'hover-lightning', glow: 'bg-purple-500/20',
         iconBox: 'bg-purple-500/10 border-purple-500/20 group-hover:border-purple-500/50',
         icon: 'text-purple-500 group-hover:text-purple-400', iconFx: 'fx-zap',
         title: 'group-hover:text-purple-300', arrow: 'group-hover:text-purple-400',
     },
     {
-        id: 'safe', label: 'Safest Bets', caption: 'Low Variance', Icon: Shield, fx: 'frost',
+        id: 'safe', label: tk('Safest Bets'), caption: tk('Low Variance'), Icon: Shield, fx: 'frost',
         card: 'hover-ice', glow: 'bg-cyan-500/20',
         iconBox: 'bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-500/50',
         icon: 'text-cyan-500 group-hover:text-cyan-400',
@@ -117,9 +121,9 @@ const FeatureCard = ({ feature, onClick }) => {
                 </div>
                 <div className="text-left">
                     <h3 className={`text-lg font-bold text-white transition-colors ${feature.title}`}>
-                        {feature.label}
+                        {t(feature.label)}
                     </h3>
-                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">{feature.caption}</span>
+                    <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">{t(feature.caption)}</span>
                 </div>
             </div>
             <ArrowRight className={`w-5 h-5 text-zinc-600 transform group-hover:translate-x-1 transition relative z-10 ${feature.arrow}`} />
@@ -191,6 +195,11 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
 
     const isModalMounted = usePresence(isLeagueModalOpen, '--modal-close-dur');
 
+    // Like the electric border on Winning Factor, the league button's golden
+    // edge redraws every frame, so it only exists while hovered.
+    const [leagueHover, setLeagueHover] = React.useState(false);
+    const leagueGlow = usePresence(motionAllowed() && leagueHover, '--fx-fade-out');
+
 
     // The nation is reset on open, not on close, so the list does not jump
     // back to nations while the closing modal is still fading out. Unless the
@@ -237,14 +246,14 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                             Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
                         </h1>
                         <p className="text-zinc-400 text-lg md:text-xl max-w-lg mx-auto leading-relaxed">
-                            <span className="sr-only">{SUBTITLE}</span>
+                            <span className="sr-only">{t(SUBTITLE)}</span>
                             <span className="colour-sweep" aria-hidden="true">
-                                {SUBTITLE.split('').map((char, i) => (
+                                {t(SUBTITLE).split('').map((char, i) => (
                                     <span key={i} style={{ '--i': i }}>{char}</span>
                                 ))}
                             </span>
                             <br />
-                            <span className="text-zinc-500">Select a league to begin male pisello...</span>
+                            <span className="text-zinc-500">{t('Select a league to begin male pisello...')}</span>
                         </p>
                     </div>
 
@@ -255,29 +264,63 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                     >
                         <button
                             onClick={openModal}
+                            onMouseEnter={() => setLeagueHover(true)}
+                            onMouseLeave={() => setLeagueHover(false)}
                             disabled={availableLeagues.length === 0}
-                            className="group w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                            className="group relative w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/50 transition-colors">
-                                    {/* The trophy the picker opens with; it redraws itself on hover. */}
+                            {/* A champion's glory, the gold counterpart of the fire,
+                                lightning and frost cards below: rays turn behind the
+                                trophy, gold dust rises, a light sweeps the card and a
+                                golden edge runs round it. See "League picker hover"
+                                in index.css. */}
+                            {availableLeagues.length > 0 && (
+                                <>
+                                    <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
+                                        {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
+                                    </div>
+                                    {/* Clipped to the card: light glowing from within it. */}
+                                    <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
+                                        <div className="fx-rays absolute left-12 top-1/2 w-72 h-72 -translate-x-1/2 -translate-y-1/2" />
+                                        <div className="fx-glint" style={{ '--glint': 'rgb(253 230 138 / 0.2)' }} />
+                                    </div>
+                                    {leagueGlow && (
+                                        <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
+                                            <GlowBorder
+                                                glowColor="#fcd34d"
+                                                tailColor="rgba(251, 191, 36, 0.45)"
+                                                baseColor="rgba(255, 255, 255, 0)"
+                                                borderWidth={1.5}
+                                                speed={5}
+                                                style={{ borderRadius: 16 }}
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-24 blur-[40px] rounded-full bg-amber-500/25 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" aria-hidden="true" />
+                                </>
+                            )}
+
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 group-hover:border-amber-500/60 group-hover:bg-amber-500/15 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.35)] transition duration-300">
+                                    {/* The trophy the picker opens with; it redraws itself
+                                        on hover and is lifted like a cup. */}
                                     <TrophyIcon
-                                        className="w-6 h-6 trophy-redraw"
+                                        className="w-6 h-6 trophy-redraw fx-cup"
                                         pathProps={{ pathLength: 1 }}
                                     />
                                 </div>
                                 <div className="text-left">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
-                                        Select Your League
+                                    <h3 className="text-lg font-bold text-white fx-gold-text">
+                                        {t('Select Your League')}
                                     </h3>
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
                                         {availableLeagues.length > 0
-                                            ? `${availableLeagues.length} leagues \u00b7 ${nations.length} nations`
-                                            : 'No leagues found - activate backend'}
+                                            ? t('{leagues} leagues · {nations} nations', { leagues: availableLeagues.length, nations: nations.length })
+                                            : t('No leagues found - activate backend')}
                                     </span>
                                 </div>
                             </div>
-                            <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
+                            <ArrowRight className="relative z-10 w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
                         </button>
 
                         {favourites.length > 0 && (
@@ -323,7 +366,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                 className="py-8 text-center text-zinc-600 text-base uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
                 style={{ fontFamily: "'Silkscreen', monospace", animationDelay: '300ms', animationFillMode: 'backwards' }}
             >
-                <ScrambleText text={CREDITS} />
+                <ScrambleText text={t('Powered by {names}.', { names: CREDIT_NAMES })} />
             </div>
 
             <TrophyIntro
@@ -350,7 +393,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <button
                                         onClick={() => setModalCountry(null)}
                                         className="p-2 -ml-2 hover:bg-amber-500/10 rounded-full transition-colors"
-                                        aria-label="Back to nations"
+                                        aria-label={t('Back to nations')}
                                     >
                                         <ArrowLeft className="w-5 h-5 text-zinc-400 hover:text-amber-300" />
                                     </button>
@@ -358,13 +401,13 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <TrophyIcon className="w-6 h-6 mr-1" aria-hidden="true" />
                                 )}
                                 <h2 className="text-2xl font-bold capitalize text-transparent bg-clip-text bg-gradient-to-b from-amber-100 to-amber-400">
-                                    {openNation ? openNation[0] : 'Select Nation'}
+                                    {openNation ? countryName(openNation[0]) : t('Select Nation')}
                                 </h2>
                             </div>
                             <button
                                 onClick={closeModal}
                                 className="p-2 hover:bg-amber-500/10 rounded-full transition-colors"
-                                aria-label="Close"
+                                aria-label={t('Close')}
                             >
                                 <X className="w-6 h-6 text-zinc-400 hover:text-amber-300" />
                             </button>
@@ -412,10 +455,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                         </div>
                                         <span className="flag-bar" aria-hidden="true" />
                                         <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors capitalize text-center">
-                                            {country}
+                                            {countryName(country)}
                                         </h3>
                                         <span className="text-[10px] text-amber-200/45 font-medium uppercase tracking-wider mt-1">
-                                            {leagues.length} {leagues.length === 1 ? 'league' : 'leagues'}
+                                            {leagues.length === 1 ? t('1 league') : t('{n} leagues', { n: leagues.length })}
                                         </span>
                                     </button>
                                 ))}

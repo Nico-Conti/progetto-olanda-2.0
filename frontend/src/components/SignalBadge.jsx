@@ -1,5 +1,6 @@
 import React from 'react';
 import { getStatSignal, SIGNAL_LABELS } from '../utils/statistics';
+import { t } from '../i18n';
 
 /**
  * How much predictive signal a statistic actually carries, measured on a full season.
@@ -23,11 +24,11 @@ const SignalBadge = ({ statistic, showLabel = false, className = '' }) => {
     if (!signal) return null;
 
     const { strength, lift, edge } = signal;
-    const title =
-        `${SIGNAL_LABELS[strength]}. Ranking lift ${lift >= 0 ? '+' : ''}${lift.toFixed(2)} ` +
-        `vs the round average; over/under edge ${edge >= 0 ? '+' : ''}${edge.toFixed(1)} points ` +
-        `vs always betting the majority side. Averaged across 12 league-seasons - an ` +
-        `individual league can differ, which is what the optimizer measures.`;
+    const title = t('{signal}. Ranking lift {lift} vs the round average; over/under edge {edge} points vs always betting the majority side. Averaged across 12 league-seasons - an individual league can differ, which is what the optimizer measures.', {
+        signal: t(SIGNAL_LABELS[strength]),
+        lift: `${lift >= 0 ? '+' : ''}${lift.toFixed(2)}`,
+        edge: `${edge >= 0 ? '+' : ''}${edge.toFixed(1)}`,
+    });
 
     return (
         <span
@@ -42,7 +43,7 @@ const SignalBadge = ({ statistic, showLabel = false, className = '' }) => {
                     />
                 ))}
             </span>
-            {showLabel && <span>{SIGNAL_LABELS[strength]}</span>}
+            {showLabel && <span>{t(SIGNAL_LABELS[strength])}</span>}
         </span>
     );
 };

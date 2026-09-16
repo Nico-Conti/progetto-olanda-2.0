@@ -232,7 +232,8 @@
     position: absolute;
     inset: 0 auto 0 -40%;
     width: 35%;
-    background: linear-gradient(90deg, transparent, rgb(207 250 254 / 0.14), transparent);
+    /* Ice by default; the league button passes gold as --glint. */
+    background: linear-gradient(90deg, transparent, var(--glint, rgb(207 250 254 / 0.14)), transparent);
     transform: skewX(-20deg);
     animation: fx-glint 2.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
@@ -413,6 +414,98 @@
     }
 }
 
+/* Match view (PredictionHero, StatsAnalysis). The sides slide in from their
+   own edges, a spotlight breathes behind the predicted total, bars grow from
+   their origin (set inline), and a hot match's chip flickers like a flame. */
+.hero-in-left,
+.hero-in-right {
+    animation: hero-in 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.hero-in-left { --hero-from: -28px; }
+.hero-in-right { --hero-from: 28px; }
+
+@keyframes hero-in {
+    from { opacity: 0; transform: translateX(var(--hero-from)); }
+}
+
+.hero-spot {
+    animation: hero-spot 4.5s ease-in-out infinite;
+}
+
+@keyframes hero-spot {
+    0%, 100% { opacity: 0.6; scale: 0.92; }
+    50% { opacity: 1; scale: 1.08; }
+}
+
+.bar-grow {
+    animation: bar-grow 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: 150ms;
+}
+
+@keyframes bar-grow {
+    from { transform: scaleX(0); }
+}
+
+/* Upright bars (the team page's chart) rise from the axis, one after another. */
+.bar-rise {
+    transform-origin: bottom;
+    animation: bar-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes bar-rise {
+    from { transform: scaleY(0); }
+}
+
+.hot-chip {
+    animation: hot-chip 1.8s ease-in-out infinite;
+}
+
+/* A club's kit: fades up when its image arrives and lifts a little on hover. */
+.jersey {
+    animation: jersey-in 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: scale 400ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.jersey:hover {
+    scale: 1.08;
+}
+
+/* A badge that opens its team's page (TeamBadge): it lifts and glows. */
+.team-badge {
+    cursor: pointer;
+}
+
+.team-badge img {
+    transition: scale 300ms cubic-bezier(0.34, 1.45, 0.64, 1), filter 300ms ease-out;
+}
+
+.team-badge:hover img {
+    scale: 1.1;
+    filter: drop-shadow(0 0 10px rgb(52 211 153 / 0.55));
+}
+
+@keyframes jersey-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.9); }
+}
+
+@keyframes hot-chip {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(249 115 22 / 0); }
+    50% { box-shadow: 0 0 18px 2px rgb(249 115 22 / 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-in-left,
+    .hero-in-right,
+    .hero-spot,
+    .bar-grow,
+    .bar-rise,
+    .hot-chip,
+    .jersey {
+        animation: none;
+    }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -509,6 +602,80 @@ input[type=number] {
 @keyframes trophy-redraw {
     from { stroke-dashoffset: 1; }
     to { stroke-dashoffset: 0; }
+}
+
+/*
+   League picker hover: a champion's glory, the gold sibling of the feature
+   cards' fire, lightning and frost. It rides the same .fx plumbing above (fade
+   in on hover, paused otherwise) and reuses the frost glint and the sparkle.
+*/
+
+/* Rays of light turning slowly behind the trophy, fading out from its centre. */
+.fx-rays {
+    border-radius: 9999px;
+    background: repeating-conic-gradient(from 0deg, rgb(251 191 36 / 0.16) 0deg 5deg, transparent 5deg 20deg);
+    mask-image: radial-gradient(circle, black 8%, transparent 60%);
+    -webkit-mask-image: radial-gradient(circle, black 8%, transparent 60%);
+    animation: fx-rays 16s linear infinite;
+}
+
+@keyframes fx-rays {
+    to { transform: rotate(360deg); }
+}
+
+/* Gold dust rising off the card: the sparkle, in gold. */
+.fx-dust {
+    --sparkle-core: #fffbeb;
+    --sparkle-glow: rgb(251 191 36 / 0.7);
+    animation: fx-rise var(--dur) cubic-bezier(0.3, 0, 0.6, 1) var(--delay) infinite;
+}
+
+@keyframes fx-rise {
+    0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+    15% { opacity: 1; }
+    70% { opacity: 0.8; }
+    100% { transform: translate(var(--sway), -95px) scale(1) rotate(90deg); opacity: 0; }
+}
+
+/* The title turns gold, with a sheen running through it. */
+.group:hover .fx-gold-text {
+    color: transparent;
+    background: linear-gradient(100deg, #fcd34d 0%, #fcd34d 40%, #fffbeb 50%, #fcd34d 60%, #fcd34d 100%) 0 0 / 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: fx-sheen 2.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes fx-sheen {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+
+/* The cup is lifted: a hop and a sway, glowing gold. */
+.group:hover .fx-cup {
+    transform-origin: 50% 85%;
+    filter: drop-shadow(0 0 6px rgb(251 191 36 / 0.75));
+    animation: fx-cup 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes fx-cup {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    18% { transform: translateY(-4px) rotate(-9deg) scale(1.08); }
+    36% { transform: translateY(-4px) rotate(8deg) scale(1.08); }
+    54% { transform: translateY(-2px) rotate(-4deg) scale(1.04); }
+    72% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fx-dust {
+        display: none;
+    }
+
+    .fx-rays,
+    .group:hover .fx-cup,
+    .group:hover .fx-gold-text {
+        animation: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
