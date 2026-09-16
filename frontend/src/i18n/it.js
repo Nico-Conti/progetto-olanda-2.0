@@ -464,4 +464,5 @@ export default {
     "returned": "restituito",
     "€{staked} staked · {roi}% ROI, over settled slips only.": "€{staked} giocati · {roi}% ROI, solo sulle schedine decise.",
     "{stat} is deliberately not priced: the bookmaker settles it on a narrower count than we measure, so an expected value here would be arithmetic on two different quantities. Rank by expected total, or pick another statistic.": "{stat}: non quotiamo questo mercato di proposito. Il bookmaker lo decide su un conteggio più ristretto del nostro, quindi un valore atteso qui sarebbe aritmetica su due quantità diverse. Ordina per totale atteso, o scegli un’altra statistica.",
+    "{n} seats": "{n} posti",
 };

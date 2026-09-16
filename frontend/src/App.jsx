@@ -6,6 +6,8 @@ import LandingPage from './components/LandingPage';
 import HighestWinningFactor from './components/HighestWinningFactor';
 import SafestBets from './components/SafestBets';
 import TransitionAnimation from './components/TransitionAnimation';
+import LeagueStinger from './components/LeagueStinger';
+import { leagueMeta } from './utils/leaguePickerFx';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
 import { processData } from './utils/stats';
@@ -22,6 +24,7 @@ import TeamDetails from './components/TeamDetails';
 import Standings from './components/Standings';
 import Select from './components/ui/Select';
 import SlidingTabs from './components/ui/SlidingTabs';
+import LiquidNav from './components/ui/LiquidNav';
 import { cssMs } from './hooks/usePresence';
 import { t, tk, useLanguage, setLanguage } from './i18n';
 
@@ -356,24 +359,28 @@ export default function App() {
   }
 
 
+  const transitionCues = {
+    onMidPoint: () => {
+      if (pendingTab) setActiveTab(pendingTab);
+      if (pendingLeague !== undefined) setSelectedLeague(pendingLeague);
+      if (pendingView) setView(pendingView);
+    },
+    onComplete: () => {
+      setIsAnimating(false);
+      setPendingTab(null);
+      setPendingLeague(undefined);
+      setPendingView(null);
+    },
+  };
+
   return (
     <AccountContext.Provider value={account}>
     <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans relative">
       <BackgroundAnimation />
-      <TransitionAnimation
-        isActive={isAnimating}
-        onMidPoint={() => {
-          if (pendingTab) setActiveTab(pendingTab);
-          if (pendingLeague !== undefined) setSelectedLeague(pendingLeague);
-          if (pendingView) setView(pendingView);
-        }}
-        onComplete={() => {
-          setIsAnimating(false);
-          setPendingTab(null);
-          setPendingLeague(undefined);
-          setPendingView(null);
-        }}
-      />
+      {/* Entering a league plays its stinger; the other sections, the spiral. */}
+      {pendingLeague
+        ? <LeagueStinger isActive={isAnimating} meta={leagueMeta(leagues, pendingLeague)} {...transitionCues} />
+        : <TransitionAnimation isActive={isAnimating} {...transitionCues} />}
 
       <BetSlipModal
         isOpen={isBetSlipOpen}
@@ -508,30 +515,6 @@ export default function App() {
                 desktop pill measures ~943px and md is 768px, so an iPad in
                 portrait got a header wider than its own screen. */}
             <div className="flex items-center gap-2 lg:hidden">
-              {/* Tooltips open below: the header sits at the top of the page. */}
-              {tabs.map(tab => (
-                <span key={tab.id} className="t-tt-wrap">
-                  <button
-                    onClick={() => handleNavTab(tab.id)}
-                    aria-label={tab.label}
-                    aria-describedby={`tab-tt-${tab.id}`}
-                    className={`t-tt-trigger p-2.5 rounded-lg border transition ${activeTab === tab.id
-                      ? 'bg-zinc-800 border-white/10 text-emerald-400 shadow-sm'
-                      : 'bg-transparent border-transparent text-zinc-400 hover:text-white'
-                      }`}
-                  >
-                    <tab.Icon className="w-5 h-5" />
-                  </button>
-                  <span
-                    id={`tab-tt-${tab.id}`}
-                    role="tooltip"
-                    className="t-tt bottom-auto top-[calc(100%+8px)] origin-top z-50 text-xs font-semibold"
-                  >
-                    {tab.label}
-                  </span>
-                </span>
-              ))}
-
               <StatisticSelector
                 value={selectedStatistic}
                 onChange={(e) => setSelectedStatistic(e.target.value)}
@@ -568,7 +551,16 @@ export default function App() {
             </div>
           </Header>
 
-          <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
+          {/* Mobile and tablet: floating bottom bar (test). */}
+          <div className="lg:hidden">
+            <LiquidNav
+              items={[{ id: 'home', label: t('Leagues'), Icon: Home }, ...tabs]}
+              value={activeTab}
+              onChange={(id) => (id === 'home' ? handleViewChange('landing') : handleNavTab(id))}
+            />
+          </div>
+
+          <main className="max-w-7xl mx-auto px-4 md:px-8 pb-28 lg:pb-12">
             {activeTab === 'team-details' && selectedTeam && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <TeamDetails

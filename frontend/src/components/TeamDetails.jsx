@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Activity, ArrowRight, CalendarDays, ChevronLeft, History, Target } from 'lucide-react';
+import { Activity, ArrowRight, CalendarDays, ChevronLeft, History, MapPin, Target } from 'lucide-react';
 import { leagueMeta, flagWash } from '../utils/leaguePickerFx';
 import { teamGames, leagueTable, sampleOf } from '../utils/standings';
 import { STAT_CONFIG, getStatLabel, resolveStatKey, statPair } from '../utils/statistics';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
-import { useJersey } from '../hooks/useJersey';
+import { useJersey, useStadium } from '../hooks/useJersey';
 import { useCountUp } from '../hooks/useCountUp';
 import { LeagueLogo, FlagTile } from './LeagueTag';
 import StatisticSelector from './StatisticSelector';
@@ -62,11 +62,21 @@ const Panel = ({ title, icon, action, children, className = '', delay = '0ms' })
     </section>
 );
 
+/** Fades in once loaded, then drifts in a slow zoom (`.stadium-photo`). */
+const StadiumPhoto = ({ src }) => (
+    <img
+        src={src}
+        alt=""
+        onLoad={(e) => e.currentTarget.classList.add('is-loaded')}
+        className="stadium-photo absolute inset-0 w-full h-full object-cover"
+    />
+);
+
 const HeroStat = ({ label, children, sub, accent = false }) => (
-    <div className={`rounded-xl border px-3 py-2.5 text-center ${accent ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-white/[0.04] border-white/10'}`}>
-        <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{label}</div>
+    <div className={`rounded-xl border px-3 py-2.5 text-center backdrop-blur-md ${accent ? 'bg-emerald-950/50 border-emerald-500/30' : 'bg-zinc-950/55 border-white/10'}`}>
+        <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">{label}</div>
         <div className={`text-xl md:text-2xl font-black tabular-nums leading-tight ${accent ? 'text-emerald-300' : 'text-white'}`}>{children}</div>
-        {sub && <div className="text-[10px] font-bold text-zinc-500 tabular-nums">{sub}</div>}
+        {sub && <div className="text-[10px] font-bold text-zinc-400 tabular-nums">{sub}</div>}
     </div>
 );
 
@@ -104,6 +114,7 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
     const [stat, setStat] = useState(selectedStatistic);
     const [openMatch, setOpenMatch] = useState(null);
     const jersey = useJersey(team);
+    const stadium = useStadium(team);
     const meta = leagueMeta(leagues, league);
     const logo = teamLogos[team];
     const statKey = resolveStatKey(stat);
@@ -188,67 +199,90 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
 
             {/* Hero: the club, its league, and where it stands. */}
             <div className="relative rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md shadow-xl overflow-hidden">
-                {(meta.flag || meta.bands) && (
+                {/* The home ground: behind everything, darkened towards the text, up to
+                    xl; from xl its own uncropped column (below). */}
+                {stadium && (
+                    <div aria-hidden="true" className="absolute inset-0 overflow-hidden xl:hidden">
+                        <StadiumPhoto src={stadium.photo} />
+                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent" />
+                    </div>
+                )}
+                {!stadium && (meta.flag || meta.bands) && (
                     <div aria-hidden="true" className="absolute inset-y-0 left-0 w-2/3 opacity-[0.10]" style={flagWash(meta, 'linear-gradient(to right, black, transparent 85%)')} />
                 )}
                 {/* The badge, huge and blurred: the club's own colours as ambient light. */}
                 {logo && <img src={logo} alt="" aria-hidden="true" className="absolute -right-20 -top-24 w-[28rem] h-[28rem] object-contain opacity-[0.14] blur-3xl pointer-events-none" />}
 
-                <div className="relative p-5 md:p-8 flex flex-col xl:flex-row xl:items-center gap-6 xl:gap-10">
-                    <div className="flex items-center gap-4 md:gap-6 min-w-0 hero-in-left">
-                        <div className="relative flex items-end gap-2 md:gap-3 shrink-0">
-                            <img src={logo} alt={team} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-2xl" />
-                            {jersey && (
-                                <img src={jersey} alt={t('{team} kit', { team })} loading="lazy" className="jersey w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-xl" />
-                            )}
-                        </div>
-                        <div className="min-w-0">
-                            <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none break-words">{team}</h1>
-                            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-bold text-zinc-300">
-                                <span className="inline-flex items-center gap-2">
-                                    <LeagueLogo meta={meta} className="w-7 h-7" />
-                                    {meta.name}
-                                </span>
-                                {meta.country && (
-                                    <span className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[10px] text-zinc-400">
-                                        <FlagTile meta={meta} />
-                                        {countryName(meta.country)}
-                                    </span>
+                <div className={`relative ${stadium ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : ''}`}>
+                    <div className={`p-5 md:p-8 flex flex-col gap-6 ${stadium ? 'justify-center' : 'xl:flex-row xl:gap-10 xl:items-center'}`}>
+                        <div className="flex items-center gap-4 md:gap-6 min-w-0 hero-in-left">
+                            <div className="relative flex items-end gap-2 md:gap-3 shrink-0">
+                                <img src={logo} alt={team} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-2xl" />
+                                {jersey && (
+                                    <img src={jersey} alt={t('{team} kit', { team })} loading="lazy" className="jersey w-14 h-14 md:w-20 md:h-20 object-contain drop-shadow-xl" />
                                 )}
-                                {season && <span className="text-[10px] uppercase tracking-wider text-zinc-500">{t('Season {season}', { season })}</span>}
                             </div>
-                        </div>
-                    </div>
-
-                    {row ? (
-                        <div className="xl:ml-auto grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 hero-in-right">
-                            <HeroStat label={t('Position')} sub={t('of {n}', { n: table.length })} accent>{ordinal(pos + 1)}</HeroStat>
-                            <HeroStat label={t('Points')} sub={t('{n} played', { n: row.mp })}><CountUp value={row.pts} /></HeroStat>
-                            <HeroStat label={`${t('W')} · ${t('D')} · ${t('L')}`} sub={homeRow && awayRow ? t('{home} home · {away} away pts', { home: homeRow.pts, away: awayRow.pts }) : null}>
-                                {row.w}<span className="text-zinc-600">·</span>{row.d}<span className="text-zinc-600">·</span>{row.l}
-                            </HeroStat>
-                            <HeroStat label={t('Goals')} sub={t('{gd} difference', { gd: `${gd > 0 ? '+' : ''}${gd}` })}>{row.gf}:{row.ga}</HeroStat>
-                            <div className="col-span-2 sm:col-span-4 flex items-center justify-center gap-2 pt-1">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mr-1">{t('Form')}</span>
-                                {row.form.map((g, i) => {
-                                    const r = outcome(g);
-                                    return (
-                                        // pop-in sets display: inline-block, so it goes on a
-                                        // wrapper and the chip keeps its flex centring.
-                                        <span key={i} className="pop-in" style={{ animationDelay: `${300 + i * 70}ms` }}>
-                                            <span
-                                                title={`${g.home ? t('vs') : t('at')} ${g.opponent} ${g.for}-${g.ag}`}
-                                                className={`w-7 h-7 rounded-md border flex items-center justify-center text-[11px] font-black ${RESULT[r]} ${i === row.form.length - 1 ? 'ring-2 ring-white/20 ring-offset-1 ring-offset-zinc-900' : ''}`}
-                                            >
-                                                {t(r)}
-                                            </span>
+                            <div className="min-w-0">
+                                <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none break-words">{team}</h1>
+                                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-bold text-zinc-300">
+                                    <span className="inline-flex items-center gap-2">
+                                        <LeagueLogo meta={meta} className="w-7 h-7" />
+                                        {meta.name}
+                                    </span>
+                                    {meta.country && (
+                                        <span className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[10px] text-zinc-400">
+                                            <FlagTile meta={meta} />
+                                            {countryName(meta.country)}
                                         </span>
-                                    );
-                                })}
+                                    )}
+                                    {stadium && (
+                                        <span className="basis-full inline-flex flex-wrap items-center gap-x-1.5 text-zinc-300" title={stadium.location ?? undefined}>
+                                            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                                            {stadium.name}
+                                            {stadium.capacity && <span className="whitespace-nowrap text-[10px] font-semibold text-zinc-400">{t('{n} seats', { n: stadium.capacity.toLocaleString(dateLocale()) })}</span>}
+                                        </span>
+                                    )}
+                                    {season && <span className="text-[10px] uppercase tracking-wider text-zinc-500">{t('Season {season}', { season })}</span>}
+                                </div>
                             </div>
                         </div>
-                    ) : (
-                        <p className="xl:ml-auto text-sm text-zinc-500">{t('No results yet this season.')}</p>
+
+                        {row ? (
+                            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 hero-in-right ${stadium ? '' : 'xl:ml-auto'}`}>
+                                <HeroStat label={t('Position')} sub={t('of {n}', { n: table.length })} accent>{ordinal(pos + 1)}</HeroStat>
+                                <HeroStat label={t('Points')} sub={t('{n} played', { n: row.mp })}><CountUp value={row.pts} /></HeroStat>
+                                <HeroStat label={`${t('W')} · ${t('D')} · ${t('L')}`} sub={homeRow && awayRow ? t('{home} home · {away} away pts', { home: homeRow.pts, away: awayRow.pts }) : null}>
+                                    {row.w}<span className="text-zinc-600">·</span>{row.d}<span className="text-zinc-600">·</span>{row.l}
+                                </HeroStat>
+                                <HeroStat label={t('Goals')} sub={t('{gd} difference', { gd: `${gd > 0 ? '+' : ''}${gd}` })}>{row.gf}:{row.ga}</HeroStat>
+                                <div className="col-span-2 sm:col-span-4 flex items-center justify-center gap-2 pt-1">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mr-1">{t('Form')}</span>
+                                    {row.form.map((g, i) => {
+                                        const r = outcome(g);
+                                        return (
+                                            // pop-in sets display: inline-block, so it goes on a
+                                            // wrapper and the chip keeps its flex centring.
+                                            <span key={i} className="pop-in" style={{ animationDelay: `${300 + i * 70}ms` }}>
+                                                <span
+                                                    title={`${g.home ? t('vs') : t('at')} ${g.opponent} ${g.for}-${g.ag}`}
+                                                    className={`w-7 h-7 rounded-md border flex items-center justify-center text-[11px] font-black ${RESULT[r]} ${i === row.form.length - 1 ? 'ring-2 ring-white/20 ring-offset-1 ring-offset-zinc-900' : ''}`}
+                                                >
+                                                    {t(r)}
+                                                </span>
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="xl:ml-auto text-sm text-zinc-500">{t('No results yet this season.')}</p>
+                        )}
+                    </div>
+                    {stadium && (
+                        <div aria-hidden="true" className="hidden xl:block relative aspect-video overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_30%)]">
+                            <StadiumPhoto src={stadium.photo} />
+                        </div>
                     )}
                 </div>
             </div>
