@@ -828,12 +828,19 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
              r["market"], r["line"], r["selection"])
         paths.setdefault(k, []).append((r["captured_at"], r["id"]))
 
+    # The last snapshot BEFORE KICKOFF, not the last one full stop. `get_odds`
+    # keeps serving a price for six hours after kickoff so a match in progress
+    # does not blank, so a capture can land after the whistle - and that is a
+    # live price, not a close. Taking max(captured_at) blindly retains it and
+    # deletes the real closing price as a "middle": it happened, on 1,298 of
+    # 39,916 closing prices (3.3%), which then read as the OPENING price. If no
+    # snapshot precedes kickoff, keep the last one there is rather than nothing.
     doomed = []
-    for snaps in paths.values():
-        if len(snaps) <= 2:
-            continue
+    for (_lg, _h, _a, kickoff, *_rest), snaps in paths.items():
         snaps.sort()
-        doomed += [i for _when, i in snaps[1:-1]]
+        before = [s for s in snaps if s[0] < kickoff]
+        keep = {snaps[0][1], (before or snaps)[-1][1]}
+        doomed += [i for _when, i in snaps if i not in keep]
 
     print(f"{len(rows):,} modelled snapshots for fixtures played before {cutoff[:16]}")
     print(f"   {len(paths):,} distinct prices, {len(rows) / max(len(paths), 1):.1f} snapshots each")
@@ -853,7 +860,10 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
         if resp.status_code >= 400:
             sys.exit(f"Delete failed ({resp.status_code}): {resp.text[:300]}")
         deleted += len(batch)
-        print(f"   deleted {deleted:,}/{len(doomed):,}", end="\r", flush=True)
+        # Every 10k, not every batch: `\r` becomes one enormous line in the odds
+        # log, which is a file and not a terminal.
+        if deleted % 10000 < 200:
+            print(f"   deleted {deleted:,}/{len(doomed):,}", flush=True)
     print(f"\ndeleted {deleted:,} intermediate snapshots")
     return deleted
 

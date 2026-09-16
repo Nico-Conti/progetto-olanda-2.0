@@ -39,6 +39,11 @@ SUMMARY=$(awk '
 function flush_run() {
     if (!started) return
     if (err != "")            { status = "FAILED";  detail = err }
+    # A prune is housekeeping, not a capture: it takes --write but never prints
+    # `wrote N rows`, so without this it lands in the catch-all below and reports
+    # "nothing was written, so that window is gone" - a false alarm about a run
+    # that was never a capture. Classified before the --write test for that reason.
+    else if (mode ~ /--prune/) { status = "prune"; detail = (pruned ? pruned : "nothing to prune") }
     else if (mode !~ /--write/) { status = "dry";   detail = (info ? info : "no write requested") }
     # A capture that wrote NOTHING is not ok. On 2026-09-09 domusbet dropped the
     # `seo` field that every team name was read from, so every price was dropped
@@ -52,7 +57,7 @@ function flush_run() {
 }
 /^=== run / {
     flush_run()
-    started = 1; err = ""; wrote = ""; info = ""
+    started = 1; err = ""; wrote = ""; info = ""; pruned = ""
     stamp = $3 " " $4
     mode = ""
     for (i = 5; i < NF; i++) mode = mode (mode ? " " : "") $i
@@ -64,6 +69,7 @@ started {
     # the only proof a capture landed. Everything else is context.
     if (line ~ /^[A-Za-z_.]*(Error|Exception):/ || line ~ /^(ERROR:|Missing SUPABASE|Write failed)/) err = line
     else if (line ~ /wrote [0-9]+ rows to odds_snapshots/) wrote = line
+    else if (line ~ /^(pruned|deleted) [0-9,]+ /) pruned = line
     else if (info == "" && line ~ /prices total|tournaments,/) info = line
 }
 END { flush_run() }
@@ -97,6 +103,9 @@ case "$LAST_STATUS" in
          [ "$AGE" -gt "$STALE_MINUTES" ] && { echo "but nothing has run for ${AGE} min - windows are being missed."; exit 2; }
          exit 0 ;;
     dry) echo "last run: no write - a --coverage or dry run, not a capture"; exit 0 ;;
+    prune) echo "last run: a prune, not a capture - housekeeping, nothing to write"
+         [ "$AGE" -gt "$STALE_MINUTES" ] && { echo "but no capture for ${AGE} min - windows are being missed."; exit 2; }
+         exit 0 ;;
     *)   echo "last run: $LAST_STATUS - nothing was written, so that window is gone."
          echo "          Prices cannot be backfilled; the next one is on the hour, every 3h."
          exit 1 ;;
