@@ -13,8 +13,8 @@ import { t, dateLocale, countryName } from '../../i18n';
  * side, apart from the badge; below that there is no room, so it sits small
  * beside the badge. Straight, always. The badge opens the team's page.
  */
-const Team = ({ name, logo, exp, std, side, onOpen, country }) => {
-    const jersey = useJersey(name, country);
+const Team = ({ name, logo, exp, std, side, onOpen, league, country }) => {
+    const jersey = useJersey(name, league, country);
     const kit = (className) => jersey && (
         <img src={jersey} alt={t('{team} kit', { team: name })} loading="lazy" className={`jersey object-contain drop-shadow-2xl ${className}`} />
     );
@@ -108,7 +108,7 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, 
                 </p>
 
                 <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-8">
-                    <Team name={home} logo={teamLogos[home]} exp={prediction.expHome} std={prediction.expHomeStd} side="home" onOpen={onTeamClick} country={meta?.country} />
+                    <Team name={home} logo={teamLogos[home]} exp={prediction.expHome} std={prediction.expHomeStd} side="home" onOpen={onTeamClick} league={meta?.name} country={meta?.country} />
 
                     <div className="relative flex flex-col items-center px-2">
                         <div className={`hero-spot absolute left-1/2 top-1/2 w-40 h-40 md:w-64 md:h-64 -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl pointer-events-none ${isHot ? 'bg-orange-500/25' : 'bg-white/10'}`} aria-hidden="true" />
@@ -122,7 +122,7 @@ const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, 
                         </div>
                     </div>
 
-                    <Team name={away} logo={teamLogos[away]} exp={prediction.expAway} std={prediction.expAwayStd} side="away" onOpen={onTeamClick} country={meta?.country} />
+                    <Team name={away} logo={teamLogos[away]} exp={prediction.expAway} std={prediction.expAwayStd} side="away" onOpen={onTeamClick} league={meta?.name} country={meta?.country} />
                 </div>
 
                 {/* How the total splits between the sides, filling out from the middle. */}
