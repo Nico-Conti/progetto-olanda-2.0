@@ -103,8 +103,8 @@ const VsLeague = ({ value, avg }) => {
 const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, season, modelMatchData, modelSettings, selectedStatistic, onBack, onMatchClick, onTeamClick }) => {
     const [stat, setStat] = useState(selectedStatistic);
     const [openMatch, setOpenMatch] = useState(null);
-    const jersey = useJersey(team);
     const meta = leagueMeta(leagues, league);
+    const jersey = useJersey(team, meta.country);
     const logo = teamLogos[team];
     const statKey = resolveStatKey(stat);
     const statLabel = getStatLabel(stat);
