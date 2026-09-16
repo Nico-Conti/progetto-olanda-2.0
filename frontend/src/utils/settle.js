@@ -150,9 +150,11 @@ const settleTotal = (leg, match) => {
  * number where the settling one belongs, which is the misreading the whole
  * UNGRADEABLE list exists to avoid.
  *
- * Goals-derived markets (1X2, GG/NG, multigol, the combos) show the SCORE:
- * "2-1" answers every one of them at once, where a bare total would not say
- * who scored what.
+ * Anything decided by goals shows the SCORE - 1X2, GG/NG, multigol, the combos
+ * AND a plain goals line. "2-1" answers every one of them at once, and for an
+ * over/under it still gives the total while saying who scored it, where "3"
+ * gives half the answer. A goals bet on ONE side keeps that side's own figure,
+ * like every other per-team market.
  */
 export const actualFor = (leg, match) => {
     if (!leg || !match || UNGRADEABLE.has(leg.stat)) return null;
@@ -160,7 +162,10 @@ export const actualFor = (leg, match) => {
     const score = goals && goals.home != null && goals.away != null
         ? `${Number(goals.home)}-${Number(goals.away)}` : null;
     if (leg.stat === 'main' || isSlipOnly(leg.stat)) return score;
-    const total = totalFor(match, resolveStatKey(leg.stat), leg.team);
+    const statKey = resolveStatKey(leg.stat);
+    const perTeam = leg.team === 'home' || leg.team === 'away';
+    if (statKey === 'goals' && !perTeam) return score;
+    const total = totalFor(match, statKey, leg.team);
     return total == null || !Number.isFinite(total) ? null : String(total);
 };
 

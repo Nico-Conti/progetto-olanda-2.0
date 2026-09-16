@@ -103,8 +103,12 @@ const one = (l, m) => settleLeg(l, m);
     assert.equal(actualFor(leg({ stat: 'corners', option: 'O', value: 9.5 }), m), '10');
     assert.equal(actualFor({ ...leg({ stat: 'corners', option: 'O', value: 5.5 }), team: 'home' }, m), '6');
     // ...and the SCORE for everything decided by goals, which answers 1X2,
-    // GG/NG, multigol and the combos in one.
+    // GG/NG, multigol, the combos AND a plain goals line in one.
+    assert.equal(actualFor(leg({ stat: 'goals', option: 'O', value: 2.5 }), m), '2-1');
     assert.equal(actualFor({ ...leg({ stat: 'main', option: 'Result', value: '1' }), team: 'match' }, m), '2-1');
+    // A goals bet on ONE side keeps that side's figure, like other per-team bets.
+    assert.equal(actualFor({ ...leg({ stat: 'goals', option: 'O', value: 1.5 }), team: 'home' }, m), '2');
+    assert.equal(actualFor({ ...leg({ stat: 'goals', option: 'O', value: 1.5 }), team: 'away' }, m), '1');
     assert.equal(actualFor(leg({ stat: 'gg_ng', option: 'gg', value: null }), m), '2-1');
     assert.equal(actualFor(leg({ stat: 'combo_1x_ou', option: '1x + ov', value: 2.5 }), m), '2-1');
     // Silent wherever we refuse to grade: printing our shot count next to a bet
