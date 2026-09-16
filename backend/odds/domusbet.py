@@ -768,6 +768,13 @@ def prune_slip(hours=SLIP_PRUNE_AFTER_HOURS):
 # How long after kickoff before the price PATH is collapsed. Generous: the match
 # must be settled and any closing extract already taken.
 HISTORY_PRUNE_AFTER_HOURS = 48
+# Marking runs on a SHORTER clock than deleting, and the gap is the point:
+# 72,921 rows had kicked off more than 6h ago against 61,736 more than 48h ago
+# (2026-09-16), so tying `is_closing` to the delete window would leave 11,185
+# rows unmarked for a day. `is_closing = false` then means both "not a close" and
+# "not looked at yet", and a query filtering on it silently loses the newest
+# fixtures - the same shape as reading a missing value as a measured zero.
+CLOSING_MARK_AFTER_HOURS = 6   # matches ODDS_LOOKBACK_HOURS in backend/main.py
 
 
 def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
@@ -793,8 +800,9 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
         sys.exit("Missing SUPABASE_URL / SUPABASE_KEY")
-    cutoff = (datetime.datetime.now(datetime.timezone.utc)
-              - datetime.timedelta(hours=hours)).isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = (now - datetime.timedelta(hours=hours)).isoformat()
+    mark_cutoff = (now - datetime.timedelta(hours=CLOSING_MARK_AFTER_HOURS)).isoformat()
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     slip = sorted({name for name, _shape in SLIP_MARKETS.values()})
 
@@ -806,8 +814,8 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
         resp = SESSION.get(
             f"{url}/rest/v1/odds_snapshots", headers=headers, timeout=120,
             params={"select": "id,league,home_team,away_team,match_date,market,line,"
-                              "selection,captured_at",
-                    "match_date": f"lt.{cutoff}",
+                              "selection,captured_at,is_closing",
+                    "match_date": f"lt.{mark_cutoff}",
                     # Derived from SLIP_MARKETS, not a name pattern: `--prune-slip`
                     # owns those rows and deletes them outright, and a hand-kept
                     # second list is how the three league lists here drifted apart.
@@ -822,8 +830,9 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
         rows += page
         offset += len(page)
 
-    paths = {}
+    paths, flags = {}, {}
     for r in rows:
+        flags[r["id"]] = r.get("is_closing")
         k = (r["league"], r["home_team"], r["away_team"], r["match_date"],
              r["market"], r["line"], r["selection"])
         paths.setdefault(k, []).append((r["captured_at"], r["id"]))
@@ -835,20 +844,49 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
     # deletes the real closing price as a "middle": it happened, on 1,298 of
     # 39,916 closing prices (3.3%), which then read as the OPENING price. If no
     # snapshot precedes kickoff, keep the last one there is rather than nothing.
-    doomed = []
+    doomed, to_mark = [], []
     for (_lg, _h, _a, kickoff, *_rest), snaps in paths.items():
         snaps.sort()
         before = [s for s in snaps if s[0] < kickoff]
-        keep = {snaps[0][1], (before or snaps)[-1][1]}
+        closing_id = (before or snaps)[-1][1]
+        # `is_closing` has existed since migration 004, with its own index, and
+        # nothing ever set it. Set it HERE, where the closing row is already
+        # identified in order to decide what to keep: one computation, one
+        # writer. A second pass computing the same thing is how the three league
+        # lists in this project drifted apart.
+        if not flags.get(closing_id):
+            to_mark.append(closing_id)
+        # Deleting is on the longer clock, so a fixture inside the mark window
+        # but not the prune window keeps its whole path and still gets flagged.
+        if kickoff >= cutoff:
+            continue
+        keep = {snaps[0][1], closing_id}
         doomed += [i for _when, i in snaps if i not in keep]
 
-    print(f"{len(rows):,} modelled snapshots for fixtures played before {cutoff[:16]}")
+    print(f"{len(rows):,} modelled snapshots, fixtures kicked off before {mark_cutoff[:16]}")
     print(f"   {len(paths):,} distinct prices, {len(rows) / max(len(paths), 1):.1f} snapshots each")
-    print(f"   keeping first + last, deleting {len(doomed):,} "
+    print(f"   marking {len(to_mark):,} rows is_closing")
+    print(f"   deleting {len(doomed):,} middles, paths older than {cutoff[:16]} "
           f"({100 * len(doomed) / max(len(rows), 1):.0f}%)")
     if not write:
-        print("\nNothing deleted. Re-run with --write.")
+        print("\nNothing written. Re-run with --write.")
         return 0
+
+    marked = 0
+    for i in range(0, len(to_mark), 200):
+        batch = to_mark[i:i + 200]
+        resp = SESSION.patch(f"{url}/rest/v1/odds_snapshots",
+                             headers={**headers, "Prefer": "return=minimal",
+                                      "Content-Type": "application/json"},
+                             params={"id": f"in.({','.join(map(str, batch))})"},
+                             json={"is_closing": True}, timeout=120)
+        if resp.status_code >= 400:
+            sys.exit(f"Mark failed ({resp.status_code}): {resp.text[:300]}")
+        marked += len(batch)
+        if marked % 10000 < 200:
+            print(f"   marked {marked:,}/{len(to_mark):,}", flush=True)
+    if to_mark:
+        print(f"marked {marked:,} closing prices")
 
     deleted = 0
     for i in range(0, len(doomed), 200):
