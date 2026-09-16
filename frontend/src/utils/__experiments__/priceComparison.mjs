@@ -28,7 +28,7 @@ import fs from 'fs';
 import {
     createPredictionModel, addMatchToPredictionModel, predictFromModel, ENGINES,
 } from '../predictTotal.js';
-import { MARKET_FOR_STAT, resolveStatKey } from '../statistics.js';
+import { MARKET_FOR_STAT, UNJOINED_STATS, resolveStatKey } from '../statistics.js';
 import { expectedValue, devig } from '../countModel.js';
 
 const here = (f) => new URL(f, import.meta.url);
@@ -39,8 +39,16 @@ const data = JSON.parse(fs.readFileSync(here('./data.json')));
 const quotes = JSON.parse(fs.readFileSync(here('./odds_closing.json')));
 
 const only = process.argv[2];
-const STAT_FOR_MARKET = Object.fromEntries(
-    Object.entries(MARKET_FOR_STAT).map(([s, m]) => [m, s]));
+// The unjoined markets (shots, shots on target) are scoreable here even though
+// nothing prices them in the app. That is the point: "should this market be
+// reopened?" is a question only this script can answer, and leaving them out
+// meant the evidence that closed them could never be re-examined. Naming one on
+// the command line is required - they are absent from the no-argument run, so a
+// sweep still reports only what actually ships.
+const STAT_FOR_MARKET = Object.fromEntries([
+    ...Object.entries(MARKET_FOR_STAT).map(([s, m]) => [m, s]),
+    ...[...UNJOINED_STATS].map((s) => [`total_${s}`, s]),
+]);
 
 const totalOf = (m, s) => {
     // card_points is emitted by dumpSeason.py since 2026-09-12, and it is EXACT -
@@ -68,6 +76,7 @@ const pct = (x, d = 1) => `${(100 * x).toFixed(d)}%`;
 for (const market of [...new Set(quotes.map(q => q.market))].sort()) {
     const stat = STAT_FOR_MARKET[market];
     if (!stat || (only && stat !== only)) continue;
+    if (!only && UNJOINED_STATS.has(stat)) continue;
 
     // Group quotes into fixture -> line -> {over, under}
     const byFixture = new Map();

@@ -765,6 +765,99 @@ def prune_slip(hours=SLIP_PRUNE_AFTER_HOURS):
     return count
 
 
+# How long after kickoff before the price PATH is collapsed. Generous: the match
+# must be settled and any closing extract already taken.
+HISTORY_PRUNE_AFTER_HOURS = 48
+
+
+def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
+    """Collapse the modelled price path to its two endpoints, per priced line.
+
+    `odds_snapshots` is append-only and captures every three hours within 72h of
+    kickoff, so a single (fixture, market, line, selection) accumulates ~8.8
+    snapshots - 148,678 modelled rows over 16,940 distinct prices, measured
+    2026-09-16. The middle of that path has no reader: `/odds` serves only
+    unfinished fixtures and dedups to the newest, and every experiment reads the
+    closing extract.
+
+    So the middle goes and the ENDPOINTS stay - the first price we ever saw and
+    the last before kickoff. Keeping both is the whole point: closing-line value
+    is the price you could have taken measured against the close, and with only
+    the close it cannot be computed at all. The extra cost is ~17,000 rows.
+
+    This is irreversible - a price that existed three hours ago cannot be
+    re-fetched - so it is a dry run unless `--write` is passed, and it never
+    touches the slip-only markets (`--prune-slip` owns those) or a fixture that
+    has not been played.
+    """
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
+    if not url or not key:
+        sys.exit("Missing SUPABASE_URL / SUPABASE_KEY")
+    cutoff = (datetime.datetime.now(datetime.timezone.utc)
+              - datetime.timedelta(hours=hours)).isoformat()
+    headers = {"apikey": key, "Authorization": f"Bearer {key}"}
+    slip = sorted({name for name, _shape in SLIP_MARKETS.values()})
+
+    # Paged on `id`. Ending on a short page is wrong (PostgREST caps at 1000)
+    # and paging an UNORDERED result is undefined in Postgres - that pair once
+    # returned 5,053 rows for 5,000 distinct matches.
+    rows, offset = [], 0
+    while True:
+        resp = SESSION.get(
+            f"{url}/rest/v1/odds_snapshots", headers=headers, timeout=120,
+            params={"select": "id,league,home_team,away_team,match_date,market,line,"
+                              "selection,captured_at",
+                    "match_date": f"lt.{cutoff}",
+                    # Derived from SLIP_MARKETS, not a name pattern: `--prune-slip`
+                    # owns those rows and deletes them outright, and a hand-kept
+                    # second list is how the three league lists here drifted apart.
+                    "market": f"not.in.({','.join(slip)})",
+                    **({"league": f"in.({','.join(leagues)})"} if leagues else {}),
+                    "order": "id", "limit": 1000, "offset": offset})
+        if resp.status_code >= 400:
+            sys.exit(f"Read failed ({resp.status_code}): {resp.text[:300]}")
+        page = resp.json()
+        if not page:
+            break
+        rows += page
+        offset += len(page)
+
+    paths = {}
+    for r in rows:
+        k = (r["league"], r["home_team"], r["away_team"], r["match_date"],
+             r["market"], r["line"], r["selection"])
+        paths.setdefault(k, []).append((r["captured_at"], r["id"]))
+
+    doomed = []
+    for snaps in paths.values():
+        if len(snaps) <= 2:
+            continue
+        snaps.sort()
+        doomed += [i for _when, i in snaps[1:-1]]
+
+    print(f"{len(rows):,} modelled snapshots for fixtures played before {cutoff[:16]}")
+    print(f"   {len(paths):,} distinct prices, {len(rows) / max(len(paths), 1):.1f} snapshots each")
+    print(f"   keeping first + last, deleting {len(doomed):,} "
+          f"({100 * len(doomed) / max(len(rows), 1):.0f}%)")
+    if not write:
+        print("\nNothing deleted. Re-run with --write.")
+        return 0
+
+    deleted = 0
+    for i in range(0, len(doomed), 200):
+        batch = doomed[i:i + 200]
+        resp = SESSION.delete(f"{url}/rest/v1/odds_snapshots",
+                              headers={**headers, "Prefer": "return=minimal"},
+                              params={"id": f"in.({','.join(map(str, batch))})"},
+                              timeout=120)
+        if resp.status_code >= 400:
+            sys.exit(f"Delete failed ({resp.status_code}): {resp.text[:300]}")
+        deleted += len(batch)
+        print(f"   deleted {deleted:,}/{len(doomed):,}", end="\r", flush=True)
+    print(f"\ndeleted {deleted:,} intermediate snapshots")
+    return deleted
+
+
 def coverage():
     """Which of our markets are actually posted right now, by kickoff day."""
     leagues = our_leagues()
@@ -796,6 +889,11 @@ def main():
                             "fixtures already played. Never touches the modelled "
                             "markets: those are the closing-line history and only "
                             "become useful after the match.")
+    group.add_argument("--prune-history", action="store_true",
+                       help="collapse the modelled price path for played fixtures to "
+                            "its endpoints - the first price seen and the closing one. "
+                            "The middle has no reader; the two ends are what closing-line "
+                            "value needs. Dry run unless --write.")
     parser.add_argument("--slip-markets", action="store_true",
                         help="also collect the markets we do not model (1X2, GG/NG, "
                              "multigol, combos) so a slip can be built from them. Off "
@@ -833,6 +931,10 @@ def main():
 
     if args.prune_slip:
         prune_slip()
+        return
+
+    if args.prune_history:
+        prune_history(write=args.write, leagues=args.league)
         return
 
     # The fixture list is fetched BEFORE the capture, not after it.
