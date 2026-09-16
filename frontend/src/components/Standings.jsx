@@ -218,7 +218,6 @@ const Standings = ({
     // Compiler, as a possible mutation of a memo dependency.
     const statLabel = getStatLabel(statKey);
 
-    const top = rows.length ? Math.max(...rows.map(r => (byStat ? r.tot : r.pts)), 1) : 1;
     const finished = season && latestSeason && season !== latestSeason;
     const zones = new Set();
 
@@ -345,7 +344,6 @@ const Standings = ({
                             if (zone) zones.add(zone);
                             const move = byStat || !previous.size || !previous.has(row.team) ? null : previous.get(row.team) - i;
                             const open = openTeam === row.team;
-                            const share = (byStat ? row.tot : row.pts) / top;
                             return (
                                 <div key={row.team} data-flip={row.team} role="rowgroup" className="relative animate-waterfall" style={{ animationDelay: staggerDelay(i) }}>
                                     <div
@@ -393,12 +391,9 @@ const Standings = ({
                                                 <div role="cell" className={`${num} hidden md:block text-zinc-500`}>{row.mp}</div>
                                                 <div role="cell" className={`${num} ${sort.key === 'for' ? 'text-white font-bold' : 'text-zinc-400'}`}>{row.for.toFixed(1)}</div>
                                                 <div role="cell" className={`${num} ${sort.key === 'ag' ? 'text-white font-bold' : 'text-zinc-400'}`}>{row.ag.toFixed(1)}</div>
-                                                <div role="cell" className="flex flex-col items-center gap-1">
+                                                <div role="cell" className="flex flex-col items-center">
                                                     <span key={row.tot.toFixed(1)} className={`pop-in text-sm md:text-base tabular-nums ${sort.key === 'tot' ? 'font-black text-white' : 'font-bold text-zinc-300'}`}>
                                                         {row.tot.toFixed(1)}
-                                                    </span>
-                                                    <span className="hidden md:block h-[3px] w-full max-w-24 rounded-full bg-white/5 overflow-hidden">
-                                                        <span className="block h-full origin-left rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ transform: `scaleX(${share})` }} />
                                                     </span>
                                                 </div>
                                             </>
@@ -413,11 +408,8 @@ const Standings = ({
                                                 <div role="cell" className={`${num} font-bold ${row.gd > 0 ? 'text-emerald-400' : row.gd < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
                                                     {row.gd > 0 ? `+${row.gd}` : row.gd}
                                                 </div>
-                                                <div role="cell" className="flex flex-col items-center gap-1">
+                                                <div role="cell" className="flex flex-col items-center">
                                                     <span key={row.pts} className="pop-in text-base font-black text-white tabular-nums">{row.pts}</span>
-                                                    <span className="hidden md:block h-[3px] w-8 rounded-full bg-white/5 overflow-hidden">
-                                                        <span className="block h-full origin-left rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ transform: `scaleX(${share})` }} />
-                                                    </span>
                                                 </div>
                                                 <div role="cell" className="flex items-center justify-center gap-[3px] md:gap-1">
                                                     {row.form.map((g, k) => {
