@@ -45,7 +45,8 @@ const Team = ({ name, logo, exp, std, side, onOpen, league, country }) => {
  * the league over its nation's flag, then the two sides either side of the
  * predicted total. The sides slide in, the total counts up under a slow
  * spotlight, and the split of it between the teams fills from the middle.
- * `meta` (league) and `date` are optional - a custom matchup has neither.
+ * `meta` (league) and `date` are optional - a fixture whose league is not in
+ * the `League` table resolves to no meta, and not every fixture carries a time.
  */
 const PredictionHero = ({ prediction, home, away, teamLogos, selectedStatistic, leagueAverage, date, meta, line, onTeamClick }) => {
     const total = useCountUp(prediction?.total ?? 0);

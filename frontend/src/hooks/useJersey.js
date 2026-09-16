@@ -158,7 +158,8 @@ const fromLeague = (rows, team) => rows.find(x => named(x, team) && x.strEquipme
  * must be MALE - otherwise "Brighton" takes Brighton WFC's shirt - and it must
  * be in the same COUNTRY, which is what rejects Newcastle Jets of Australia for
  * "Newcastle". Without a country we do not relax at all, because then only one
- * gate remains; a custom matchup has no league and keeps the strict rule.
+ * gate remains - a fixture whose league is missing from the `League` table
+ * arrives with neither, and keeps the strict rule.
  *
  * A wrong club's shirt is worse than none, so when in doubt this stores null.
  */

@@ -25,7 +25,7 @@ import { t, tk, dateLocale } from '../i18n';
 // STAT_OPTIONS holds it, so take it from there rather than writing a label here.
 const MAIN_OPTION = STAT_OPTIONS.filter((o) => o.value === 'main');
 
-const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teams, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel, onTeamClick }) => {
+const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, backButtonLabel, onTeamClick }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
     // league's own and still drives the league averages, the backtest and the
     // distribution, all of which are claims about THIS league.
@@ -155,28 +155,6 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
         () => getModel(localStatistic),
         [getModel, localStatistic]
     );
-
-    // Custom Matchup State
-    const [customHome, setCustomHome] = useState('');
-    const [customAway, setCustomAway] = useState('');
-    const [showCustomPrediction, setShowCustomPrediction] = useState(false);
-
-    // Initialize custom teams
-    useEffect(() => {
-        if (teams.length > 0 && !customHome) {
-            setCustomHome(teams[0]);
-            setCustomAway(teams[1]);
-        }
-    }, [teams, customHome]);
-
-    const customPrediction = useMemo(() => {
-        if (!customHome || !customAway || customHome === customAway || !showCustomPrediction) return null;
-        return predictFromModel(localModel, customHome, customAway, {
-            nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
-            // A hypothetical matchup has no kickoff; model it as of now.
-            asOf: new Date(), engine: ENGINES.COUNT,
-        });
-    }, [customHome, customAway, localModel, nGames, showCustomPrediction, useGeneralStats, forceMean]);
 
     // The line a statistic is judged at, so a probability has something to be a
     // probability OF. Same source the backtests and Hot Matches use.
@@ -474,16 +452,6 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
             existingBet={bets?.find(b => b.game === `${match.home} vs ${match.away}` && b.stat === match.selectedStat)}
         />
     );
-    const teamOptions = teams.map(team => ({
-        value: team,
-        label: (
-            <span className="flex items-center gap-2 min-w-0">
-                <img src={teamLogos[team]} alt="" className="w-4 h-4 object-contain shrink-0" />
-                <span className="truncate">{team}</span>
-            </span>
-        ),
-    }));
-
     return (
         <div className="space-y-6">
             {/* relative z-40: the matchday Select opens over the table below. */}
@@ -778,83 +746,6 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                     </table>
                 </div>
             </div>
-
-            {/* Custom matchup: any two teams of the league, as if they met today.
-                relative z-30 so the team pickers open over what follows. */}
-            <div className="glass-panel p-5 md:p-6 rounded-xl border border-white/10 mt-8 relative z-30">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                    <div>
-                        <h3 className="text-lg font-black text-white flex items-center gap-2">
-                            <Calculator className="w-5 h-5 text-emerald-400" />
-                            {t('Custom matchup')}
-                        </h3>
-                        <p className="text-zinc-500 text-sm mt-0.5">{t('Any two teams from this league, modelled as if they met today.')}</p>
-                    </div>
-                    {showCustomPrediction && (
-                        <Group label={t('Statistic')}>
-                            <StatisticSelector
-                                value={localStatistic}
-                                onChange={(e) => setLocalStatistic(e.target.value)}
-                                className="w-[160px]"
-                            />
-                        </Group>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto] items-end gap-3">
-                    <div>
-                        <span className="block text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1.5">{t('Home team')}</span>
-                        <Select accent="emerald" value={customHome} onChange={setCustomHome} options={teamOptions} />
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => { setCustomHome(customAway); setCustomAway(customHome); }}
-                        aria-label={t('Swap home and away')}
-                        title={t('Swap home and away')}
-                        className="h-10 w-10 mx-auto rounded-lg border border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center transition-colors"
-                    >
-                        <ArrowLeftRight className="w-4 h-4" />
-                    </button>
-                    <div>
-                        <span className="block text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1.5">{t('Away team')}</span>
-                        <Select accent="emerald" value={customAway} onChange={setCustomAway} options={teamOptions} />
-                    </div>
-                    <button
-                        onClick={() => setShowCustomPrediction(!showCustomPrediction)}
-                        disabled={customHome === customAway}
-                        className={`h-10 px-5 rounded-lg text-sm font-bold uppercase tracking-wide transition disabled:opacity-40 disabled:cursor-not-allowed ${showCustomPrediction
-                            ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                            : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'}`}
-                    >
-                        {showCustomPrediction ? t('Hide') : t('Analyze')}
-                    </button>
-                </div>
-                {customHome === customAway && (
-                    <p className="text-xs text-amber-400 mt-2">{t('Pick two different teams.')}</p>
-                )}
-
-                {showCustomPrediction && customHome !== customAway && !customPrediction && (
-                    <p className="text-sm text-zinc-500 text-center mt-6">{t('Not enough history for these two teams to model yet.')}</p>
-                )}
-
-                {showCustomPrediction && customPrediction && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 mt-6">
-                        <PredictionHero prediction={customPrediction} home={customHome} away={customAway} teamLogos={teamLogos} selectedStatistic={localStatistic} leagueAverage={leagueAverages[localStatistic]} line={lineFor(localStatistic)} onTeamClick={onTeamClick} />
-
-                        {customPrediction?.probOver && (
-                            <ProbabilityLadder prediction={customPrediction} statistic={localStatistic}
-                                home={customHome} away={customAway} priceFor={priceFor} pricedLines={pricedLines}
-                                bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormPanel team={customHome} label={useGeneralStats ? t('All games') : t('Home games')} accent="text-emerald-400" matches={customPrediction.homeMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={onTeamClick} />
-                            <FormPanel team={customAway} label={useGeneralStats ? t('All games') : t('Away games')} accent="text-blue-400" matches={customPrediction.awayMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={onTeamClick} />
-                        </div>
-                    </div>
-                )}
-            </div>
-
 
             {/* Detailed Analysis Modal/Section */}
 

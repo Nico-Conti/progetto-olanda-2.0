@@ -334,10 +334,8 @@ export default function App() {
   // values depending on which view you were standing in.
   const modelSettingsApi = useModelSettings();
 
-  const stats = useMemo(() => processData(filteredMatchData, selectedStatistic), [filteredMatchData, selectedStatistic]);
   const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
   const allStats = useMemo(() => processData(currentSeasonMatchData, selectedStatistic), [currentSeasonMatchData, selectedStatistic]);
-  const teams = useMemo(() => Object.keys(stats).sort(), [stats]);
 
   if (loading) {
     // transitions.dev matrix loader, "twinkle" variant, dots scaled up from 2px.
@@ -602,7 +600,6 @@ export default function App() {
                   // Heracles) and flipped the sign of its EV between the two views.
                   modelMatchData={currentSeasonMatchData}
                   fixtures={filteredFixtures}
-                  teams={teams}
                   teamLogos={teamLogos}
                   leagues={leagues}
                   selectedStatistic={selectedStatistic}
