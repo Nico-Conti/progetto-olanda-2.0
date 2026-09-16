@@ -375,12 +375,28 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                     ) : (
                         <>
                             {line != null && (
+                                <>
+                                {/* The four tiles were labelled only by their sample -
+                                    All, Home, Away, Last 10 - so nothing said what the
+                                    percentage was OF. It is the share of matches whose
+                                    TOTAL cleared the line, and the tiles read as
+                                    ambiguous without that said once above them. */}
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                                    {t('Share of matches with total {stat} over {line}', { stat: statLabel.toLowerCase(), line })}
+                                </p>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
                                     {rates.map(({ label, list }) => {
                                         const hits = over(list);
                                         const rate = list.length ? hits / list.length : 0;
                                         return (
-                                            <div key={label} className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-2.5">
+                                            <div
+                                                key={label}
+                                                title={t('{hits} of {n} {label} matches had more than {line} total {stat}; the other {rest} had {line} or fewer.', {
+                                                    hits, n: list.length, label: label.toLowerCase(),
+                                                    line, stat: statLabel.toLowerCase(), rest: list.length - hits,
+                                                })}
+                                                className="rounded-xl bg-white/[0.03] border border-white/10 px-3 py-2.5"
+                                            >
                                                 <div className="flex items-baseline justify-between">
                                                     <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{label}</span>
                                                     <span className="text-[10px] font-bold text-zinc-500 tabular-nums">{hits}/{list.length}</span>
@@ -395,12 +411,15 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                                         );
                                     })}
                                 </div>
+                                </>
                             )}
 
-                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                            {/* Wraps below 400px, where the title and the legend do not
+                                fit on one line and the title broke mid-phrase. */}
+                            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
                                 <span>{t('Total {stat} per match, last {n}', { stat: statLabel.toLowerCase(), n: chart.length })}</span>
                                 {line != null && (
-                                    <span className="flex items-center gap-3">
+                                    <span className="flex shrink-0 items-center gap-3">
                                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-400" /> {t('Over {line}', { line })}</span>
                                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-zinc-600" /> {t('Under')}</span>
                                     </span>

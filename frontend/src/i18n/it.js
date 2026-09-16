@@ -467,4 +467,6 @@ export default {
     "Actual result": "Risultato effettivo",
     "Open {team} match stats": "Apri le statistiche contro {team}",
     "{n} seats": "{n} posti",
+    "Share of matches with total {stat} over {line}": "Quota di partite con totale {stat} superiore a {line}",
+    "{hits} of {n} {label} matches had more than {line} total {stat}; the other {rest} had {line} or fewer.": "{hits} partite su {n} ({label}) hanno avuto più di {line} {stat} totali; le altre {rest} ne hanno avuti {line} o meno.",
 };
