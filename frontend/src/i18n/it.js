@@ -466,4 +466,5 @@ export default {
     "{stat} is deliberately not priced: the bookmaker settles it on a narrower count than we measure, so an expected value here would be arithmetic on two different quantities. Rank by expected total, or pick another statistic.": "{stat}: non quotiamo questo mercato di proposito. Il bookmaker lo decide su un conteggio più ristretto del nostro, quindi un valore atteso qui sarebbe aritmetica su due quantità diverse. Ordina per totale atteso, o scegli un’altra statistica.",
     "Actual result": "Risultato effettivo",
     "Open {team} match stats": "Apri le statistiche contro {team}",
+    "{n} seats": "{n} posti",
 };

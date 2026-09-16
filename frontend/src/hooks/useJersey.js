@@ -1,9 +1,11 @@
 import { useEffect, useReducer } from 'react';
 
 // TheSportsDB's public test key, and its CORS-open search. The team row carries
-// `strEquipment`, an image of the club's current kit.
-const SEARCH = 'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=';
-const LEAGUE = 'https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=';
+// `strEquipment`, an image of the club's current kit, and `idVenue`, whose
+// venue row has a photo of the stadium (`strThumb`).
+const API = 'https://www.thesportsdb.com/api/v1/json/3/';
+const TEAMS_KEY = 'olanda_teams';
+const VENUES_KEY = 'olanda_venues';
 
 /**
  * Our league names against TheSportsDB's, because the per-team search cannot
@@ -28,16 +30,25 @@ const SDB_LEAGUE = {
     Eliteserien: 'Norwegian Eliteserien', 'Jupiler League': 'Belgian Pro League',
     'Super Lig': 'Turkish Super Lig', 'Serie A Betano': 'Brazilian Serie A',
 };
-// v2: the matching rule below changed, and the old key holds `null` for every
-// team it used to reject - a cached miss is never retried, so without a new key
-// the fix would reach nobody. Same reason the model settings key was bumped.
-const STORAGE_KEY = 'olanda_jerseys_v3';
 
-// team name -> kit image URL, or null for "looked, none". Misses are kept too,
-// so a team without a kit is not searched again on every visit.
-const cache = (() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}; } catch { return {}; }
-})();
+const load = (key) => {
+    try { return JSON.parse(localStorage.getItem(key)) ?? {}; } catch { return {}; }
+};
+const save = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
+};
+// The kit-only caches this one replaces. A miss is cached and never retried, so
+// a matching rule that changes has to drop the old store or the fix reaches
+// nobody - the same reason the model settings key was bumped.
+for (const old of ['olanda_jerseys', 'olanda_jerseys_v3']) {
+    try { localStorage.removeItem(old); } catch { /* private mode */ }
+}
+
+// team name -> { kit, venue } or null for "looked, not found"; venue id ->
+// { photo, name, capacity, location } or null. Misses are kept too, so a team
+// is not searched again on every visit.
+const teams = load(TEAMS_KEY);
+const venues = load(VENUES_KEY);
 const inflight = new Map();
 const leagueLists = new Map();
 
@@ -99,11 +110,18 @@ const sameCountry = (ours, theirs) => {
 const named = (row, team) => norm(row.strTeam) === norm(team)
     || String(row.strTeamAlternate ?? '').split(',').some(alt => norm(alt) === norm(team));
 
+/** One request per key at a time; a network failure is not cached, so it is tried again next time. */
+const once = (key, run) => {
+    if (!inflight.has(key)) inflight.set(key, run().catch(() => {}).finally(() => inflight.delete(key)));
+    return inflight.get(key);
+};
+const getJson = (path) => fetch(API + path).then(res => (res.ok ? res.json() : Promise.reject(res.status)));
+
 /**
- * The ten clubs TheSportsDB lists for a league, kitted ones only. Fetched once
- * per league and shared by every team in it, which is also far cheaper than one
- * request per team - the public key rate-limits hard, and a per-team sweep of
- * our 364 teams lost 219 of them to throttling.
+ * The ten clubs TheSportsDB lists for a league. Fetched once per league and
+ * shared by every team in it, which is also far cheaper than one request per
+ * team - the public key rate-limits hard, and a per-team sweep of our 364 teams
+ * lost 219 of them to throttling.
  *
  * A failure is not cached: the entry is dropped so the next team retries.
  */
@@ -111,16 +129,29 @@ const leagueTeams = (league) => {
     const name = SDB_LEAGUE[league];
     if (!name) return Promise.resolve([]);
     if (!leagueLists.has(league)) {
-        leagueLists.set(league, fetch(LEAGUE + encodeURIComponent(name))
-            .then(res => (res.ok ? res.json() : Promise.reject(res.status)))
-            .then(({ teams }) => (teams ?? []).filter(x => x.strEquipment))
+        leagueLists.set(league, getJson('search_all_teams.php?l=' + encodeURIComponent(name))
+            .then(({ teams: rows }) => rows ?? [])
             .catch(() => { leagueLists.delete(league); return []; }));
     }
     return leagueLists.get(league);
 };
 
 /**
- * The kit for `team`. An EXACT name match (the name or one of the listed
+ * EXACT across the whole list before any loose match, and the order is not
+ * cosmetic: Scotland lists both Dundee and Dundee United, so taking the first
+ * loose hit gave "Dundee Utd" Dundee's shirt - a different club - while the
+ * correct row was sitting two places later with "Dundee Utd" as an alternate.
+ *
+ * A kitted row is preferred over a kitless one of the same name, but a kitless
+ * exact match is still taken: the row carries `idVenue` too, so rejecting it
+ * would cost the club its stadium as well as its shirt.
+ */
+const fromLeague = (rows, team) => rows.find(x => named(x, team) && x.strEquipment)
+    ?? rows.find(x => named(x, team))
+    ?? rows.find(x => x.strGender !== 'Female' && x.strEquipment && sameClub(team, x.strTeam));
+
+/**
+ * The club's row. An EXACT name match (the name or one of the listed
  * alternates) is taken on its own, as it always was.
  *
  * Anything looser has to clear two gates, and both earn their place: the club
@@ -129,53 +160,61 @@ const leagueTeams = (league) => {
  * "Newcastle". Without a country we do not relax at all, because then only one
  * gate remains; a custom matchup has no league and keeps the strict rule.
  *
- * A wrong club's shirt is worse than none, so when in doubt this returns null.
- * A network failure is not cached, so it is tried again next time.
+ * A wrong club's shirt is worse than none, so when in doubt this stores null.
  */
-const remember = (team, row) => {
-    cache[team] = row?.strEquipment ?? null;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cache)); } catch { /* private mode */ }
-    return row;
+const fromSearch = (rows, team, country) => {
+    const soccer = (rows ?? []).filter(x => x.strSport === 'Soccer');
+    return soccer.find(x => named(x, team))
+        ?? (country && soccer.find(x => x.strGender === 'Male'
+            && sameCountry(country, x.strCountry) && sameClub(team, x.strTeam)))
+        ?? null;
 };
 
-/**
- * EXACT across the whole list before any loose match, and the order is not
- * cosmetic: Scotland lists both Dundee and Dundee United, so taking the first
- * loose hit gave "Dundee Utd" Dundee's shirt - a different club - while the
- * correct row was sitting two places later with "Dundee Utd" as an alternate.
- */
-const fromLeague = (rows, team) => rows.find(x => named(x, team))
-    ?? rows.find(x => x.strGender !== 'Female' && sameClub(team, x.strTeam));
+const lookupTeam = (team, league, country) => once(`team:${team}`, () => leagueTeams(league)
+    .then(rows => fromLeague(rows, team)
+        ?? getJson('searchteams.php?t=' + encodeURIComponent(team))
+            .then(({ teams: rows2 }) => fromSearch(rows2, team, country)))
+    .then(row => {
+        teams[team] = row ? { kit: row.strEquipment || null, venue: row.idVenue || null } : null;
+        save(TEAMS_KEY, teams);
+    }));
 
-const lookup = (team, league, country) => {
-    if (!inflight.has(team)) {
-        inflight.set(team, leagueTeams(league)
-            .then(rows => fromLeague(rows, team) ?? fetch(SEARCH + encodeURIComponent(team))
-                .then(res => (res.ok ? res.json() : Promise.reject(res.status)))
-                .then(({ teams }) => {
-                    const kitted = (teams ?? []).filter(x => x.strSport === 'Soccer' && x.strEquipment);
-                    return kitted.find(x => named(x, team))
-                        ?? (country && kitted.find(x => x.strGender === 'Male'
-                            && sameCountry(country, x.strCountry) && sameClub(team, x.strTeam)))
-                        ?? null;
-                }))
-            .then(row => remember(team, row))
-            .catch(() => {})
-            .finally(() => inflight.delete(team)));
-    }
-    return inflight.get(team);
+const lookupVenue = (id) => once(`venue:${id}`, () => getJson('lookupvenue.php?id=' + encodeURIComponent(id))
+    .then(({ venues: rows }) => {
+        const v = rows?.[0];
+        const photo = v && (v.strThumb || v.strFanart1);
+        venues[id] = photo ? {
+            photo,
+            name: v.strVenue,
+            capacity: Number(v.intCapacity) || null,
+            location: v.strLocation || null,
+        } : null;
+        save(VENUES_KEY, venues);
+    }));
+
+/** Re-renders the caller once `ready()` holds, running `fetchIt` when it does not yet. */
+const useLookup = (key, ready, fetchIt) => {
+    const [, rerender] = useReducer(n => n + 1, 0);
+    useEffect(() => {
+        if (!key || ready()) return;
+        let live = true;
+        fetchIt().then(() => { if (live) rerender(); });
+        return () => { live = false; };
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 };
 
 /** The kit image URL for a team, or null while unknown or when there is none. */
 export function useJersey(team, league, country) {
-    const [, rerender] = useReducer(n => n + 1, 0);
-    useEffect(() => {
-        if (!team || team in cache) return;
-        let live = true;
-        lookup(team, league, country).then(() => { if (live) rerender(); });
-        return () => { live = false; };
-    }, [team, league, country]);
-    return (team && cache[team]) || null;
+    useLookup(team, () => team in teams, () => lookupTeam(team, league, country));
+    return (team && teams[team]?.kit) || null;
 }
 
-export const __test = { sameClub, sameCountry, fromLeague, SDB_LEAGUE };
+/** The team's stadium `{ photo, name, capacity, location }`, or null while unknown or when there is none. */
+export function useStadium(team, league, country) {
+    useJersey(team, league, country);
+    const id = team && teams[team]?.venue;
+    useLookup(id, () => id in venues, () => lookupVenue(id));
+    return (id && venues[id]) || null;
+}
+
+export const __test = { sameClub, sameCountry, fromLeague, fromSearch, SDB_LEAGUE };
