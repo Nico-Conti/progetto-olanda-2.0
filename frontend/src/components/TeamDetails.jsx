@@ -236,12 +236,20 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                                         // pop-in sets display: inline-block, so it goes on a
                                         // wrapper and the chip keeps its flex centring.
                                         <span key={i} className="pop-in" style={{ animationDelay: `${300 + i * 70}ms` }}>
-                                            <span
+                                            {/* `teamGames` keeps the whole match on each
+                                                entry, so a form chip opens the same
+                                                MatchStatsModal the results list does -
+                                                the panel below and Standings > Results
+                                                already open it exactly this way. */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setOpenMatch(g.match)}
                                                 title={`${g.home ? t('vs') : t('at')} ${g.opponent} ${g.for}-${g.ag}`}
-                                                className={`w-7 h-7 rounded-md border flex items-center justify-center text-[11px] font-black ${RESULT[r]} ${i === row.form.length - 1 ? 'ring-2 ring-white/20 ring-offset-1 ring-offset-zinc-900' : ''}`}
+                                                aria-label={t('Open {team} match stats', { team: g.opponent })}
+                                                className={`w-7 h-7 rounded-md border flex items-center justify-center text-[11px] font-black transition hover:brightness-125 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${RESULT[r]} ${i === row.form.length - 1 ? 'ring-2 ring-white/20 ring-offset-1 ring-offset-zinc-900' : ''}`}
                                             >
                                                 {t(r)}
-                                            </span>
+                                            </button>
                                         </span>
                                     );
                                 })}
