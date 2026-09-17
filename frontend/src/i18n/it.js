@@ -490,4 +490,6 @@ export default {
     "The price dropped after we took it.": "La quota è scesa dopo che l'abbiamo presa.",
     "It dropped by more than the bookmaker's margin.": "È scesa più del margine del bookmaker.",
     "Above zero over many picks means a real edge.": "Sopra zero su molte scelte significa un vantaggio reale.",
+    "Watch the presentation": "Guarda la presentazione",
+    "Progetto Olanda 2.0 presentation": "Presentazione di Progetto Olanda 2.0",
 };

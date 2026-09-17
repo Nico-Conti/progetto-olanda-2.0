@@ -6,6 +6,7 @@ import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
+import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
 import { t, tk, countryName } from '../i18n';
 
@@ -245,6 +246,9 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
 
+            <div className="absolute top-4 left-4 z-20">
+                <Trailer />
+            </div>
             <div className="absolute top-4 right-4 z-20 pointer-events-auto">
                 <AccountButton />
             </div>

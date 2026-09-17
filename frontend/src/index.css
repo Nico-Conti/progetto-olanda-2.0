@@ -581,6 +581,65 @@ input[type=number] {
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Trailer player (Trailer.jsx): a native <dialog>, faded and scaled with the
+   modal tokens from transitions.css. `allow-discrete` keeps it in the top layer
+   until the close transition has finished. */
+.trailer,
+.trailer::backdrop {
+    opacity: 0;
+    transition:
+        opacity var(--modal-close-dur) var(--modal-ease),
+        transform var(--modal-close-dur) var(--modal-ease),
+        overlay var(--modal-close-dur) allow-discrete,
+        display var(--modal-close-dur) allow-discrete;
+}
+
+.trailer {
+    transform: scale(var(--modal-scale));
+}
+
+.trailer[open],
+.trailer[open]::backdrop {
+    opacity: 1;
+    transition-duration: var(--modal-open-dur);
+}
+
+.trailer[open] {
+    transform: scale(1);
+}
+
+@starting-style {
+    .trailer[open],
+    .trailer[open]::backdrop {
+        opacity: 0;
+    }
+
+    .trailer[open] {
+        transform: scale(var(--modal-scale));
+    }
+}
+
+/* A soft ring pulsing out of the trailer bubble, so it reads as playable. */
+.trailer-ping {
+    animation: trailer-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes trailer-ping {
+    0% { transform: scale(0.8); opacity: 0.9; }
+    70%, 100% { transform: scale(1.8); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .trailer,
+    .trailer::backdrop {
+        transition: none;
+    }
+
+    .trailer-ping {
+        display: none;
+    }
+}
+
 /* Market Moves guide: the <details> body slides open where the browser can
    animate to `auto` height, and simply appears where it cannot. */
 .guide {
