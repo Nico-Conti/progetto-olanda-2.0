@@ -338,6 +338,249 @@
     }
 }
 
+/* Landing subtitle: Originkit's text-colour-sweep, redone in CSS because the
+   original needs framer-motion. Each character (--i) rises in, starting in the
+   accent colour and settling on the text's own. */
+.colour-sweep > span {
+    display: inline-block;
+    white-space: pre;
+    animation: colour-sweep 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(150ms + var(--i) * 20ms);
+}
+
+@keyframes colour-sweep {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+        color: #34d399;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .colour-sweep > span {
+        animation: none;
+    }
+}
+
+/* Standings (Standings.jsx). A changed points or total value pops in (the
+   transitions.dev number pop-in keyframes); the zone stripes grow in with their
+   rows; the champions pill catches a slow glint. */
+.pop-in {
+    display: inline-block;
+    animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+
+.zone-stripe {
+    animation: zone-in 500ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes zone-in {
+    from {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+}
+
+.champion-pill {
+    background-image: linear-gradient(110deg, transparent 35%, rgba(252, 211, 77, 0.35) 50%, transparent 65%);
+    background-size: 250% 100%;
+    animation: champion-glint 3.5s ease-in-out infinite;
+}
+
+@keyframes champion-glint {
+    0%, 60% { background-position: 150% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pop-in,
+    .zone-stripe,
+    .champion-pill {
+        animation: none;
+    }
+}
+
+/* The add-to-slip card under a price in the probability ladder
+   (ProbabilityLadder.jsx). Opens on hover, or on focus - which is what a tap
+   gives on touch - on the dropdown motion tokens. The 80ms open delay keeps a
+   sweep across the row of prices from flashing every card on the way. */
+.quota-pop {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-4px) scale(var(--dropdown-pre-scale));
+    transition:
+        opacity var(--dropdown-close-dur) var(--dropdown-ease),
+        transform var(--dropdown-close-dur) var(--dropdown-ease),
+        visibility 0s linear var(--dropdown-close-dur);
+}
+
+.quota:hover .quota-pop,
+.quota:focus-within .quota-pop {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition:
+        opacity var(--dropdown-open-dur) var(--dropdown-ease) 80ms,
+        transform var(--dropdown-open-dur) var(--dropdown-ease) 80ms,
+        visibility 0s linear 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quota-pop {
+        transform: none;
+    }
+}
+
+/* Match view (PredictionHero, StatsAnalysis). The sides slide in from their
+   own edges, a spotlight breathes behind the predicted total, bars grow from
+   their origin (set inline), and a hot match's chip flickers like a flame. */
+.hero-in-left,
+.hero-in-right {
+    animation: hero-in 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.hero-in-left { --hero-from: -28px; }
+.hero-in-right { --hero-from: 28px; }
+
+@keyframes hero-in {
+    from { opacity: 0; transform: translateX(var(--hero-from)); }
+}
+
+.hero-spot {
+    animation: hero-spot 4.5s ease-in-out infinite;
+}
+
+@keyframes hero-spot {
+    0%, 100% { opacity: 0.6; scale: 0.92; }
+    50% { opacity: 1; scale: 1.08; }
+}
+
+.bar-grow {
+    animation: bar-grow 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: 150ms;
+}
+
+@keyframes bar-grow {
+    from { transform: scaleX(0); }
+}
+
+/* Upright bars (the team page's chart) rise from the axis, one after another. */
+.bar-rise {
+    transform-origin: bottom;
+    animation: bar-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes bar-rise {
+    from { transform: scaleY(0); }
+}
+
+.hot-chip {
+    animation: hot-chip 1.8s ease-in-out infinite;
+}
+
+/* A club's kit: fades up when its image arrives and lifts a little on hover. */
+.jersey {
+    animation: jersey-in 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: scale 400ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.jersey:hover {
+    scale: 1.08;
+}
+
+/* A badge that opens its team's page (TeamBadge): it lifts and glows. */
+.team-badge {
+    cursor: pointer;
+}
+
+.team-badge img {
+    transition: scale 300ms cubic-bezier(0.34, 1.45, 0.64, 1), filter 300ms ease-out;
+}
+
+.team-badge:hover img {
+    scale: 1.1;
+    filter: drop-shadow(0 0 10px rgb(52 211 153 / 0.55));
+}
+
+@keyframes jersey-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.9); }
+}
+
+@keyframes hot-chip {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(249 115 22 / 0); }
+    50% { box-shadow: 0 0 18px 2px rgb(249 115 22 / 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-in-left,
+    .hero-in-right,
+    .hero-spot,
+    .bar-grow,
+    .bar-rise,
+    .hot-chip,
+    .jersey {
+        animation: none;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-zinc-900;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-zinc-700 rounded-full hover:bg-zinc-600;
+}
+
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}
+/* League picker: the chosen nation's flag stripes draw in along the top. */
+@keyframes flag-bar {
+    from { transform: scaleX(0); }
+}
+
+/* League picker, nation cards: on hover a stripe bar in the flag's colours draws
+   along the bottom. The card sets --flag-stripes; `.flag-hover` is only on while
+   animations are. */
+.flag-bar {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flag-hover .flag-bar {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 7px;
+    height: 3px;
+    border-radius: 9999px;
+    background: var(--flag-stripes);
+    transform: scaleX(0);
+    transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.flag-hover:hover .flag-bar {
+    opacity: 1;
+    transform: scaleX(1);
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Market Moves guide: the <details> body slides open where the browser can
    animate to `auto` height, and simply appears where it cannot. */
 .guide {
