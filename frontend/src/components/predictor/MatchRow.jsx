@@ -1,13 +1,25 @@
 import React from 'react';
 import TeamBadge from '../TeamBadge';
+import { clickable } from '../ui/clickable';
 import { t, dateLocale } from '../../i18n';
 
-/** One past match of a team's form: opponent, the statistic for and against, and the total against `line`. */
-const MatchRow = ({ match, teamLogos, line, onTeamClick }) => {
+/**
+ * One past match of a team's form: opponent, the statistic for and against, and
+ * the total against `line`. `processData` keeps the whole match on the row, so
+ * it opens the same MatchStatsModal that Standings > Results does - a row from a
+ * model whose lookup missed has no `match`, and stays inert rather than opening
+ * an empty modal.
+ */
+const MatchRow = ({ match, teamLogos, line, onTeamClick, onMatchClick }) => {
     const over = line != null && match.total > line;
     const when = match.date ? new Date(match.date) : null;
+    const open = onMatchClick && match.match ? () => onMatchClick(match.match) : null;
     return (
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors">
+        <div
+            {...(open ? clickable(open) : {})}
+            aria-label={open ? t('Open {team} match stats', { team: match.opponent }) : undefined}
+            className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/5 transition-colors ${open ? 'cursor-pointer hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400' : ''}`}
+        >
             <div className="min-w-0">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">
                     {t('MD {n}', { n: match.giornata })}

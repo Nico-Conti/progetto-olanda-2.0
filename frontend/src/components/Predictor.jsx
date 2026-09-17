@@ -14,6 +14,7 @@ import ProbabilityLadder from './predictor/ProbabilityLadder';
 import StatsAnalysis from './predictor/StatsAnalysis';
 import StatisticSelector from './StatisticSelector';
 import BetBuilderCell from './BetBuilderCell';
+import MatchStatsModal from './MatchStatsModal';
 import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 import { staggerDelay } from '../utils/stagger';
@@ -111,6 +112,10 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
 
     // Independent Statistic State
     const [localStatistic, setLocalStatistic] = useState(selectedStatistic);
+
+    // A past match opened from a form panel. `/matches` already carries every
+    // stat column, so this costs no request - same modal as Standings > Results.
+    const [openMatch, setOpenMatch] = useState(null);
 
     // Sample size and the mean/median toggle belong to the WINDOW estimator,
     // which lost to recency decay (docs/prediction-model.md section 10). A
@@ -345,6 +350,8 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
 
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <MatchStatsModal match={openMatch} teamLogos={teamLogos} onClose={() => setOpenMatch(null)} />
+
                 {/* Two ways out, and they are different places: back to the
                     section you came from, and across to this match's own league.
                     App only passes the second when it is not where the first
@@ -418,8 +425,8 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
 
                 {/* Each side's form at this fixture's venue, against the line. */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-waterfall" style={{ animationDelay: '280ms' }}>
-                    <FormPanel team={home} label={useGeneralStats ? t('All games') : t('Home games')} accent="text-emerald-400" matches={detailPred.homeMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={openFromMatch} />
-                    <FormPanel team={away} label={useGeneralStats ? t('All games') : t('Away games')} accent="text-blue-400" matches={detailPred.awayMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={openFromMatch} />
+                    <FormPanel team={home} label={useGeneralStats ? t('All games') : t('Home games')} accent="text-emerald-400" matches={detailPred.homeMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={openFromMatch} onMatchClick={setOpenMatch} />
+                    <FormPanel team={away} label={useGeneralStats ? t('All games') : t('Away games')} accent="text-blue-400" matches={detailPred.awayMatches.map(inTargetUnits)} line={lineFor(localStatistic)} teamLogos={teamLogos} onTeamClick={openFromMatch} onMatchClick={setOpenMatch} />
                 </div>
             </div>
         );

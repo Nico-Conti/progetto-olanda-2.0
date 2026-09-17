@@ -10,6 +10,7 @@ import { LeagueLogo, FlagTile } from './LeagueTag';
 import StatisticSelector from './StatisticSelector';
 import MatchStatsModal from './MatchStatsModal';
 import TeamBadge from './TeamBadge';
+import { clickable } from './ui/clickable';
 import { staggerDelay } from '../utils/stagger';
 import { t, dateLocale, countryName, getLanguage } from '../i18n';
 
@@ -40,14 +41,6 @@ const kickoff = (d) => {
 
 const CountUp = ({ value }) => Math.round(useCountUp(value));
 
-// A clickable row that can hold a badge button (a <button> inside a <button> is
-// not allowed), reachable and operable from the keyboard all the same.
-const clickable = (onClick) => ({
-    role: 'button',
-    tabIndex: 0,
-    onClick,
-    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } },
-});
 
 const Panel = ({ title, icon, action, children, className = '', delay = '0ms' }) => (
     <section className={`glass-panel rounded-2xl border border-white/10 p-5 animate-waterfall ${className}`} style={{ animationDelay: delay }}>

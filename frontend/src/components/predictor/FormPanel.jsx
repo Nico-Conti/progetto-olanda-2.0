@@ -10,7 +10,7 @@ const RECENT = 10;
  * total went over `line` - the question a bet on this fixture asks - over the
  * last ten, which is current form, and over the whole list.
  */
-const FormPanel = ({ team, label, matches, line, teamLogos, accent, onTeamClick }) => {
+const FormPanel = ({ team, label, matches, line, teamLogos, accent, onTeamClick, onMatchClick }) => {
     const over = (list) => (line == null ? 0 : list.filter(m => m.total > line).length);
     const recent = matches.slice(0, RECENT);
     const hits = over(recent);
@@ -46,7 +46,7 @@ const FormPanel = ({ team, label, matches, line, teamLogos, accent, onTeamClick 
 
             <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                 {matches.length > 0
-                    ? matches.map(m => <MatchRow key={`${m.season}-${m.giornata}-${m.opponent}`} match={m} teamLogos={teamLogos} line={line} onTeamClick={onTeamClick} />)
+                    ? matches.map(m => <MatchRow key={`${m.season}-${m.giornata}-${m.opponent}`} match={m} teamLogos={teamLogos} line={line} onTeamClick={onTeamClick} onMatchClick={onMatchClick} />)
                     : <p className="text-sm text-zinc-500 text-center py-6">{t('No matches at this venue yet.')}</p>}
             </div>
         </div>

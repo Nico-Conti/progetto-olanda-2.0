@@ -26,17 +26,20 @@ export const processData = (matches, statistic = 'corners') => {
             teamStats[awayTeam] = { home_for: [], home_ag: [], home_totals: [], away_for: [], away_ag: [], away_totals: [], all_matches: [] };
         }
 
+        // `match` rides along by reference (no copy): a form row can then open the
+        // same MatchStatsModal the results list does, exactly as `teamGames` does
+        // for the team page.
         // Home Team Stats
         teamStats[homeTeam].home_for.push(cHome);
         teamStats[homeTeam].home_ag.push(cAway);
         teamStats[homeTeam].home_totals.push(total);
-        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, season: match.season ?? null, date: match.date });
+        teamStats[homeTeam].all_matches.push({ team: homeTeam, opponent: awayTeam, location: 'Home', statFor: cHome, statAg: cAway, total, giornata, season: match.season ?? null, date: match.date, match });
 
         // Away Team Stats
         teamStats[awayTeam].away_for.push(cAway);
         teamStats[awayTeam].away_ag.push(cHome);
         teamStats[awayTeam].away_totals.push(total);
-        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, season: match.season ?? null, date: match.date });
+        teamStats[awayTeam].all_matches.push({ team: awayTeam, opponent: homeTeam, location: 'Away', statFor: cAway, statAg: cHome, total, giornata, season: match.season ?? null, date: match.date, match });
     });
 
     return teamStats;
