@@ -112,9 +112,19 @@ const AuthForm = ({ onSignedIn }) => {
         const username = form.get('username').trim();
         // The database refuses a duplicate anyway (migration 009); asking first
         // turns its generic "Database error" into a message that says why.
+        // `emailRedirectTo` or the confirmation link goes to the project's Site
+        // URL, which is one fixed value and cannot be right for both localhost
+        // and the deployed site. Sending them back to the origin they signed up
+        // from is, which is what the reset link below already does. The origin
+        // must be in Supabase's Redirect URLs allow-list or it is ignored and
+        // the Site URL is used anyway - silently.
         const data = await run(async () => (await emailFor(username))
             ? fail(t('That username is taken.'))
-            : supabase.auth.signUp({ email: login, password, options: { data: { username } } }));
+            : supabase.auth.signUp({
+                email: login,
+                password,
+                options: { data: { username }, emailRedirectTo: window.location.origin },
+            }));
         // No session back means the project requires email confirmation.
         if (data && !data.session) setMsg({ ok: true, text: t('Almost there - confirm the link we emailed you, then sign in.') });
         else if (data?.session) onSignedIn();
