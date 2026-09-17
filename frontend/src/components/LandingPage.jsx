@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Goal } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
@@ -7,6 +7,7 @@ import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import Trailer from './Trailer';
+import MatchViewer from './MatchViewer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
 import { t, tk, countryName } from '../i18n';
 
@@ -70,6 +71,23 @@ const HoverFx = ({ kind }) => {
             {TICKS.map(({ style, text }, i) => <span key={i} className="fx-tick" style={style}>{text}</span>)}
         </div>
     );
+    if (kind === 'pitch') return (
+        <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute inset-0 overflow-hidden rounded-2xl [container-type:inline-size]">
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <g fill="none" stroke="rgb(165 243 252 / 0.14)" strokeWidth="1" vectorEffect="non-scaling-stroke">
+                        <path d="M50 0V40M0 12H10V28H0M100 12H90V28H100" vectorEffect="non-scaling-stroke" />
+                        <ellipse cx="50" cy="20" rx="7" ry="12" vectorEffect="non-scaling-stroke" />
+                    </g>
+                </svg>
+                <span className="fx-net" />
+                <span className="fx-shot">
+                    {[0, 1, 2].map(i => <i key={i} className="fx-shot-trail" style={{ '--k': i }} />)}
+                    <img src="/logo.png" alt="" className="fx-shot-ball" />
+                </span>
+            </div>
+        </div>
+    );
     return null;
 };
 
@@ -96,6 +114,13 @@ const FEATURES = [
         iconBox: 'bg-emerald-500/10 border-emerald-500/20 group-hover:border-emerald-500/50',
         icon: 'text-emerald-500 group-hover:text-emerald-400', iconFx: 'fx-beat',
         title: 'group-hover:text-emerald-300', arrow: 'group-hover:text-emerald-400',
+    },
+    {
+        id: 'match', label: tk('Watch a match'), caption: tk('Live simulation'), Icon: Goal, fx: 'pitch',
+        card: 'hover-pitch', glow: 'bg-cyan-500/20',
+        iconBox: 'bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-500/50',
+        icon: 'text-cyan-500 group-hover:text-cyan-400', iconFx: 'fx-kick',
+        title: 'group-hover:text-cyan-300', arrow: 'group-hover:text-cyan-400',
     },
 ];
 
@@ -188,7 +213,8 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
-    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves };
+    const [watching, setWatching] = React.useState(false);
+    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves, match: () => setWatching(true) };
     // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
     const { user } = useAccount();
     const favourites = (user?.user_metadata?.favourite_leagues ?? []).filter(l => availableLeagues.includes(l));
@@ -366,7 +392,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 animate-waterfall pointer-events-auto"
+                        className="w-full max-w-4xl 2xl:max-w-7xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-4 md:gap-6 animate-waterfall pointer-events-auto"
                         style={{ animationDelay: '200ms' }}
                     >
                         {FEATURES.map(feature => (
@@ -377,6 +403,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                             />
                         ))}
                     </div>
+                    <MatchViewer open={watching} onClose={() => setWatching(false)} />
                 </div>
             </div>
 

@@ -95,6 +95,11 @@
         @apply border-emerald-500/50 bg-zinc-800/90;
         box-shadow: 0 0 30px rgba(16, 185, 129, 0.2), inset 0 0 24px rgba(52, 211, 153, 0.08);
     }
+
+    .hover-pitch:hover {
+        @apply border-cyan-500/50 bg-zinc-800/90;
+        box-shadow: 0 0 30px rgba(34, 211, 238, 0.2), inset 0 0 24px rgba(34, 211, 238, 0.08);
+    }
 }
 
 @keyframes float {
@@ -322,7 +327,71 @@
     22% { transform: scale(1.06); }
 }
 
+/* Watch a match: a shot rolls across the card on a curve into the right-hand
+   net, which bulges as it lands; the icon gives a little kick. */
+.fx-shot {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    animation: fx-shot 2.2s cubic-bezier(0.3, 0, 0.2, 1) infinite;
+}
+@keyframes fx-shot {
+    0% { translate: -20px 14px; opacity: 0; }
+    10% { opacity: 1; }
+    50% { translate: 55cqw -10px; }
+    72% { translate: calc(100cqw - 18px) 0; opacity: 1; }
+    100% { translate: calc(100cqw - 18px) 0; opacity: 0; }
+}
+.fx-shot-ball {
+    position: absolute;
+    inset: 0;
+    width: 14px;
+    height: 14px;
+    filter: drop-shadow(0 0 6px rgb(34 211 238 / 0.8));
+    animation: fx-spin 0.6s linear infinite;
+}
+@keyframes fx-spin { to { rotate: 360deg; } }
+.fx-shot-trail {
+    position: absolute;
+    top: 3px;
+    right: calc(10px + var(--k) * 9px);
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: rgb(34 211 238 / calc(0.5 - var(--k) * 0.15));
+}
+.fx-net {
+    position: absolute;
+    right: 0;
+    top: 30%;
+    bottom: 30%;
+    width: 10px;
+    border: 1px solid rgb(165 243 252 / 0.35);
+    border-right: 0;
+    background: repeating-linear-gradient(45deg, rgb(165 243 252 / 0.18) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(-45deg, rgb(165 243 252 / 0.18) 0 1px, transparent 1px 4px);
+    transform-origin: right center;
+    animation: fx-net 2.2s ease-out infinite;
+}
+@keyframes fx-net {
+    0%, 70% { scale: 1 1; background-color: transparent; }
+    76% { scale: 1.8 1.1; background-color: rgb(34 211 238 / 0.25); }
+    86% { scale: 0.9 1; }
+    100% { scale: 1 1; background-color: transparent; }
+}
+.group:hover .fx-kick { animation: fx-kick 2.2s ease-in-out infinite; }
+@keyframes fx-kick {
+    0%, 100% { rotate: 0deg; }
+    6% { rotate: -18deg; }
+    12% { rotate: 10deg; }
+    20% { rotate: 0deg; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .fx-shot,
     .fx-ember,
     .fx-tick,
     .fx-cursor,
@@ -331,6 +400,7 @@
     }
 
     .fx *,
+    .group:hover .fx-kick,
     .group:hover .fx-flame,
     .group:hover .fx-zap,
     .group:hover .fx-beat {
@@ -854,4 +924,54 @@ input[type=number] {
 }
 @media (prefers-reduced-motion: reduce) {
     .stadium-photo, .stadium-photo.is-loaded { transition: none; animation: none; scale: 1; }
+}
+
+/* Loading screen (PitchLoader): the lines draw, the turf and players fade in,
+   each headline rises in. */
+.pitch-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: pitch-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes pitch-draw { to { stroke-dashoffset: 0; } }
+.pitch-turf { animation: pitch-fade 900ms ease both; }
+@keyframes pitch-fade { from { opacity: 0; } }
+.pitch-player {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pitch-player 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pitch-player { from { opacity: 0; scale: 0; } }
+.pitch-headline { animation: pitch-headline 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes pitch-headline { from { opacity: 0; translate: 0 100%; filter: blur(4px); } }
+/* The match: ball fade-in, goal flash, net bulge, pitch shake, confetti,
+   the GOAL! slam, and the ring where the ball changed hands. */
+.pitch-ball { animation: pitch-fade 300ms ease both; }
+.pitch-flash { animation: pitch-flash 900ms ease-out both; }
+@keyframes pitch-flash { 0% { opacity: 0; } 12% { opacity: 0.35; } 100% { opacity: 0; } }
+.pitch-net-hit { animation: pitch-net 700ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes pitch-net { 30% { scale: 1.6 1.15; } 60% { scale: 0.9 1; } }
+.pitch-shake { animation: pitch-shake 420ms ease-out; }
+@keyframes pitch-shake {
+    20% { translate: -5px 2px; } 40% { translate: 5px -2px; }
+    60% { translate: -3px 1px; } 80% { translate: 2px 0; }
+}
+.pitch-confetti { animation: pitch-confetti 1300ms cubic-bezier(0.2, 0.7, 0.4, 1) both; }
+@keyframes pitch-confetti {
+    from { opacity: 1; translate: 0 0; rotate: 0deg; }
+    70% { opacity: 1; }
+    to { opacity: 0; translate: var(--dx) calc(var(--dy) + 60px); rotate: var(--rot); }
+}
+.pitch-goal { animation: pitch-goal 2400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes pitch-goal {
+    0% { opacity: 0; scale: 3; filter: blur(12px); }
+    14% { opacity: 1; scale: 0.92; filter: blur(0); }
+    22% { scale: 1.06; }
+    30%, 80% { opacity: 1; scale: 1; }
+    100% { opacity: 0; scale: 1.25; filter: blur(6px); }
+}
+.pitch-ring { animation: pitch-ring 750ms ease-out both; }
+@keyframes pitch-ring { from { opacity: 1; scale: 0.3; } to { opacity: 0; scale: 1.6; } }
+@media (prefers-reduced-motion: reduce) {
+    .pitch-line, .pitch-turf, .pitch-player, .pitch-headline, .pitch-ball { animation: none; stroke-dashoffset: 0; }
 }
