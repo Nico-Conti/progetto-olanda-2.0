@@ -235,7 +235,6 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
             <Header
                 title={appTitle}
                 onLogoClick={onBack}
-                showSound={true}
                 pageName={pageName}
                 showBetSlip={true}
                 betsCount={bets?.length ?? 0}

@@ -9,7 +9,6 @@ const Header = ({
     onLogoClick,
     title,
     children,
-    showSound = false,
     showBetSlip = false,
     betsCount = 0,
     onOpenBetSlip,
@@ -25,12 +24,6 @@ const Header = ({
         observer.observe(el);
         return () => observer.disconnect();
     }, []);
-
-    const playSound = () => {
-        const audio = new Audio('/sounds/malepisello.mp3');
-        audio.playbackRate = Math.random() * (1.5 - 0.5) + 0.5;
-        audio.play().catch(e => console.log("Audio play failed (file might be missing):", e));
-    };
 
     return (
         <GlassPanel ref={ref} className="sticky top-0 z-[100] border-b border-white/5 mb-8 backdrop-blur-xl">
@@ -59,36 +52,6 @@ const Header = ({
                 {/* Right Section: Controls */}
                 <div className="flex items-center gap-2 md:gap-4">
                     {children}
-
-                    <div className="hidden md:flex items-center gap-4">
-                        {showSound && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    playSound();
-                                }}
-                                className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold uppercase tracking-wide transition text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
-                                title={t('Play Sound')}
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="w-5 h-5"
-                                >
-                                    <path d="M10 13V6a2 2 0 0 1 4 0v7" />
-                                    <circle cx="8" cy="15" r="3" />
-                                    <circle cx="16" cy="15" r="3" />
-                                </svg>
-                            </button>
-                        )}
-                    </div>
 
                     {showBetSlip && (
                         <button

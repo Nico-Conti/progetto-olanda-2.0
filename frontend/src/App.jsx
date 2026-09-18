@@ -492,7 +492,6 @@ export default function App() {
                 Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
               </h1>
             }
-            showSound={true}
             showBetSlip={true}
             betsCount={bets.length}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}

@@ -154,9 +154,12 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
         </h1>
     );
 
+    // Split the same way Market Moves does: first word plain, the rest in the
+    // page's own gradient. Translated, so it reads as the card that opened it.
+    const title = t('Winning Factor').split(' ');
     const pageName = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none">
-            Malissimo<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Pisello</span>
+            {title[0]}<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{title.slice(1).join(' ')}</span>
         </h1>
     );
 
@@ -166,7 +169,6 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
             <Header
                 title={appTitle}
                 onLogoClick={onBack}
-                showSound={true}
                 pageName={pageName}
                 showBetSlip={true}
                 betsCount={bets.length}

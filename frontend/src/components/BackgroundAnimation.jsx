@@ -24,21 +24,6 @@ const BackgroundAnimation = () => {
             return next;
         });
 
-        // Play pop sound (first 1 second of malepisello.mp3)
-        const audio = new Audio('/sounds/malepisello.mp3');
-        audio.volume = 0.5;
-        const playPromise = audio.play();
-
-        if (playPromise !== undefined) {
-            playPromise.catch(() => { }); // Ignore error if file missing or autoplay blocked
-        }
-
-        // Stop after 1 second
-        setTimeout(() => {
-            audio.pause();
-            audio.currentTime = 0;
-        }, 1000);
-
         // Reappear after 3 seconds
         setTimeout(() => {
             setPoppedIndices(prev => {

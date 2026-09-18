@@ -183,7 +183,6 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                     </h1>
                 )}
                 onLogoClick={onBack}
-                showSound={true}
                 showBetSlip={true}
                 betsCount={bets?.length ?? 0}
                 onOpenBetSlip={onOpenBetSlip}
