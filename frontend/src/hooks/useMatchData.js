@@ -6,22 +6,61 @@ export const useMatchData = () => {
     const [fixturesData, setFixturesData] = useState([]);
     const [teamLogos, setTeamLogos] = useState({});
     const [leagues, setLeagues] = useState([]);
+    // TWO loading states, because the two halves differ by three orders of
+    // magnitude: /leagues and /teams are 5KB and 120KB and land in ~0.3s, while
+    // /matches alone is 5.5MB and takes ~12s with the backend WARM. Awaiting all
+    // four together meant nothing at all rendered for twelve seconds - far past
+    // the budget a crawler's renderer allows, which is why Google only ever saw
+    // this page fail to load and flagged the site as a deceptive shell. The
+    // landing page needs the shell; only a league's dashboard needs the matches.
+    const [shellLoading, setShellLoading] = useState(true);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    /** Leagues and crests. Small, fast, and all the landing page needs. */
+    const fetchShell = async () => {
+        try {
+            const [teamsResponse, leaguesResponse] = await Promise.all([
+                fetch(`${API_BASE_URL}/teams`),
+                fetch(`${API_BASE_URL}/leagues`),
+            ]);
+
+            if (teamsResponse.ok) {
+                const teams = await teamsResponse.json();
+                const teamLogosMap = {};
+                teams.forEach(t => { teamLogosMap[t.name] = t.logo_url; });
+                setTeamLogos(teamLogosMap);
+            } else {
+                console.error("Failed to fetch teams:", teamsResponse.statusText);
+            }
+
+            if (leaguesResponse.ok) {
+                setLeagues(await leaguesResponse.json());
+            } else {
+                console.error("Failed to fetch leagues:", leaguesResponse.statusText);
+            }
+        } catch (err) {
+            // Decoration only - a missing crest or league row must not stop the
+            // page rendering, so this deliberately does NOT set `error`, which
+            // is what turns the picker into a retry.
+            console.error('Error fetching leagues/teams:', err);
+        } finally {
+            setShellLoading(false);
+        }
+    };
+
+    /** Matches and fixtures. Megabytes, and only a dashboard needs them. */
     const fetchData = async () => {
         try {
             setLoading(true);
+            // Cleared on every attempt, or a successful retry leaves the picker
+            // still offering to retry instead of opening.
+            setError(null);
 
-            // These four are independent. Awaiting them one after another cost
-            // the sum of their latencies for no reason; /matches alone is ~5s.
-            const [matchesResponse, fixturesResponse, teamsResponse, leaguesResponse] =
-                await Promise.all([
-                    fetch(`${API_BASE_URL}/matches`),
-                    fetch(`${API_BASE_URL}/fixtures`),
-                    fetch(`${API_BASE_URL}/teams`),
-                    fetch(`${API_BASE_URL}/leagues`),
-                ]);
+            const [matchesResponse, fixturesResponse] = await Promise.all([
+                fetch(`${API_BASE_URL}/matches`),
+                fetch(`${API_BASE_URL}/fixtures`),
+            ]);
 
             // Matches and fixtures are load-bearing: without them there is
             // nothing to render, so a failure is an error. Teams and leagues
@@ -55,17 +94,6 @@ export const useMatchData = () => {
             });
 
             setFixturesData(flatFixtures);
-
-            // Teams (Logos)
-            let teamLogosMap = {};
-            if (teamsResponse.ok) {
-                const teams = await teamsResponse.json();
-                teams.forEach(t => {
-                    teamLogosMap[t.name] = t.logo_url;
-                });
-            } else {
-                console.error("Failed to fetch teams:", teamsResponse.statusText);
-            }
 
             // Transform matches data to match the expected structure for processData
             const formattedData = matches.map(match => ({
@@ -162,15 +190,6 @@ export const useMatchData = () => {
             }));
 
             setMatchData(formattedData);
-            setTeamLogos(teamLogosMap);
-
-            if (leaguesResponse.ok) {
-                const leaguesData = await leaguesResponse.json();
-                setLeagues(leaguesData);
-            } else {
-                console.error("Failed to fetch leagues:", leaguesResponse.statusText);
-            }
-
 
         } catch (err) {
             console.error('Error fetching data:', err);
@@ -181,8 +200,16 @@ export const useMatchData = () => {
     };
 
     useEffect(() => {
-        fetchData();
+        // The heavy fetch starts AFTER the shell has landed, not alongside it.
+        // Fired together, /matches' 5.5MB competes with /leagues' 5KB for the
+        // same connection and the landing page's time-to-usable swung between
+        // 2.7s and 8.1s. Serialising costs the dashboard ~0.3s and makes the
+        // first screen deterministic. fetchShell swallows its own errors, so
+        // this chain always continues.
+        fetchShell().then(fetchData);
     }, []);
 
-    return { matchData, fixturesData, teamLogos, leagues, loading, error, refetch: fetchData };
+    const refetch = () => { fetchShell().then(fetchData); };
+
+    return { matchData, fixturesData, teamLogos, leagues, shellLoading, loading, error, refetch };
 };

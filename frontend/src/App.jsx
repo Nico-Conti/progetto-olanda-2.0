@@ -41,7 +41,7 @@ export default function App() {
   // a past one. The Predictor always stays on the current season.
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
-  const { matchData, fixturesData, teamLogos, leagues, loading, error, refetch } = useMatchData();
+  const { matchData, fixturesData, teamLogos, leagues, shellLoading, loading, error, refetch } = useMatchData();
   // Where Back on a team page leads: one entry per team page opened, holding
   // the tab, team page and open match it was opened from, so hopping from
   // opponent to opponent unwinds one step at a time and a badge clicked on a
@@ -198,11 +198,16 @@ export default function App() {
 
   // Extract unique leagues from data
   const availableLeagues = useMemo(() => {
-    const leagues = new Set(matchData.map(m => m.league).filter(Boolean));
+    const fromMatches = new Set(matchData.map(m => m.league).filter(Boolean));
     // Fallback if league is missing in some data
-    if (leagues.size === 0 && matchData.length > 0) return ['Eredivisie', 'La Liga'];
-    return Array.from(leagues).sort();
-  }, [matchData]);
+    if (fromMatches.size === 0 && matchData.length > 0) return ['Eredivisie', 'La Liga'];
+    // /matches is 5.5MB and ~12s away; the League table is 5KB and already here,
+    // so the picker fills from it in the meantime. Match data wins the moment it
+    // lands, because that table is hand-maintained and can name a league that
+    // has no matches - this way it only ever covers the gap, never outlives it.
+    if (fromMatches.size === 0) return leagues.map(l => l.name).filter(Boolean).sort();
+    return Array.from(fromMatches).sort();
+  }, [matchData, leagues]);
 
   // Seasons available for the league in view, newest first
   const availableSeasons = useMemo(
@@ -348,7 +353,12 @@ export default function App() {
   const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
   const allStats = useMemo(() => processData(currentSeasonMatchData, selectedStatistic), [currentSeasonMatchData, selectedStatistic]);
 
-  if (loading) return <PitchLoader />;
+  // The landing page renders as soon as the shell is in (~0.3s). Only a
+  // league's dashboard waits on the 5.5MB of match data, and it waits behind
+  // the same loader, so the pause moves to where it belongs: after you have
+  // chosen a league, not before you can see the site at all.
+  if (shellLoading) return <PitchLoader />;
+  if (loading && view !== 'landing') return <PitchLoader />;
 
 
   const transitionCues = {
