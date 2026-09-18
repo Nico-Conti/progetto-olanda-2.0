@@ -168,14 +168,21 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
                 {/* Hand the slip to domusbet, who will load it from the URL.
                     Opens their slip for confirmation - it deliberately does not
                     place the bet, and the price there is theirs at that moment,
-                    not the one captured up to three hours ago. */}
+                    not the one captured up to three hours ago.
+
+                    Outlined in cyan rather than filled: every other button in
+                    this modal is a border and tinted text ("Save as played" is
+                    the same shape in emerald), so a solid fill with a glow made
+                    this the one shouting element on the screen. Cyan keeps it
+                    distinct from the emerald save action without leaving the
+                    palette. */}
                 {handover && (
                     <div className="px-4 pt-3">
                         <a
                             href={handover.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all bg-cyan-500 hover:bg-cyan-400 text-white shadow-[0_0_20px_rgba(6,182,212,0.2)] flex items-center justify-center gap-2"
+                            className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 flex items-center justify-center gap-2"
                         >
                             <ExternalLink className="w-4 h-4" />
                             {t('Open on domusbet')}
