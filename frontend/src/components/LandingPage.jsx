@@ -8,7 +8,7 @@ import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
-import { t, tk, countryName } from '../i18n';
+import { t, tk, countryName, getLanguage } from '../i18n';
 
 const SUBTITLE = tk('Advanced football analytics.');
 const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
@@ -492,6 +492,28 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                             className="text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60"
                         >
                             {CONTACT_EMAIL}
+                        </a>
+                        <span aria-hidden="true" className="mx-2 text-zinc-700">/</span>
+                        {/* A real page, not a modal or a view: it has to be linkable,
+                            crawlable, and readable with the API asleep. Same line as
+                            the address, so it costs no height against the 779px.
+
+                            `.html` on purpose. A static file is served ahead of any
+                            rewrite everywhere - Netlify, vite preview AND vite dev -
+                            whereas bare /privacy needs the netlify.toml rule, which
+                            dev does not read: there it hits Vite's SPA fallback,
+                            boots the app and bounces you to the landing page. The
+                            rule stays, so /privacy also resolves in production.
+
+                            The policy is two files rather than one page with a
+                            toggle, so it needs no script and a shared link keeps
+                            its language; the app sends you to the one it is
+                            currently showing. */}
+                        <a
+                            href={getLanguage() === 'it' ? '/privacy.html' : '/privacy.en.html'}
+                            className="text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60"
+                        >
+                            Privacy
                         </a>
                     </p>
                     <p>{t(FOOTER_DISCLAIMER)}</p>

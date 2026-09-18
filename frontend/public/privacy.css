@@ -1,0 +1,46 @@
+/*
+   Shared by privacy.html and privacy.en.html. A real file rather than inline
+   style in each, and it lives in public/ so the path is STABLE: Vite
+   content-hashes anything it processes, which is why these pages cannot link
+   the app's own stylesheet.
+*/
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(/fonts/inter-100-900-latin.woff2) format('woff2');
+}
+
+:root { color-scheme: dark; }
+
+body {
+  margin: 0; padding: 3rem 1rem 5rem;
+  background: #09090b; color: #d4d4d8;
+  font-family: 'Inter', system-ui, sans-serif; line-height: 1.7;
+}
+
+main { max-width: 44rem; margin: 0 auto; }
+a { color: #34d399; }
+
+h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.02em; color: #fff; margin: 0 0 .25rem; }
+h2 { font-size: 1.15rem; font-weight: 700; color: #fff; margin: 2.5rem 0 .5rem; }
+h3 { font-size: .95rem; font-weight: 700; color: #a1a1aa; margin: 1.5rem 0 .35rem; }
+p, li { font-size: .95rem; }
+ul { padding-left: 1.1rem; }
+li { margin: .3rem 0; }
+code { background: #18181b; padding: .1rem .35rem; border-radius: .25rem; font-size: .85em; }
+
+.sub { color: #71717a; font-size: .85rem; margin: 0 0 2rem; }
+.back { display: inline-block; margin-top: 3rem; font-size: .85rem; }
+
+/* Language switch. The current language is plain text, not a link to itself. */
+.lang {
+  display: flex; gap: .5rem; align-items: center;
+  margin: 0 0 2.5rem; font-size: .8rem;
+  text-transform: uppercase; letter-spacing: .12em; font-weight: 600;
+}
+.lang span { color: #fafafa; }
+.lang a { color: #52525b; text-decoration: none; }
+.lang a:hover { color: #34d399; }
+.lang i { color: #3f3f46; font-style: normal; }
