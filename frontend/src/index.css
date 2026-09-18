@@ -95,6 +95,11 @@
         @apply border-emerald-500/50 bg-zinc-800/90;
         box-shadow: 0 0 30px rgba(16, 185, 129, 0.2), inset 0 0 24px rgba(52, 211, 153, 0.08);
     }
+
+    .hover-reel:hover {
+        @apply border-cyan-500/50 bg-zinc-800/90;
+        box-shadow: 0 0 30px rgba(6, 182, 212, 0.2), inset 0 0 24px rgba(34, 211, 238, 0.08);
+    }
 }
 
 @keyframes float {
@@ -322,10 +327,51 @@
     22% { transform: scale(1.06); }
 }
 
+/* Trailer: a projector beam sweeping the card, over film perforations running
+   along both edges. The strip is twice as wide as the card and travels exactly
+   one period, so the loop is seamless without animating background-position. */
+.fx-beam {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 20%, rgb(34 211 238 / 0.16) 45%, transparent 70%);
+    animation: fx-beam 2.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes fx-beam {
+    0% { transform: translateX(-60%); opacity: 0; }
+    25%, 65% { opacity: 1; }
+    100% { transform: translateX(60%); opacity: 0; }
+}
+
+.fx-strip {
+    position: absolute;
+    left: -50%;
+    width: 200%;
+    height: 6px;
+    background: repeating-linear-gradient(90deg, rgb(34 211 238 / 0.35) 0 5px, transparent 5px 15px);
+    animation: fx-strip 1.6s linear infinite;
+}
+
+@keyframes fx-strip {
+    to { transform: translateX(15px); }
+}
+
+.group:hover .fx-play {
+    animation: fx-play 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes fx-play {
+    0%, 55%, 100% { transform: translateX(0) scale(1); filter: none; }
+    20% { transform: translateX(2px) scale(1.15); filter: drop-shadow(0 0 6px rgb(34 211 238 / 0.8)); }
+    35% { transform: translateX(0) scale(1.04); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .fx-ember,
     .fx-tick,
     .fx-cursor,
+    .fx-beam,
+    .fx-strip,
     .fx-glint {
         display: none;
     }
@@ -333,7 +379,8 @@
     .fx *,
     .group:hover .fx-flame,
     .group:hover .fx-zap,
-    .group:hover .fx-beat {
+    .group:hover .fx-beat,
+    .group:hover .fx-play {
         animation: none !important;
     }
 }

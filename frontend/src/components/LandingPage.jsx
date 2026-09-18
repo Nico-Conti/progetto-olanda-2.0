@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Play } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
@@ -50,6 +50,15 @@ const HoverFx = ({ kind }) => {
         <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
             <div className="fx-heat" />
             {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
+        </div>
+    );
+    if (kind === 'reel') return (
+        <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                <div className="fx-beam" />
+                <div className="fx-strip" style={{ top: '6px' }} />
+                <div className="fx-strip" style={{ bottom: '6px' }} />
+            </div>
         </div>
     );
     if (kind === 'ticker') return (
@@ -147,6 +156,59 @@ const FeatureCard = ({ feature, onClick }) => {
     );
 };
 
+/**
+ * The trailer, as a bubble in the landing page's top-left corner. It rests as
+ * the bare play badge - no card around it - and grows into a feature card the
+ * size of the ones in the grid on hover.
+ *
+ * Everything that moves is continuous, which is what makes it read as one
+ * gesture: width, height, padding, radius and the panel's own colours all
+ * interpolate. NOTHING here may switch a discrete property - an earlier version
+ * went `justify-center` -> `justify-between` on hover and the content jumped at
+ * the start of the transition, which no duration can smooth. The arrow is held
+ * right by `ml-auto` instead, which is true at every width.
+ *
+ * The expanded size is a LITERAL, not `w-full`/`h-full`: the corner wrapper is
+ * absolutely positioned and sized by this button, so a percentage has nothing
+ * to resolve against. w-72 is picked to survive the narrowest phone - `left-6`
+ * plus 288px still clears a 320px viewport, with 8px to spare - because the
+ * landing page's root is `overflow-hidden`, so a card that did not fit would be
+ * CLIPPED SILENTLY rather than showing up as page overflow. Its contents come to 276px inside
+ * that (px-6, the 48px badge, gap-4, the 144px label, the 20px arrow); widen
+ * the label and the arrow goes over the edge without a warning.
+ *
+ * Collapsed the label has zero width rather than being hidden, which is what
+ * lets it animate open; `overflow-hidden` keeps it out of sight meanwhile.
+ *
+ * It does NOT expand on keyboard focus - the expansion is decoration, the
+ * button carries its own label, and a focus ring says where you are.
+ */
+const TrailerCard = ({ onClick }) => (
+    <button
+        onClick={onClick}
+        aria-label={t('Watch the presentation')}
+        className="group hover-reel relative flex items-center justify-start overflow-hidden w-12 h-12 px-0 rounded-2xl bg-transparent border border-transparent transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:w-72 hover:h-24 hover:px-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+    >
+        <HoverFx kind="reel" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-cyan-500/20" />
+
+        <div className="flex items-center gap-4 relative z-10">
+            <div className="relative w-12 h-12 shrink-0 rounded-xl flex items-center justify-center border bg-cyan-500/10 border-cyan-500/20 group-hover:border-cyan-500/50 transition-colors">
+                <Play className="w-6 h-6 fill-current text-cyan-500 group-hover:text-cyan-400 transition-colors fx-play" />
+            </div>
+            <div className="text-left w-0 opacity-0 overflow-hidden whitespace-nowrap transition-all duration-300 group-hover:w-36 group-hover:opacity-100">
+                <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">
+                    {t('Presentation')}
+                </h3>
+                <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
+                    {t('24 seconds')}
+                </span>
+            </div>
+        </div>
+        <ArrowRight className="ml-auto w-0 opacity-0 shrink-0 text-zinc-600 group-hover:w-5 group-hover:opacity-100 group-hover:text-cyan-400 transition-all relative z-10" />
+    </button>
+);
+
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 /** `text` with everything from `revealed` on swapped for random glyphs (spaces and punctuation kept). */
@@ -189,6 +251,7 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
     const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves };
+    const [trailerOpen, setTrailerOpen] = React.useState(false);
     // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
     const { user } = useAccount();
     const favourites = (user?.user_metadata?.favourite_leagues ?? []).filter(l => availableLeagues.includes(l));
@@ -246,9 +309,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
             <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px] pointer-events-none"></div>
             <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
 
-            <div className="absolute top-4 left-4 z-20">
-                <Trailer />
+            <div className="absolute top-6 left-6 z-20 pointer-events-auto">
+                <TrailerCard onClick={() => setTrailerOpen(true)} />
             </div>
+            <Trailer open={trailerOpen} onClose={() => setTrailerOpen(false)} />
             <div className="absolute top-4 right-4 z-20 pointer-events-auto">
                 <AccountButton />
             </div>
