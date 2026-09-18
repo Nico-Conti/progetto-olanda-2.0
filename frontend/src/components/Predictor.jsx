@@ -18,6 +18,7 @@ import MatchStatsModal from './MatchStatsModal';
 import AccuracyReport from './AccuracyReport';
 import StatisticDistribution from './StatisticDistribution';
 import { staggerDelay } from '../utils/stagger';
+import { hasBet } from '../utils/bets';
 import { leagueMeta } from '../utils/leaguePickerFx';
 import { t, tk, dateLocale } from '../i18n';
 
@@ -699,7 +700,13 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                                             if (e.target.closest('select')) return;
                                             setSelectedMatch(match);
                                         }}
-                                        className="hover:bg-white/[0.04] transition-colors cursor-pointer group animate-waterfall"
+                                        // A fixture already in the slip is marked here too, so
+                                        // the same bet reads the same way on every screen. Tint
+                                        // only: preflight sets border-collapse, under which a
+                                        // box-shadow on a <tr> is not painted at all.
+                                        className={`transition-colors cursor-pointer group animate-waterfall ${hasBet(bets, match.home, match.away)
+                                            ? 'bg-emerald-500/20 hover:bg-emerald-500/25'
+                                            : 'hover:bg-white/[0.04]'}`}
                                     >
                                         <td className="pl-5 lg:pl-4 pr-2 py-4 whitespace-nowrap font-bold text-zinc-400 text-center tabular-nums w-[80px]">
                                             {kickoff(match)}

@@ -25,8 +25,9 @@ const Side = ({ team, logo, label }) => (
  * which league it is - logo, name, nation - over the nation's flag, washed in
  * behind the league.
  * `center` is the headline number between the teams; `children` go below.
+ * `inSlip` turns the whole card emerald - no badge, the colour is the signal.
  */
-const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, center, children }) => {
+const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, center, children, inSlip = false }) => {
     const { day, time } = kickoff(match.date);
     return (
         <div
@@ -35,7 +36,9 @@ const MatchCard = ({ match, rank, meta, teamLogos, onClick, style, overlay, cent
             onClick={onClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
             style={style}
-            className="group relative flex flex-col rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md shadow-xl overflow-hidden cursor-pointer transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 animate-waterfall"
+            className={`group relative flex flex-col rounded-2xl border backdrop-blur-md shadow-xl overflow-hidden cursor-pointer transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 animate-waterfall ${inSlip
+                ? 'border-emerald-400/60 bg-emerald-600/25 ring-2 ring-emerald-400/40 shadow-emerald-500/20 hover:bg-emerald-600/30 hover:border-emerald-300/70'
+                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'}`}
         >
             {overlay}
 

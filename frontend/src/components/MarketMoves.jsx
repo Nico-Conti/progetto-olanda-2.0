@@ -8,6 +8,7 @@ import Header from './Header';
 import StatisticSelector from './StatisticSelector';
 import MatchCard from './MatchCard';
 import MarketMovesGuide from './MarketMovesGuide';
+import { hasBet } from '../utils/bets';
 import { leagueMeta } from '../utils/leaguePickerFx';
 import { staggerDelay } from '../utils/stagger';
 import { t, dateLocale } from '../i18n';
@@ -89,7 +90,7 @@ const Tile = ({ label, value, tone = 'text-white' }) => (
     </div>
 );
 
-const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings }) => {
+const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, bets, onOpenBetSlip }) => {
     const [tab, setTab] = useState('movers');
     const { nGames, useGeneralStats, forceMean } = modelSettings;
     const market = MARKET_FOR_STAT[resolveStatKey(selectedStatistic)];
@@ -183,6 +184,9 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                 )}
                 onLogoClick={onBack}
                 showSound={true}
+                showBetSlip={true}
+                betsCount={bets?.length ?? 0}
+                onOpenBetSlip={onOpenBetSlip}
                 pageName={(
                     <h1 className="text-lg font-black tracking-tight text-white leading-none">
                         {title[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">{title.slice(1).join(' ')}</span>
@@ -249,6 +253,7 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                                     rank={idx + 1}
                                     meta={leagueMeta(leagues, f.league)}
                                     teamLogos={teamLogos}
+                                    inSlip={hasBet(bets, f.home, f.away)}
                                     style={{ animationDelay: staggerDelay(idx) }}
                                     onClick={() => onMatchClick?.(f)}
                                     center={(

@@ -457,6 +457,8 @@ export default function App() {
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
+            bets={bets}
+            onOpenBetSlip={() => setIsBetSlipOpen(true)}
             onMatchClick={(match) => openMatchFrom(match, 'hot-matches', tk('Back to Hot Matches'))}
           />
         </div>
@@ -472,6 +474,8 @@ export default function App() {
             matchData={currentSeasonMatchData}
             onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
             onBack={() => handleViewChange('landing')}
+            bets={bets}
+            onOpenBetSlip={() => setIsBetSlipOpen(true)}
             onMatchClick={(match) => openMatchFrom(match, 'market-moves', tk('Back to Market Moves'))}
           />
         </div>

@@ -13,8 +13,8 @@ import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import Header from './Header';
 import { staggerDelay } from '../utils/stagger';
-import GlowBorder from './originkit/GlowBorder';
 import MatchCard from './MatchCard';
+import { hasBet } from '../utils/bets';
 import { leagueMeta } from '../utils/leaguePickerFx';
 import { t, tk, tx, dateLocale } from '../i18n';
 
@@ -88,7 +88,7 @@ const DEFAULT_PREFS = {
     maxPrice: null,
 };
 
-const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean }) => {
+const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLogos, leagues, selectedStatistic, onStatisticChange, onBack, onMatchClick, modelSettings, setNGames, setUseGeneralStats, setForceMean, bets, onOpenBetSlip }) => {
     const [prefs, setPrefs] = usePersistedPrefs(STORAGE_KEY, DEFAULT_PREFS);
     const {
         displayCount, selectedLeagues, selectedDate, rankBy, maxPrice,
@@ -237,6 +237,9 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                 onLogoClick={onBack}
                 showSound={true}
                 pageName={pageName}
+                showBetSlip={true}
+                betsCount={bets?.length ?? 0}
+                onOpenBetSlip={onOpenBetSlip}
             >
                 <StatisticSelector
                     value={selectedStatistic}
@@ -546,22 +549,9 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 rank={idx + 1}
                                 meta={leagueMeta(leagues, match.league)}
                                 teamLogos={teamLogos}
+                                inSlip={hasBet(bets, match.home, match.away)}
                                 style={{ animationDelay: staggerDelay(idx) }}
                                 onClick={() => onMatchClick && onMatchClick(match)}
-                                // The #1 pick gets a travelling emerald edge. One card
-                                // only: the border runs its own animation frame loop.
-                                overlay={idx === 0 && (
-                                    <div className="absolute inset-0 z-10 pointer-events-none">
-                                        <GlowBorder
-                                            glowColor="#34d399"
-                                            tailColor="rgba(52, 211, 153, 0.35)"
-                                            baseColor="rgba(255, 255, 255, 0)"
-                                            borderWidth={1.5}
-                                            speed={6}
-                                            style={{ borderRadius: 16 }}
-                                        />
-                                    </div>
-                                )}
                                 center={(
                                     <>
                                         <div className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]">
