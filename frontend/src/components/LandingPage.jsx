@@ -232,6 +232,13 @@ const ScrambleText = ({ text, delay = 300, duration = 1500 }) => {
 };
 
 const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
+    // `loadError` is the MATCH fetch failing, and this page no longer needs it -
+    // the picker fills from the League table. Offering a retry while holding a
+    // perfectly good list of leagues is what Google's renderer screenshotted on
+    // 2026-09-18: it got the shell, did not finish the 5.5MB request, and the
+    // page reported failure over a picker it could have used. The error belongs
+    // here only when there is nothing to offer.
+    const stuck = loadError && availableLeagues.length === 0;
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
@@ -368,10 +375,10 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                             // visitor, and to a crawler that will not wait out a 42s
                             // start. The button becomes the retry rather than sitting
                             // disabled beside an error nobody can act on.
-                            onClick={loadError ? onRetry : openModal}
+                            onClick={stuck ? onRetry : openModal}
                             onMouseEnter={() => setLeagueHover(true)}
                             onMouseLeave={() => setLeagueHover(false)}
-                            disabled={availableLeagues.length === 0 && !loadError}
+                            disabled={availableLeagues.length === 0 && !stuck}
                             className="group relative w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                         >
                             {/* A champion's glory, the gold counterpart of the fire,
@@ -416,10 +423,10 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                                 </div>
                                 <div className="text-left">
                                     <h3 className="text-lg font-bold text-white fx-gold-text">
-                                        {loadError ? t('Try again') : t('Select Your League')}
+                                        {stuck ? t('Try again') : t('Select Your League')}
                                     </h3>
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
-                                        {loadError
+                                        {stuck
                                             ? t('Could not load the data')
                                             : availableLeagues.length > 0
                                                 ? t('{leagues} leagues · {nations} nations', { leagues: availableLeagues.length, nations: nations.length })
