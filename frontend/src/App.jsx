@@ -44,7 +44,7 @@ export default function App() {
   // a past one. The Predictor always stays on the current season.
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
-  const { matchData, fixturesData, teamLogos, leagues, loading } = useMatchData();
+  const { matchData, fixturesData, teamLogos, leagues, loading, error, refetch } = useMatchData();
   // Where Back on a team page leads: one entry per team page opened, holding
   // the tab, team page and open match it was opened from, so hopping from
   // opponent to opponent unwinds one step at a time and a badge clicked on a
@@ -416,6 +416,8 @@ export default function App() {
         <LandingPage
           availableLeagues={availableLeagues}
           leaguesData={leagues}
+          loadError={error}
+          onRetry={refetch}
           onSelectLeague={handleLeagueChange}
           onOpenTopCorners={() => handleViewChange('hot-matches')}
           onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}

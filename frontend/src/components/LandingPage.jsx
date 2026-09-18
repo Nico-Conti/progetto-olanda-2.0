@@ -13,6 +13,23 @@ import { t, tk, countryName } from '../i18n';
 const SUBTITLE = tk('Advanced football analytics.');
 const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
 
+// What the site is, in prose. Deliberately independent of the API: the league
+// picker and the feature cards say nothing at all until /leagues answers, and a
+// cold Render instance answers nothing for ~42s - so a first visitor, and every
+// crawler, met a page with no readable content on it. This is the part that is
+// always here. Keep it free of counts that live in config.py; the picker already
+// shows the league total from live data, and a second hardcoded one would drift.
+const ABOUT_LEAD = tk('Expected corners, goals, cards and fouls for every upcoming fixture, built from years of results and set against the line the bookmaker is offering - then scored against what actually happened.');
+const ABOUT_FACTS = [tk('Match data since 2014'), tk('Corners, goals, cards, fouls'), tk('Published backtest')];
+
+// Who runs this and how to reach them. A site that asks for a password while
+// saying nothing about who operates it is the shape of a phishing page, which
+// is what a Safe Browsing reviewer is looking for; the second line also puts on
+// the record that this is editorial, not a book taking money.
+const CONTACT_EMAIL = 'info@progettoolanda.it';
+const FOOTER_DISCLAIMER = tk('Statistics and models, published for information. No bets are taken or handled on this site.');
+const FOOTER_PRIVACY = tk('An account stores your email, username, favourite leagues and saved slips. Never sold, never shared for advertising.');
+
 /**
  * Randomised placement and timing for the hover particles, drawn once at load
  * rather than during render: re-randomising on every render would restart the
@@ -245,7 +262,7 @@ const ScrambleText = ({ text, delay = 300, duration = 1500 }) => {
     );
 };
 
-const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
+const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
     const [isLeagueModalOpen, setIsLeagueModalOpen] = React.useState(false);
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
@@ -318,12 +335,22 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
             </div>
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 w-full relative z-10 pointer-events-none">
-                <div className="max-w-4xl w-full text-center space-y-12 pointer-events-none">
+                <div className="max-w-4xl w-full text-center space-y-6 pointer-events-none">
 
                     {/* Header */}
-                    <div className="space-y-4 animate-waterfall">
+                    <div className="space-y-3 animate-waterfall">
+                        {/* The crest is sized by VIEWPORT HEIGHT, not width. The page
+                            is meant to fit one screen, and the content floor is 779px;
+                            a fixed w-32 costs 32px more than that and puts a 1440x780
+                            laptop back into scrolling. Above 820px there is slack for
+                            it - which is the gap that otherwise opens between the
+                            description and the footer. */}
                         <div className="inline-flex items-center justify-center">
-                            <img src="/logo.png" alt="Logo" className="w-32 h-32 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                            <img
+                                src="/logo.png"
+                                alt="Logo"
+                                className="w-24 h-24 [@media(min-height:820px)]:w-32 [@media(min-height:820px)]:h-32 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"
+                            />
                         </div>
                         <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-white">
                             Progetto<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Olanda 2.0</span>
@@ -335,21 +362,47 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                     <span key={i} style={{ '--i': i }}>{char}</span>
                                 ))}
                             </span>
-                            <br />
-                            <span className="text-zinc-500">{t('Select a league to begin male pisello...')}</span>
                         </p>
+                    </div>
+
+                    {/* See ABOUT_LEAD. Typographic rather than boxed - a hairline,
+                        two paragraphs falling away in contrast, then the facts in
+                        small caps - so it reads as a standfirst introducing the
+                        cards and not as another panel competing with them. */}
+                    <div className="max-w-2xl mx-auto animate-waterfall" style={{ animationDelay: '100ms' }}>
+                        <div className="mx-auto h-px w-24 bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" aria-hidden="true" />
+                        <p className="mt-3 text-zinc-400 text-sm md:text-base leading-relaxed">
+                            {t(ABOUT_LEAD)}
+                        </p>
+                        <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">
+                            {/* The separator TRAILS its item rather than leading the
+                                next one: the row wraps to three lines at 390px, and a
+                                leading slash would start each of them. */}
+                            {ABOUT_FACTS.map((fact, i) => (
+                                <li key={fact} className="flex items-center gap-3">
+                                    {t(fact)}
+                                    {i < ABOUT_FACTS.length - 1 && <span aria-hidden="true" className="text-zinc-700">/</span>}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
 
                     {/* League Selection */}
                     <div
                         className="w-full max-w-md mx-auto pointer-events-auto animate-waterfall"
-                        style={{ animationDelay: '100ms' }}
+                        style={{ animationDelay: '200ms' }}
                     >
                         <button
-                            onClick={openModal}
+                            // `loading` is handled upstream (App renders its own
+                            // loader), so reaching here with nothing means the fetch
+                            // FAILED - which is what a cold Render instance does to a
+                            // visitor, and to a crawler that will not wait out a 42s
+                            // start. The button becomes the retry rather than sitting
+                            // disabled beside an error nobody can act on.
+                            onClick={loadError ? onRetry : openModal}
                             onMouseEnter={() => setLeagueHover(true)}
                             onMouseLeave={() => setLeagueHover(false)}
-                            disabled={availableLeagues.length === 0}
+                            disabled={availableLeagues.length === 0 && !loadError}
                             className="group relative w-full flex items-center justify-between gap-4 p-6 bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/10 hover:border-amber-500/50 rounded-2xl transition duration-300 hover:shadow-[0_0_28px_rgba(245,158,11,0.2)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                         >
                             {/* A champion's glory, the gold counterpart of the fire,
@@ -394,12 +447,14 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                                 </div>
                                 <div className="text-left">
                                     <h3 className="text-lg font-bold text-white fx-gold-text">
-                                        {t('Select Your League')}
+                                        {loadError ? t('Try again') : t('Select Your League')}
                                     </h3>
                                     <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider group-hover:text-zinc-400">
-                                        {availableLeagues.length > 0
-                                            ? t('{leagues} leagues · {nations} nations', { leagues: availableLeagues.length, nations: nations.length })
-                                            : t('No leagues found - activate backend')}
+                                        {loadError
+                                            ? t('Could not load the data')
+                                            : availableLeagues.length > 0
+                                                ? t('{leagues} leagues · {nations} nations', { leagues: availableLeagues.length, nations: nations.length })
+                                                : t('No leagues available')}
                                     </span>
                                 </div>
                             </div>
@@ -427,11 +482,10 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
                         )}
                     </div>
 
-
                     {/* Feature Buttons */}
                     <div
                         className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 animate-waterfall pointer-events-auto"
-                        style={{ animationDelay: '200ms' }}
+                        style={{ animationDelay: '300ms' }}
                     >
                         {FEATURES.map(feature => (
                             <FeatureCard
@@ -446,10 +500,34 @@ const LandingPage = ({ availableLeagues, leaguesData, onSelectLeague, onOpenTopC
 
             {/* Footer */}
             <div
-                className="py-8 text-center text-zinc-600 text-base uppercase tracking-widest opacity-100 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
-                style={{ fontFamily: "'Silkscreen', monospace", animationDelay: '300ms', animationFillMode: 'backwards' }}
+                className="py-4 px-4 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-700"
+                style={{ animationDelay: '300ms', animationFillMode: 'backwards' }}
             >
-                <ScrambleText text={t('Powered by {names}.', { names: CREDIT_NAMES })} />
+                <div
+                    className="text-center text-zinc-600 text-base uppercase tracking-widest"
+                    style={{ fontFamily: "'Silkscreen', monospace" }}
+                >
+                    <ScrambleText text={t('Powered by {names}.', { names: CREDIT_NAMES })} />
+                </div>
+
+                {/* See FOOTER_DISCLAIMER. Deliberately NOT in Silkscreen: the credits
+                    are decoration and this is meant to be read. pointer-events-auto is
+                    required - the page root turns them off and the mailto would
+                    inherit that, leaving a link nothing can click. */}
+                <div className="pointer-events-auto mx-auto mt-3 max-w-2xl space-y-1.5 text-center text-xs leading-relaxed text-zinc-600">
+                    <p>
+                        <span className="text-zinc-500">Progetto Olanda 2.0</span>
+                        <span aria-hidden="true" className="mx-2 text-zinc-700">/</span>
+                        <a
+                            href={`mailto:${CONTACT_EMAIL}`}
+                            className="text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60"
+                        >
+                            {CONTACT_EMAIL}
+                        </a>
+                    </p>
+                    <p>{t(FOOTER_DISCLAIMER)}</p>
+                    <p>{t(FOOTER_PRIVACY)}</p>
+                </div>
             </div>
 
             <TrophyIntro

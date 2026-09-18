@@ -81,10 +81,20 @@ export default {
     "Best Matchups": "Migliori sfide",
     "Winning Factor": "Fattore vincente",
     "Bet Analysis": "Analisi scommesse",
-    "Select a league to begin male pisello...": "Seleziona un campionato per iniziare male pisello...",
     "Select Your League": "Scegli il tuo campionato",
     "{leagues} leagues · {nations} nations": "{leagues} campionati · {nations} nazioni",
-    "No leagues found - activate backend": "Nessun campionato trovato - avvia il backend",
+    "No leagues available": "Nessun campionato disponibile",
+    "Expected corners, goals, cards and fouls for every upcoming fixture, built from years of results and set against the line the bookmaker is offering - then scored against what actually happened.":
+        "Corner, gol, cartellini e falli attesi per ogni partita in programma, costruiti su anni di risultati e messi a confronto con la linea del bookmaker - poi verificati su ciò che è successo davvero.",
+    "Match data since 2014": "Dati dal 2014",
+    "Corners, goals, cards, fouls": "Corner, gol, cartellini, falli",
+    "Published backtest": "Backtest pubblico",
+    "Statistics and models, published for information. No bets are taken or handled on this site.":
+        "Statistiche e modelli, pubblicati a scopo informativo. Su questo sito non si accettano né si gestiscono scommesse.",
+    "An account stores your email, username, favourite leagues and saved slips. Never sold, never shared for advertising.":
+        "Un account conserva email, username, campionati preferiti e le schedine salvate. Mai venduti, mai condivisi a fini pubblicitari.",
+    "Try again": "Riprova",
+    "Could not load the data": "Impossibile caricare i dati",
     "Powered by {names}.": "Realizzato da {names}.",
     "Back to nations": "Torna alle nazioni",
     "Select Nation": "Scegli la nazione",
