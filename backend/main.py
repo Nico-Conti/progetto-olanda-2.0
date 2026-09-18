@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
+import json
+import time
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
@@ -175,25 +177,55 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
             
     return all_rows
 
+# Read-through cache for the read endpoints.
+#
+# The cost here is NOT the wire. /matches is 5.5MB of JSON but 510KB once
+# compressed, and the two measured within 0.2s of each other: it is SERVER time.
+# PostgREST caps a page at 1000 rows, so 7,047 matches is eight sequential
+# Supabase round trips, assembled on a 0.1-CPU free instance - 11 seconds, every
+# time, for data the scraper only changes once a day.
+#
+# The cache holds the SERIALISED body, so a hit also skips re-encoding 7,000
+# rows. Cost is ~7MB of memory against the instance's 512MB.
+#
+# Deliberately NOT applied to /odds or /odds/moves: those are time-sensitive
+# (the window is `now - ODDS_LOOKBACK_HOURS`), so a cached answer would be wrong
+# rather than merely stale.
+CACHE_TTL_SECONDS = 30 * 60
+_response_cache: Dict[str, Any] = {}
+
+
+def cached_json(key, build):
+    """`build()`'s result as JSON, remembered for CACHE_TTL_SECONDS."""
+    hit = _response_cache.get(key)
+    if hit and hit[0] > time.monotonic():
+        return Response(content=hit[1], media_type="application/json")
+    # Compact separators, as Starlette's own JSONResponse uses. The default
+    # ", " / ": " added ~10% to every response - 6.05MB against 5.51MB on
+    # /matches - for whitespace nothing reads.
+    body = json.dumps(build(), separators=(",", ":")).encode()
+    _response_cache[key] = (time.monotonic() + CACHE_TTL_SECONDS, body)
+    return Response(content=body, media_type="application/json")
+
+
 @app.get("/teams")
 def get_teams():
     try:
-        data = fetch_all_data("squads")
-        return data
+        return cached_json("teams", lambda: fetch_all_data("squads"))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/matches")
 def get_matches():
     try:
-        return fetch_all_data("matches", columns=MATCH_COLUMNS)
+        return cached_json("matches", lambda: fetch_all_data("matches", columns=MATCH_COLUMNS))
     except Exception as narrow_error:
         # If the schema does not match the column list above (a renamed or
         # missing column makes PostgREST reject the whole query), fall back to
         # the full row rather than failing the request.
         print(f"⚠️  Narrow /matches select failed ({narrow_error}); falling back to select(*)")
         try:
-            return fetch_all_data("matches")
+            return cached_json("matches", lambda: fetch_all_data("matches"))
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -211,9 +243,8 @@ FIXTURE_COLUMNS = ",".join([
 @app.get("/fixtures")
 def get_fixtures():
     try:
-        data = fetch_all_data("fixtures", "match_date", desc=False,
-                              columns=FIXTURE_COLUMNS)
-        return data
+        return cached_json("fixtures", lambda: fetch_all_data(
+            "fixtures", "match_date", desc=False, columns=FIXTURE_COLUMNS))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -325,8 +356,7 @@ def get_odds_moves(market: str, days: int = 14):
 @app.get("/leagues")
 def get_leagues():
     try:
-        response = get_supabase().table("League").select("*").execute()
-        return response.data
+        return cached_json("leagues", lambda: get_supabase().table("League").select("*").execute().data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
