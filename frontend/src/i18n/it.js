@@ -206,7 +206,7 @@ export default {
     "Probability the total goes over the configured line, from the fitted distribution.": "Probabilità che il totale superi la linea impostata, dalla distribuzione stimata.",
     "Bet builder": "Crea scommessa",
     "Hot match: 15% above the league average": "Partita calda: 15% sopra la media del campionato",
-    "Home/Away": "Casa/Trasferta",
+    "Home/Away": "Casa/Fuori",
     "Auto": "Auto",
     "Last 3": "Ultime 3",
     "Last 5": "Ultime 5",

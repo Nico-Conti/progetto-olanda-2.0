@@ -5,9 +5,17 @@ import { VOLATILE_STATS } from '../../utils/stats';
 import { halfLifeFor } from '../../utils/statistics';
 import { t, tk } from '../../i18n';
 
-/** A small uppercase label beside its control. */
+/**
+ * A small uppercase label beside its control.
+ *
+ * `flex-wrap` so the label drops ABOVE the control rather than pushing it off
+ * the edge. Everything inside is `whitespace-nowrap`, so without it a Group
+ * cannot shrink at all: measured at 390px, Trend came to 385px against 316px
+ * available in Italian ("ANDAMENTO" is 72px to "TREND"'s 38px). It wraps only
+ * when a line is genuinely short of room, so desktop is untouched.
+ */
 export const Group = ({ label, children }) => (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{label}</span>
         {children}
     </div>
@@ -15,9 +23,13 @@ export const Group = ({ label, children }) => (
 
 const translated = (items) => items.map(item => ({ ...item, label: t(item.label) }));
 
+// Short labels on purpose: two pills plus their group label have to fit 316px
+// on a phone, and the Italian of the long forms did not - "Tutte le partite"
+// alone is ~95px. `All` rather than `All games` because the latter is also a
+// FormPanel heading, where "Tutte" would read wrong.
 const TREND = [
     { id: 'venue', label: tk('Home/Away') },
-    { id: 'all', label: tk('All games') },
+    { id: 'all', label: tk('All') },
 ];
 const CALC = [
     { id: 'auto', label: tk('Auto') },
