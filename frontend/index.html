@@ -4,11 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Silkscreen:wght@400;700&display=swap"
-    rel="stylesheet">
+  <!-- Fonts are self-hosted (see src/fonts.css). Inter's latin file is on the
+       critical path for every page, so it is preloaded; `crossorigin` is required
+       on a font preload even same-origin, and without it the file is fetched
+       twice. Everything else is left for the CSS to pull in. -->
+  <link rel="preload" href="/fonts/inter-100-900-latin.woff2" as="font" type="font/woff2" crossorigin>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Google Search Console ownership, for the Security Issues panel. URL-prefix
        property: netlify.app DNS is not ours, so DNS verification is not available.
@@ -21,8 +21,8 @@
   <!-- Social preview. og:image and og:url must be ABSOLUTE, so they carry the host:
        BOTH HAVE TO CHANGE the day the site moves to progettoolanda.it, or every
        shared link keeps pointing its preview at the old one. poster.jpg is the
-       trailer's 1920x1080 still - the right shape for a card, and otherwise unused
-       since the trailer stopped being a bubble with a poster behind it. -->
+       trailer's own 1920x1080 still, which is the right shape for a preview card -
+       so it is shared with LandingPage's trailer button, not a copy. -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Progetto Olanda 2.0" />
   <meta property="og:title" content="Progetto Olanda 2.0" />
