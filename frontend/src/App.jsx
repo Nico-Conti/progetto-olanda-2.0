@@ -7,6 +7,7 @@ import HighestWinningFactor from './components/HighestWinningFactor';
 import MarketMoves from './components/MarketMoves';
 import TransitionAnimation from './components/TransitionAnimation';
 import LeagueStinger from './components/LeagueStinger';
+import PitchLoader from './components/PitchLoader';
 import { leagueMeta } from './utils/leaguePickerFx';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import { useMatchData } from './hooks/useMatchData';
@@ -24,11 +25,7 @@ import Standings from './components/Standings';
 import Select from './components/ui/Select';
 import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
-import { cssMs } from './hooks/usePresence';
 import { t, tk, useLanguage, setLanguage } from './i18n';
-
-// Per-dot pulse order for the loading screen's matrix loader (transitions.dev #31).
-const MATRIX_TWINKLE = [7, 2, 11, 5, 14, 9, 0, 12, 3, 15, 6, 10, 13, 1, 8, 4];
 
 const TABS = [
   { id: 'predictor', label: tk('Predictor'), Icon: Calculator },
@@ -351,22 +348,7 @@ export default function App() {
   const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
   const allStats = useMemo(() => processData(currentSeasonMatchData, selectedStatistic), [currentSeasonMatchData, selectedStatistic]);
 
-  if (loading) {
-    // transitions.dev matrix loader, "twinkle" variant, dots scaled up from 2px.
-    const cycle = cssMs('--matrix-cycle', 1200);
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5">
-        <div className="t-matrix [grid-template-columns:repeat(4,6px)] auto-rows-[6px] gap-[5px]" aria-hidden="true">
-          {MATRIX_TWINKLE.map((order, i) => (
-            <i key={i} className="rounded-full" style={{ '--d': Math.round(order * (cycle / 16)) }} />
-          ))}
-        </div>
-        <span className="t-shimmer text-sm font-semibold uppercase tracking-widest" data-text={t('Loading matches')}>
-          {t('Loading matches')}
-        </span>
-      </div>
-    );
-  }
+  if (loading) return <PitchLoader />;
 
 
   const transitionCues = {

@@ -902,3 +902,31 @@ input[type=number] {
 @media (prefers-reduced-motion: reduce) {
     .stadium-photo, .stadium-photo.is-loaded { transition: none; animation: none; scale: 1; }
 }
+
+/* Loading screen (PitchLoader, from the simulatore branch): the pitch lines
+   draw themselves in turn, the turf and players fade in, each headline rises.
+   Only the loader's rules were taken - the match animations it sits beside on
+   that branch belong to the simulator, which is not merged. */
+.pitch-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: pitch-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes pitch-draw { to { stroke-dashoffset: 0; } }
+
+.pitch-turf { animation: pitch-fade 900ms ease both; }
+@keyframes pitch-fade { from { opacity: 0; } }
+
+.pitch-player {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pitch-player 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pitch-player { from { opacity: 0; scale: 0; } }
+
+.pitch-headline { animation: pitch-headline 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes pitch-headline { from { opacity: 0; translate: 0 100%; filter: blur(4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .pitch-line, .pitch-turf, .pitch-player, .pitch-headline { animation: none; stroke-dashoffset: 0; }
+}
