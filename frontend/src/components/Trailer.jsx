@@ -4,7 +4,7 @@ import { t } from '../i18n';
 
 // Unlisted upload on the Ciusbe channel. youtube-nocookie keeps YouTube from
 // setting cookies until someone actually presses play.
-const YOUTUBE_ID = 'a_QgKWbR_Ew';
+const YOUTUBE_ID = 'TDn8pOdZpDA';
 const EMBED = `https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
 
 /**
