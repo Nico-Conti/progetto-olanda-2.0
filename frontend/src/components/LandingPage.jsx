@@ -1,10 +1,11 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Play } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Play, Ticket } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
+import FireBorder from './FireBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
@@ -87,6 +88,12 @@ const HoverFx = ({ kind }) => {
             {TICKS.map(({ style, text }, i) => <span key={i} className="fx-tick" style={style}>{text}</span>)}
         </div>
     );
+    if (kind === 'gold') return (
+        <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
+            <div className="fx-glint" style={{ '--glint': 'rgb(252 211 77 / 0.2)' }} />
+            {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
+        </div>
+    );
     return null;
 };
 
@@ -114,15 +121,23 @@ const FEATURES = [
         icon: 'text-emerald-500 group-hover:text-emerald-400', iconFx: 'fx-beat',
         title: 'group-hover:text-emerald-300', arrow: 'group-hover:text-emerald-400',
     },
+    {
+        id: 'bonus', label: tk('Bonus Planner'), caption: tk('Best Bonus Slips'), Icon: Ticket, fx: 'gold',
+        card: 'hover-gold', glow: 'bg-amber-500/20',
+        iconBox: 'bg-amber-500/10 border-amber-500/20 group-hover:border-amber-500/50',
+        icon: 'text-amber-400 group-hover:text-amber-300', iconFx: 'fx-ticket',
+        title: 'group-hover:text-amber-300', arrow: 'group-hover:text-amber-400',
+    },
 ];
 
 const FeatureCard = ({ feature, onClick }) => {
     const { Icon } = feature;
-    // The electric border redraws a canvas every frame, so it only exists while
+    // The electric and fire borders redraw a canvas every frame, so they only exist while
     // hovered (plus its fade-out); the CSS effects just pause instead.
     const [hovered, setHovered] = React.useState(false);
     const [reducedMotion] = React.useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const electric = usePresence(!reducedMotion && feature.fx === 'lightning' && hovered, '--fx-fade-out');
+    const burning = usePresence(!reducedMotion && feature.fx === 'fire' && hovered, '--fx-fade-out');
 
     return (
         <button
@@ -144,6 +159,11 @@ const FeatureCard = ({ feature, onClick }) => {
                         speed={1.2}
                         borderRadius={16}
                     />
+                </div>
+            )}
+            {burning && (
+                <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
+                    <FireBorder borderRadius={16} density={1.2} height={0.7} />
                 </div>
             )}
             <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none ${feature.glow}`} />
@@ -231,7 +251,7 @@ const ScrambleText = ({ text, delay = 300, duration = 1500 }) => {
     );
 };
 
-const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
+const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves, onOpenBonusPlanner }) => {
     // `loadError` is the MATCH fetch failing, and this page no longer needs it -
     // the picker fills from the League table. Offering a retry while holding a
     // perfectly good list of leagues is what Google's renderer screenshotted on
@@ -243,7 +263,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
-    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves };
+    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves, bonus: onOpenBonusPlanner };
     const [trailerOpen, setTrailerOpen] = React.useState(false);
     // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
     const { user } = useAccount();
@@ -460,7 +480,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 animate-waterfall pointer-events-auto"
+                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 animate-waterfall pointer-events-auto"
                         style={{ animationDelay: '300ms' }}
                     >
                         {FEATURES.map(feature => (

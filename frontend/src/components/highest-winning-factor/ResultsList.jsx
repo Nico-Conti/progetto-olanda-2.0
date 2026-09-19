@@ -1,10 +1,48 @@
 import React from 'react';
-import { Trophy, Minus, Plus, X, Check } from 'lucide-react';
+import { Trophy, Minus, Plus, Check } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import Select from '../ui/Select';
 import LeagueTag from '../LeagueTag';
 import { flagWash, leagueMeta } from '../../utils/leaguePickerFx';
+import { staggerDelay } from '../../utils/stagger';
+import { useCountUp } from '../../hooks/useCountUp';
 import { t, dateLocale } from '../../i18n';
+
+const rateText = (r) => (r >= 80 ? 'text-emerald-500' : r >= 60 ? 'text-emerald-400' : r >= 40 ? 'text-yellow-500' : 'text-red-500');
+const rateBar = (r) => (r >= 80 ? 'bg-emerald-500' : r >= 60 ? 'bg-emerald-400' : r >= 40 ? 'bg-yellow-500' : 'bg-red-500');
+
+/** Win rate, counted up, with a bar that fills beside it. */
+const WinRate = ({ rate, bar = true }) => {
+    const shown = useCountUp(rate, 900);
+    return (
+        <div className="flex items-center justify-center gap-2">
+            {bar && (
+                <div className="hm-bar w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${rateBar(rate)}`} style={{ width: `${rate}%` }} />
+                </div>
+            )}
+            <span className={`font-black text-lg tabular-nums ${rateText(rate)}`}>{shown.toFixed(0)}%</span>
+        </div>
+    );
+};
+
+/** Top three ranks in the page's gradient. */
+const Rank = ({ index }) => (
+    <span className={`font-mono font-black ${index < 3 ? 'bp-gold-text text-lg' : 'text-zinc-500'}`}>#{index + 1}</span>
+);
+
+/** The planner's add button: green with a tick once on the slip, red on hover to take it off. */
+const AddButton = ({ slip, team }) => (
+    <button
+        onClick={slip.toggle}
+        aria-label={slip.added ? t('Remove {team} from the slip', { team }) : t('Add {team} to the slip', { team })}
+        className={`bp-add ${slip.added ? 'bp-add-on' : ''}`}
+    >
+        <span key={slip.added ? 'on' : 'off'} className="bp-add-icon">
+            {slip.added ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        </span>
+    </button>
+);
 
 const ResultsList = ({
     rankedTeams,
@@ -22,13 +60,13 @@ const ResultsList = ({
     selectedStatistic,
     operator,
     threshold,
-    onTeamClick
+    onTeamClick,
+    dealKey
 }) => {
     const [expandedTeam, setExpandedTeam] = React.useState(null);
 
     // The bet a team's row adds: its next fixture, the side it plays, and the
-    // over/under being ranked. `added` is any bet on that game and side (the
-    // button's colour); `exact` is this very selection (its icon).
+    // over/under being ranked. `added` is any bet on that game and side.
     const slipFor = (team) => {
         const next = team.nextMatch;
         const game = next ? `${next.home} vs ${next.away}` : team.team;
@@ -40,7 +78,6 @@ const ResultsList = ({
         const added = Boolean(bets?.some(onGame));
         return {
             added,
-            exact: Boolean(bets?.some(b => onGame(b) && b.option === option && b.value === threshold)),
             toggle: (e) => {
                 e.stopPropagation();
                 if (added) removeFromBet(game, selectedStatistic, side);
@@ -69,17 +106,17 @@ const ResultsList = ({
     }, [nGames]);
 
     return (
-        <GlassPanel className="rounded-2xl overflow-hidden">
+        <GlassPanel className="rounded-2xl overflow-hidden !bg-zinc-900/55 !border-white/10">
             <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-black text-white flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-500" />
+                        <Trophy className="w-5 h-5 text-purple-300" />
                         {t('Top')}
                     </h2>
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => setDisplayLimit(prev => Math.max(1, prev - 1))}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                            className="bp-step !w-8 !h-8 !rounded-lg"
                         >
                             <Minus className="w-3 h-3" />
                         </button>
@@ -95,7 +132,7 @@ const ResultsList = ({
 
                         <button
                             onClick={() => setDisplayLimit(prev => Math.min(20, prev + 1))}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                            className="bp-step !w-8 !h-8 !rounded-lg"
                         >
                             <Plus className="w-3 h-3" />
                         </button>
@@ -116,7 +153,7 @@ const ResultsList = ({
                                     return Math.max(1, val - 1);
                                 });
                             }}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                            className="bp-step !w-8 !h-8 !rounded-lg"
                         >
                             <Minus className="w-3 h-3" />
                         </button>
@@ -138,7 +175,7 @@ const ResultsList = ({
                                     return prev + 1;
                                 });
                             }}
-                            className="p-1.5 rounded-md bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+                            className="bp-step !w-8 !h-8 !rounded-lg"
                         >
                             <Plus className="w-3 h-3" />
                         </button>
@@ -147,17 +184,18 @@ const ResultsList = ({
             </div>
 
             {/* Mobile View (Cards) */}
-            <div className="md:hidden space-y-3 p-4">
+            <div key={dealKey} className="md:hidden space-y-3 p-4">
                 {rankedTeams.slice(0, displayLimit).map((team, index) => {
                     const meta = leagueMeta(leagues, team.league);
                     const slip = slipFor(team);
                     return (
                     <div
                         key={team.team}
-                        className="flex flex-col gap-2"
+                        className="bp-leg flex flex-col gap-2"
+                        style={{ animationDelay: staggerDelay(index) }}
                     >
                         <div
-                            className={`relative overflow-hidden bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5'}`}
+                            className={`relative overflow-hidden bg-zinc-900/40 border rounded-xl p-4 flex flex-col gap-3 transition-colors cursor-pointer ${expandedTeam === team.team ? 'border-purple-400/30 bg-purple-500/5' : 'border-white/5'}`}
                             onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
                         >
                             {(meta.flag || meta.bands) && (
@@ -169,7 +207,7 @@ const ResultsList = ({
                             )}
                             <div className="relative flex justify-between items-start gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                    <span className="font-mono text-zinc-500 font-bold">#{index + 1}</span>
+                                    <Rank index={index} />
                                     <img
                                         src={teamLogos[team.team]}
                                         alt=""
@@ -180,16 +218,7 @@ const ResultsList = ({
                                         <LeagueTag meta={meta} />
                                     </div>
                                 </div>
-                                <button
-                                    onClick={slip.toggle}
-                                    aria-label={slip.exact ? t('Remove {team} from the slip', { team: team.team }) : t('Add {team} to the slip', { team: team.team })}
-                                    className={`shrink-0 p-2 rounded-lg transition ${slip.added
-                                        ? 'bg-red-500/20 text-red-500 border border-red-500/50'
-                                        : 'bg-white/5 text-zinc-400'
-                                        }`}
-                                >
-                                    {slip.exact ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                                </button>
+                                <AddButton slip={slip} team={team.team} />
                             </div>
 
                             <div className="relative grid grid-cols-2 gap-3">
@@ -199,13 +228,7 @@ const ResultsList = ({
                                 </div>
                                 <div className="bg-zinc-950/50 rounded-lg p-2 text-center border border-white/5">
                                     <span className="text-[10px] uppercase text-zinc-500 font-bold block mb-1">{t('Win Rate')}</span>
-                                    <span className={`font-black ${team.winRate >= 80 ? 'text-emerald-500' :
-                                        team.winRate >= 60 ? 'text-emerald-400' :
-                                            team.winRate >= 40 ? 'text-yellow-500' :
-                                                'text-red-500'
-                                        }`}>
-                                        {team.winRate.toFixed(0)}%
-                                    </span>
+                                    <WinRate rate={team.winRate} bar={false} />
                                 </div>
                             </div>
                         </div>
@@ -258,18 +281,19 @@ const ResultsList = ({
                             <th className="px-6 py-4 text-center whitespace-nowrap">{t('Add to Slip')}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody key={dealKey} className="divide-y divide-white/5">
                         {rankedTeams.slice(0, displayLimit).map((team, index) => {
                             const meta = leagueMeta(leagues, team.league);
                             const slip = slipFor(team);
                             return (
                             <React.Fragment key={team.team}>
                                 <tr
-                                    className={`hover:bg-white/[0.04] transition-colors group cursor-pointer ${expandedTeam === team.team ? 'bg-emerald-500/[0.03]' : ''}`}
+                                    style={{ animationDelay: staggerDelay(index) }}
+                                    className={`bp-leg hover:bg-white/[0.04] transition-colors group cursor-pointer ${expandedTeam === team.team ? 'bg-purple-500/[0.05]' : ''}`}
                                     onClick={() => setExpandedTeam(expandedTeam === team.team ? null : team.team)}
                                 >
-                                    <td className="px-6 py-4 text-center font-mono text-zinc-500 font-bold">
-                                        #{index + 1}
+                                    <td className="px-6 py-4 text-center">
+                                        <Rank index={index} />
                                     </td>
                                     <td className="relative px-6 py-3">
                                         {/* The see-through flag, a card-sized strip as on
@@ -288,7 +312,7 @@ const ResultsList = ({
                                                 className="w-9 h-9 object-contain shrink-0"
                                             />
                                             <div className="min-w-0">
-                                                <div className="font-bold text-white text-lg leading-tight group-hover:text-purple-400 transition-colors">
+                                                <div className="font-bold text-white text-lg leading-tight group-hover:text-purple-300 transition-colors">
                                                     {team.team}
                                                 </div>
                                                 <LeagueTag meta={meta} />
@@ -301,39 +325,10 @@ const ResultsList = ({
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full rounded-full ${team.winRate >= 80 ? 'bg-emerald-500' :
-                                                        team.winRate >= 60 ? 'bg-emerald-400' :
-                                                            team.winRate >= 40 ? 'bg-yellow-500' :
-                                                                'bg-red-500'
-                                                        }`}
-                                                    style={{ width: `${team.winRate}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="flex flex-col items-center">
-                                                <span className={`font-black text-lg ${team.winRate >= 80 ? 'text-emerald-500' :
-                                                    team.winRate >= 60 ? 'text-emerald-400' :
-                                                        team.winRate >= 40 ? 'text-yellow-500' :
-                                                            'text-red-500'
-                                                    }`}>
-                                                    {team.winRate.toFixed(0)}%
-                                                </span>
-                                            </div>
-                                        </div>
+                                        <WinRate rate={team.winRate} />
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <button
-                                            onClick={slip.toggle}
-                                            aria-label={slip.exact ? t('Remove {team} from the slip', { team: team.team }) : t('Add {team} to the slip', { team: team.team })}
-                                            className={`p-2 rounded-lg transition ${slip.added
-                                                ? 'bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500/30'
-                                                : 'bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
-                                                }`}
-                                        >
-                                            {slip.exact ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4 transition-transform" />}
-                                        </button>
+                                        <div className="flex justify-center"><AddButton slip={slip} team={team.team} /></div>
                                     </td>
                                 </tr>
                                 {expandedTeam === team.team && (
@@ -344,7 +339,7 @@ const ResultsList = ({
                                                     <h4 className="text-xs font-black text-zinc-500 uppercase tracking-widest">{t('Past {n} Games Match History', { n: team.totalGames })}</h4>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); onTeamClick && onTeamClick(team.team); }}
-                                                        className="text-[10px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-tighter border-b border-emerald-400/50 pb-0.5 transition"
+                                                        className="text-[10px] font-black text-purple-300 hover:text-purple-200 uppercase tracking-tighter border-b border-purple-400/50 pb-0.5 transition"
                                                     >
                                                         {t('See next fixture details')}
                                                     </button>
@@ -354,7 +349,7 @@ const ResultsList = ({
                                                         const value = analysisMode === 'total' ? match.total : match.statFor;
                                                         const success = operator === 'over' ? value > threshold : value < threshold;
                                                         return (
-                                                            <div key={mIdx} className="bg-zinc-900/60 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
+                                                            <div key={mIdx} style={{ animationDelay: staggerDelay(mIdx) }} className="bp-leg bg-zinc-900/60 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
                                                                 <div className="flex items-center justify-between border-b border-white/5 pb-1">
                                                                     <span className="text-[10px] font-bold text-zinc-500">{match.date ? new Date(match.date).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' }) : t('MD {n}', { n: match.giornata })}</span>
                                                                     <span className={`w-2 h-2 rounded-full ${success ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500/50'}`}></span>

@@ -5,6 +5,7 @@ import HotMatches from './components/HotMatches';
 import LandingPage from './components/LandingPage';
 import HighestWinningFactor from './components/HighestWinningFactor';
 import MarketMoves from './components/MarketMoves';
+import BonusPlanner from './components/BonusPlanner';
 import TransitionAnimation from './components/TransitionAnimation';
 import LeagueStinger from './components/LeagueStinger';
 import PitchLoader from './components/PitchLoader';
@@ -35,7 +36,7 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('predictor');
   const [selectedLeague, setSelectedLeague] = useState(null);
-  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | market-moves | highest-winning-factor
+  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | market-moves | highest-winning-factor | bonus-planner
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   // Standings-only: null follows the league's current season, a label pins to
   // a past one. The Predictor always stays on the current season.
@@ -344,7 +345,7 @@ export default function App() {
   }, [winningFactorMatchData, winningFactorSeasons]);
 
   // Bookmaker prices, if any have been captured. Optional throughout.
-  const { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl } = useOdds();
+  const { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl, rows: oddsRows, loading: oddsLoading } = useOdds();
   // One copy of the model knobs for every screen that predicts. Held here, not
   // per screen: three private copies gave the same fixture different expected
   // values depending on which view you were standing in.
@@ -414,6 +415,7 @@ export default function App() {
           onOpenTopCorners={() => handleViewChange('hot-matches')}
           onOpenHighestWinningFactor={() => handleViewChange('highest-winning-factor')}
           onOpenMarketMoves={() => handleViewChange('market-moves')}
+          onOpenBonusPlanner={() => handleViewChange('bonus-planner')}
         />
       )}
 
@@ -471,6 +473,26 @@ export default function App() {
             bets={bets}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
             onMatchClick={(match) => openMatchFrom(match, 'market-moves', tk('Back to Market Moves'))}
+          />
+        </div>
+      )}
+
+      {view === 'bonus-planner' && (
+        <div className="animate-in fade-in slide-in-from-bottom-4">
+          <BonusPlanner
+            oddsRows={oddsRows}
+            // Matches load after the shell now; without them the model has
+            // nothing, and slips ranked on the book alone would reshuffle when they land.
+            oddsLoading={oddsLoading || loading}
+            loadMarket={loadMarket}
+            matchData={currentSeasonMatchData}
+            modelSettings={modelSettingsApi.modelSettings}
+            teamLogos={teamLogos}
+            onBack={() => handleViewChange('landing')}
+            bets={bets}
+            addToBet={addToBet}
+            removeFromBet={removeFromBet}
+            onOpenBetSlip={() => setIsBetSlipOpen(true)}
           />
         </div>
       )}

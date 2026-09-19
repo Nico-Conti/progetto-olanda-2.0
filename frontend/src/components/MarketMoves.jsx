@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, ClipboardCheck, SearchX } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
 import { getStatLabel, resolveStatKey, MARKET_FOR_STAT } from '../utils/statistics';
@@ -8,6 +8,8 @@ import Header from './Header';
 import StatisticSelector from './StatisticSelector';
 import MatchCard from './MatchCard';
 import MarketMovesGuide from './MarketMovesGuide';
+import SlidingTabs from './ui/SlidingTabs';
+import { useCountUp } from '../hooks/useCountUp';
 import { hasBet } from '../utils/bets';
 import { leagueMeta } from '../utils/leaguePickerFx';
 import { staggerDelay } from '../utils/stagger';
@@ -83,10 +85,57 @@ const useMoves = (market) => {
     return { rows: current ? state.rows : [], loading: !current, error: current ? state.error : null };
 };
 
-const Tile = ({ label, value, tone = 'text-white' }) => (
-    <div className="glass-panel rounded-xl border border-white/10 px-4 py-3 text-center">
-        <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
-        <span className={`block text-2xl font-black tabular-nums ${tone}`}>{value}</span>
+/** A report figure, counted up. */
+const Tile = ({ label, value, format = (v) => v.toFixed(0), tone = 'text-white', style }) => {
+    const shown = useCountUp(value, 1000);
+    return (
+        <div className="bp-rules !p-4 text-center animate-waterfall" style={style}>
+            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
+            <span className={`block text-3xl font-black tabular-nums mt-1 ${tone}`}>{format(shown)}</span>
+        </div>
+    );
+};
+
+/** A mover's headline shift, counted up in the page's gradient. */
+const Shift = ({ value }) => {
+    const shown = useCountUp(value, 1100);
+    return <div className="text-4xl font-black tracking-tighter tabular-nums leading-none bp-gold-text">{pct(shown)}</div>;
+};
+
+// The header's live feed: a price path drawn across it behind a scanning
+// cursor, and odds deltas ticking off it - the homepage card's ticker, always on.
+const LIVE_PATH = (() => {
+    let y = 30;
+    return Array.from({ length: 41 }, (_, i) => {
+        y = Math.max(6, Math.min(36, y + (Math.random() - 0.62) * 7));
+        return `${i * 5},${y.toFixed(1)}`;
+    }).join(' ');
+})();
+const LIVE_TICKS = Array.from({ length: 10 }, (_, i) => {
+    const up = i % 2 === 0;
+    const dur = 2.2 + Math.random() * 1.6;
+    return {
+        text: `${up ? '+' : '−'}${(0.5 + Math.random() * 4).toFixed(1)}%`,
+        style: { left: `${4 + Math.random() * 90}%`, bottom: `${5 + Math.random() * 30}%`, color: up ? '#34d399' : '#f87171',
+                 '--dur': `${dur}s`, '--delay': `${-Math.random() * dur}s`, '--sway': `${(Math.random() - 0.5) * 20}px` },
+    };
+});
+
+// Kept to the strip under the header's text, so the line never crosses it.
+const LiveFeed = () => (
+    <div className="mm-live absolute inset-x-0 bottom-0 h-20">
+        <svg className="fx-chart absolute inset-x-0 bottom-0 w-full h-16" viewBox="0 0 200 40" preserveAspectRatio="none">
+            <defs>
+                <linearGradient id="mm-live-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" style={{ stopColor: 'var(--fx-a)', stopOpacity: 0.18 }} />
+                    <stop offset="1" style={{ stopColor: 'var(--fx-a)', stopOpacity: 0 }} />
+                </linearGradient>
+            </defs>
+            <polygon points={`${LIVE_PATH} 200,40 0,40`} fill="url(#mm-live-fill)" />
+            <polyline points={LIVE_PATH} fill="none" style={{ stroke: 'var(--fx-a)' }} strokeOpacity="0.55" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        </svg>
+        <div className="fx-cursor" />
+        {LIVE_TICKS.map(({ text, style }, i) => <span key={i} className="fx-tick" style={style}>{text}</span>)}
     </div>
 );
 
@@ -175,7 +224,7 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
     const title = t('Market Moves').split(' ');
 
     return (
-        <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
+        <div className="fx-ticker min-h-screen text-zinc-200 font-sans relative pb-12">
             <Header
                 title={(
                     <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -188,55 +237,64 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                 onOpenBetSlip={onOpenBetSlip}
                 pageName={(
                     <h1 className="text-lg font-black tracking-tight text-white leading-none">
-                        {title[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">{title.slice(1).join(' ')}</span>
+                        {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
                     </h1>
                 )}
             >
                 <StatisticSelector value={selectedStatistic} onChange={onStatisticChange} className="w-[180px]" />
             </Header>
 
-            <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6">
-                <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-zinc-900 rounded-lg border border-white/10">
-                            <Activity className="w-5 h-5 text-cyan-500" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
-                                {title[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-500">{title.slice(1).join(' ')}</span>
-                            </h2>
-                            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide mt-0.5">
-                                {t('{stat} closing line value', { stat: statLabel })}
-                            </p>
-                        </div>
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-8">
+                <section className="bp-hero bp-hero-open animate-waterfall relative !pb-20">
+                    <div className="bp-orbs" aria-hidden="true">
+                        <div className="bp-orb bp-orb-a" />
+                        <div className="bp-orb bp-orb-b" />
+                        <div className="bp-orb bp-orb-c" />
+                        <LiveFeed />
                     </div>
-                    <div className="flex p-1 rounded-xl bg-zinc-950/60 border border-white/10" role="tablist">
-                        {[['movers', t('Movers')], ['report', t('Report card')]].map(([id, label]) => (
-                            <button
-                                key={id}
-                                role="tab"
-                                aria-selected={tab === id}
-                                onClick={() => setTab(id)}
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${tab === id
-                                    ? 'bg-cyan-500/20 text-cyan-300'
-                                    : 'text-zinc-500 hover:text-zinc-300'}`}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                    <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="bp-icon"><Activity className="w-7 h-7 text-cyan-300 mm-beat" /></div>
+                            <div className="min-w-0">
+                                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
+                                    {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
+                                </h2>
+                                <p className="text-sm text-zinc-400 mt-2">
+                                    {t('{stat} closing line value', { stat: statLabel })}
+                                </p>
+                            </div>
+                        </div>
+                        <SlidingTabs
+                            items={[
+                                { id: 'movers', label: t('Movers'), Icon: Activity },
+                                { id: 'report', label: t('Report card'), Icon: ClipboardCheck },
+                            ]}
+                            value={tab}
+                            onChange={setTab}
+                            className="border border-white/10 self-start lg:self-center bg-zinc-950/40"
+                            tabClassName="font-semibold"
+                        />
                     </div>
-                </div>
+                </section>
 
                 <MarketMovesGuide />
 
                 {!market && (
-                    <p className="text-center py-12 text-zinc-500">{t('The bookmaker does not price {stat}. Pick another statistic.', { stat: statLabel })}</p>
+                    <div className="bp-empty animate-waterfall">
+                        <SearchX className="w-10 h-10 text-zinc-600" />
+                        <p className="text-sm text-zinc-400">{t('The bookmaker does not price {stat}. Pick another statistic.', { stat: statLabel })}</p>
+                    </div>
                 )}
                 {market && loading && (
-                    <p className="text-center py-12 text-zinc-500">{t('Loading price history...')}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label={t('Loading price history...')}>
+                        {[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="bp-skeleton h-64" style={{ animationDelay: `${i * 90}ms` }} />)}
+                    </div>
                 )}
                 {market && error && (
-                    <p className="text-center py-12 text-zinc-500">{t('Price history unavailable.')}</p>
+                    <div className="bp-empty animate-waterfall">
+                        <SearchX className="w-10 h-10 text-zinc-600" />
+                        <p className="text-sm text-zinc-400">{t('Price history unavailable.')}</p>
+                    </div>
                 )}
 
                 {market && !loading && !error && tab === 'movers' && (
@@ -244,23 +302,25 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                         <p className="text-xs text-zinc-500">
                             {t('Upcoming fixtures whose price moved most since we first saw it. "With model" means our model already rated that side above the opening market.')}
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {movers.map((f, idx) => (
+                        <div key={market} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {movers.map((f, idx) => {
+                                const inSlip = hasBet(bets, f.home, f.away);
+                                return (
                                 <MatchCard
                                     key={f.key}
                                     match={f}
                                     rank={idx + 1}
                                     meta={leagueMeta(leagues, f.league)}
                                     teamLogos={teamLogos}
-                                    inSlip={hasBet(bets, f.home, f.away)}
+                                    inSlip={inSlip}
+                                    className={`hm-card ${inSlip ? '' : 'hm-glow'} ${idx === 0 && !inSlip ? 'hm-card-top' : ''}`}
+                                    overlay={<div className="bp-holo" aria-hidden="true" />}
                                     style={{ animationDelay: staggerDelay(idx) }}
                                     onClick={() => onMatchClick?.(f)}
                                     center={(
                                         <>
-                                            <div className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">
-                                                {pct(f.move.shift)}
-                                            </div>
-                                            <span className="mt-2 text-[10px] font-bold text-cyan-400 uppercase tracking-wider">
+                                            <Shift value={f.move.shift} />
+                                            <span className="mt-2 text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
                                                 {sideLabel(f.move)}
                                             </span>
                                         </>
@@ -284,10 +344,14 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                                         </div>
                                     </div>
                                 </MatchCard>
-                            ))}
+                                );
+                            })}
                         </div>
                         {!movers.length && (
-                            <p className="text-center py-12 text-zinc-500">{t('No upcoming price has moved yet.')}</p>
+                            <div className="bp-empty animate-waterfall">
+                                <SearchX className="w-10 h-10 text-zinc-600" />
+                                <p className="text-sm text-zinc-400">{t('No upcoming price has moved yet.')}</p>
+                            </div>
                         )}
                     </>
                 )}
@@ -301,21 +365,21 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                             <>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <Tile label={t('Picks')} value={report.n} />
-                                    <Tile label={t('Price shortened')} value={`${(report.shortened * 100).toFixed(0)}%`}
-                                        tone={report.shortened > 0.5 ? 'text-emerald-400' : 'text-red-400'} />
-                                    <Tile label={t('Beat the fair close')} value={`${(report.beat * 100).toFixed(0)}%`}
-                                        tone={report.beat > 0.5 ? 'text-emerald-400' : 'text-red-400'} />
-                                    <Tile label={t('Average CLV')} value={pct(report.mean)}
-                                        tone={report.mean > 0 ? 'text-emerald-400' : 'text-red-400'} />
+                                    <Tile label={t('Price shortened')} value={report.shortened} format={v => `${(v * 100).toFixed(0)}%`}
+                                        tone={report.shortened > 0.5 ? 'text-emerald-400' : 'text-red-400'} style={{ animationDelay: '60ms' }} />
+                                    <Tile label={t('Beat the fair close')} value={report.beat} format={v => `${(v * 100).toFixed(0)}%`}
+                                        tone={report.beat > 0.5 ? 'text-emerald-400' : 'text-red-400'} style={{ animationDelay: '120ms' }} />
+                                    <Tile label={t('Average CLV')} value={report.mean} format={pct}
+                                        tone={report.mean > 0 ? 'text-emerald-400' : 'text-red-400'} style={{ animationDelay: '180ms' }} />
                                 </div>
-                                <div className="glass-panel rounded-xl border border-white/10 divide-y divide-white/5">
+                                <div className="bp-events divide-y divide-white/5">
                                     {picks.slice(0, PICKS_SHOWN).map((f, idx) => (
                                         <div key={f.key} className="flex items-center gap-3 px-4 py-2.5 text-sm animate-waterfall" style={{ animationDelay: staggerDelay(idx) }}>
                                             <span className="w-16 shrink-0 text-[11px] font-bold text-zinc-500 tabular-nums">
                                                 {new Date(f.date).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
                                             </span>
                                             <span className="flex-1 min-w-0 truncate font-bold text-white">{f.home} – {f.away}</span>
-                                            <span className="hidden sm:block w-24 text-xs font-bold text-cyan-400">{sideLabel(f.pick)}</span>
+                                            <span className="hidden sm:block bp-market w-24 text-center">{sideLabel(f.pick)}</span>
                                             <span className="w-24 shrink-0 text-right text-xs text-zinc-400 tabular-nums">
                                                 {f.pick.open.toFixed(2)} → {f.pick.close.toFixed(2)}
                                             </span>
@@ -328,7 +392,10 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                                 </div>
                             </>
                         ) : (
-                            <p className="text-center py-12 text-zinc-500">{t('No settled picks with a closing price yet.')}</p>
+                            <div className="bp-empty animate-waterfall">
+                                <SearchX className="w-10 h-10 text-zinc-600" />
+                                <p className="text-sm text-zinc-400">{t('No settled picks with a closing price yet.')}</p>
+                            </div>
                         )}
                     </>
                 )}

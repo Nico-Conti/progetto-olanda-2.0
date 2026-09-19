@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Info } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Info, Zap } from 'lucide-react';
 import Header from './Header';
 import ConfigurationPanel from './highest-winning-factor/ConfigurationPanel';
 import ResultsList from './highest-winning-factor/ResultsList';
@@ -7,6 +7,8 @@ import { processData } from '../utils/stats';
 import { STAT_CONFIG } from '../utils/statistics';
 
 import StatisticSelector from './StatisticSelector';
+import ElectricBorder from './originkit/ElectricBorder';
+import { motionAllowed } from '../utils/leaguePickerFx';
 import { t, tx } from '../i18n';
 
 const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixturesData, onMatchClick, teamLogos, leagues, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
@@ -17,6 +19,18 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
     const [nGames, setNGames] = useState(5);
     const [displayLimit, setDisplayLimit] = useState(5);
     const [selectedLeague, setSelectedLeague] = useState('All');
+
+    // The homepage card's electric edge, round the header. It redraws a canvas
+    // every frame, so it only runs while the header is on screen.
+    const heroRef = useRef(null);
+    const [heroVisible, setHeroVisible] = useState(false);
+    const [electric] = useState(motionAllowed);
+    useEffect(() => {
+        if (!electric) return;
+        const io = new IntersectionObserver(([e]) => setHeroVisible(e.isIntersecting));
+        io.observe(heroRef.current);
+        return () => io.disconnect();
+    }, [electric]);
 
     // Update threshold when statistic or mode changes
     useEffect(() => {
@@ -159,12 +173,12 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
     const title = t('Winning Factor').split(' ');
     const pageName = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none">
-            {title[0]}<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{title.slice(1).join(' ')}</span>
+            {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
         </h1>
     );
 
     return (
-        <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
+        <div className="fx-volt min-h-screen text-zinc-200 font-sans relative pb-12">
             {/* Navbar */}
             <Header
                 title={appTitle}
@@ -181,31 +195,51 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
                 />
             </Header>
 
-            <main className="max-w-7xl mx-auto px-4 md:px-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Configuration Panel */}
-                    {/* relative z-50: both panels are glass panels, and a glass
-                        panel's backdrop-blur creates a stacking context - stacked
-                        below `lg`, the Select dropdowns here would otherwise open
-                        behind the results panel. */}
-                    <div className="lg:col-span-4 space-y-6 relative z-50">
-                        <ConfigurationPanel
-                            selectedLeague={selectedLeague}
-                            setSelectedLeague={setSelectedLeague}
-                            availableLeagues={availableLeagues}
-                            analysisMode={analysisMode}
-                            setAnalysisMode={setAnalysisMode}
-                            operator={operator}
-                            setOperator={setOperator}
-                            threshold={threshold}
-                            setThreshold={setThreshold}
-                            adjustThreshold={adjustThreshold}
-                            currentConfig={currentConfig}
-                        />
-                    </div>
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+                <div className="space-y-8">
+                    {/* One panel: title and the ranking's rules. z-50: its Select
+                        dropdowns open over the results below. */}
+                    <section ref={heroRef} className={`bp-hero bp-hero-open animate-waterfall relative z-50 ${electric ? 'bp-live-edge' : ''}`}>
+                        {electric && heroVisible && (
+                            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                                <ElectricBorder color="#e9d5ff" bgColor="transparent" glowColor="#a855f7"
+                                    glowIntensity={4} chaos={1.2} thickness={1.5} speed={1} borderRadius={24} />
+                            </div>
+                        )}
+                        <div className="bp-orbs" aria-hidden="true">
+                            <div className="bp-orb bp-orb-a" />
+                            <div className="bp-orb bp-orb-b" />
+                            <div className="bp-orb bp-orb-c" />
+                        </div>
+                        <div className="relative flex items-center gap-4">
+                            <div className="bp-icon"><Zap className="w-7 h-7 text-purple-300" /></div>
+                            <div className="min-w-0">
+                                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
+                                    {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
+                                </h2>
+                                <p className="text-sm text-zinc-400 mt-2">
+                                    {t('The teams that clear your line most often in their recent games.')}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="relative mt-5 pt-5 border-t border-white/5">
+                            <ConfigurationPanel
+                                selectedLeague={selectedLeague}
+                                setSelectedLeague={setSelectedLeague}
+                                availableLeagues={availableLeagues}
+                                analysisMode={analysisMode}
+                                setAnalysisMode={setAnalysisMode}
+                                operator={operator}
+                                setOperator={setOperator}
+                                threshold={threshold}
+                                setThreshold={setThreshold}
+                                adjustThreshold={adjustThreshold}
+                                currentConfig={currentConfig}
+                            />
+                        </div>
+                    </section>
 
-                    {/* Results List */}
-                    <div className="lg:col-span-8 space-y-4">
+                    <div className="space-y-4 animate-waterfall" style={{ animationDelay: '120ms' }}>
                         {/* This view counts only matches played in the season now
                             being played, so a league whose season has not kicked
                             off yet has nothing to rank. Say which, rather than
@@ -224,6 +258,7 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
 
                         <ResultsList
                             rankedTeams={rankedTeams}
+                            dealKey={`${selectedLeague}|${selectedStatistic}|${analysisMode}|${operator}|${threshold}|${nGames}`}
                             displayLimit={displayLimit}
                             setDisplayLimit={setDisplayLimit}
                             nGames={nGames}
