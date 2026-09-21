@@ -8,7 +8,8 @@ import GlowBorder from './originkit/GlowBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
-import { t, tk, countryName, getLanguage } from '../i18n';
+import { t, tk, countryName } from '../i18n';
+import { privacyHref, termsHref } from '../utils/legal';
 
 const SUBTITLE = tk('Advanced football analytics.');
 const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
@@ -27,7 +28,7 @@ const ABOUT_FACTS = [tk('Match data since 2014'), tk('Corners, goals, cards, fou
 // is what a Safe Browsing reviewer is looking for; the second line also puts on
 // the record that this is editorial, not a book taking money.
 const CONTACT_EMAIL = 'info@progettoolanda.it';
-const FOOTER_DISCLAIMER = tk('Statistics and models, published for information. No bets are taken or handled on this site.');
+const FOOTER_DISCLAIMER = tk('Statistics and models, published for information. No bets are taken or handled on this site. Over 18s only.');
 const FOOTER_PRIVACY = tk('An account stores your email, username, favourite leagues and saved slips. Never sold, never shared for advertising.');
 
 /**
@@ -490,7 +491,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                     are decoration and this is meant to be read. pointer-events-auto is
                     required - the page root turns them off and the mailto would
                     inherit that, leaving a link nothing can click. */}
-                <div className="pointer-events-auto mx-auto mt-3 max-w-2xl space-y-1.5 text-center text-xs leading-relaxed text-zinc-600">
+                <div className="pointer-events-auto mx-auto mt-3 max-w-2xl space-y-1.5 text-center text-xs leading-relaxed text-zinc-400">
                     <p>
                         <span className="text-zinc-500">Progetto Olanda 2.0</span>
                         <span aria-hidden="true" className="mx-2 text-zinc-700">/</span>
@@ -517,10 +518,17 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                             its language; the app sends you to the one it is
                             currently showing. */}
                         <a
-                            href={getLanguage() === 'it' ? '/privacy.html' : '/privacy.en.html'}
+                            href={privacyHref()}
                             className="text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60"
                         >
                             Privacy
+                        </a>
+                        <span aria-hidden="true" className="mx-2 text-zinc-700">/</span>
+                        <a
+                            href={termsHref()}
+                            className="text-zinc-500 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60"
+                        >
+                            {t('Terms')}
                         </a>
                     </p>
                     <p>{t(FOOTER_DISCLAIMER)}</p>

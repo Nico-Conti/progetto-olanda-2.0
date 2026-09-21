@@ -6,10 +6,12 @@ import SlidingTabs from './ui/SlidingTabs';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
 import { t, tk, dateLocale, getLanguage, setLanguage, LANGUAGES } from '../i18n';
+import { privacyHref, termsHref } from '../utils/legal';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
+const LEGAL_LINK = 'underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60';
 const STATUS_LABEL = { pending: tk('pending'), won: tk('won'), lost: tk('lost'), void: tk('void') };
 const STATUS_STYLE = {
     pending: 'text-zinc-300', won: 'text-emerald-400', lost: 'text-red-400', void: 'text-zinc-500',
@@ -171,6 +173,38 @@ const AuthForm = ({ onSignedIn }) => {
                     className={INPUT}
                 />
             </label>
+            {/* GDPR art. 13 wants the information where the data is given, not
+                only on a page you have to go looking for - so the notice sits on
+                the register tab itself rather than in the footer.
+
+                The age box is a real `required` checkbox, not a line of prose:
+                this site covers betting markets and the policy says 18+, so the
+                claim has to be the user's, made deliberately. It carries no
+                `name`, because nothing about it is worth storing - the browser
+                enforces it and that is the whole job. */}
+            {mode === 'register' && (
+                <div className="space-y-2 pt-1">
+                    <label className="flex items-start gap-2 text-xs text-zinc-400">
+                        <input type="checkbox" required className="mt-0.5 accent-emerald-500" />
+                        <span>{t('I am at least 18 years old.')}</span>
+                    </label>
+                    {/* Whole sentences, with the links on their own line. Splicing
+                        an <a> into the middle of a translated string forces every
+                        language to keep our word order. */}
+                    <p className="text-xs leading-relaxed text-zinc-400">
+                        {t('By registering you accept the terms of service and the privacy policy.')}
+                    </p>
+                    <p className="text-xs text-zinc-400">
+                        <a href={termsHref()} target="_blank" rel="noopener noreferrer" className={LEGAL_LINK}>
+                            {t('Terms of service')}
+                        </a>
+                        <span aria-hidden="true" className="mx-2 text-zinc-700">/</span>
+                        <a href={privacyHref()} target="_blank" rel="noopener noreferrer" className={LEGAL_LINK}>
+                            {t('Privacy policy')}
+                        </a>
+                    </p>
+                </div>
+            )}
             <Message msg={msg} />
             <button type="submit" disabled={busy} className={PRIMARY}>
                 {mode === 'login' ? t('Sign in') : t('Create account')}
@@ -302,6 +336,111 @@ const ProfileTab = ({ user, leagues }) => {
             >
                 <LogOut className="w-4 h-4" /> {t('Sign out')}
             </button>
+
+            <DeleteAccount user={user} />
+        </div>
+    );
+};
+
+/**
+ * Deleting your own account, from inside the app.
+ *
+ * GDPR art. 17 is met by handling an emailed request, and the privacy policy
+ * says so - but an account made with two clicks should not need a letter to
+ * undo. The work happens in `delete_account()` (migration 010): auth.users
+ * cannot be touched with the anon key, and the service_role key that could must
+ * never reach the browser.
+ *
+ * Unlike every other destructive action here this one cannot be undone and
+ * takes the saved slips with it, so `window.confirm` - what a single slip gets
+ * - is not enough. The name has to be typed. Two steps, and the second is not
+ * a button you can land on by reflex.
+ */
+const DeleteAccount = ({ user }) => {
+    const [open, setOpen] = useState(false);
+    const [typed, setTyped] = useState('');
+    const { busy, msg, run } = useAction();
+
+    const name = user.user_metadata?.username || user.email;
+    // Case-insensitive on purpose. The gate is "type it out deliberately", not
+    // "reproduce the capitalisation" - and see the label below for how badly
+    // that went when the two could disagree.
+    const confirmed = typed.trim().toLowerCase() === name.toLowerCase();
+
+    const destroy = async () => {
+        if (!confirmed) return;
+        // The avatar goes FIRST, and from here rather than from the function.
+        // Supabase refuses direct DML on storage.objects, and rightly: that row
+        // is an index, so deleting it would strand the file in a PUBLIC bucket
+        // instead of removing it. This runs while the user's own "own avatar"
+        // RLS policy still resolves - after the auth row is gone it would not.
+        // Removing a path that is not there is not an error, so this is safe
+        // for an account that never uploaded one.
+        const ok = await run(async () => {
+            const gone = await supabase.storage.from('avatars').remove([`${user.id}/avatar`]);
+            // Stop rather than proceed: the policy promises the picture goes
+            // with the account, and a half-done deletion that leaves a public
+            // photo behind is the one outcome worth refusing. Retrying is safe.
+            if (gone.error) return gone;
+            return supabase.rpc('delete_account');
+        });
+        if (!ok) return;
+        // The row is gone, so the access token no longer resolves to anyone and
+        // a server-side sign-out would answer with an error about a user that
+        // does not exist. Clearing the local session is the whole job.
+        await supabase.auth.signOut({ scope: 'local' });
+    };
+
+    if (!open) {
+        return (
+            <button
+                onClick={() => setOpen(true)}
+                className="w-full py-2 rounded-xl text-xs font-semibold uppercase tracking-wide transition text-zinc-500 hover:text-red-400 flex items-center justify-center gap-2"
+            >
+                <Trash2 className="w-3.5 h-3.5" /> {t('Delete account')}
+            </button>
+        );
+    }
+
+    return (
+        <div className="space-y-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+            <p className="text-xs leading-relaxed text-zinc-300">
+                {t('This deletes your account, your saved slips and your profile picture. It cannot be undone.')}
+            </p>
+            {/* The name is NOT interpolated into LABEL. That class carries
+                `uppercase`, so a lowercase username rendered through it told the
+                user to type something that could never match, and the confirm
+                button stayed dead with nothing on screen explaining why.
+                Anything the user has to reproduce character by character must be
+                shown in its own casing - `normal-case` here defends it against
+                LABEL coming back. */}
+            <label className="block">
+                <span className={LABEL}>{t('Type your username to confirm')}</span>
+                <span className="mb-1 block select-all font-mono text-sm normal-case text-zinc-200">{name}</span>
+                <input
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    autoComplete="off"
+                    aria-label={t('Type your username to confirm')}
+                    className={INPUT}
+                />
+            </label>
+            <Message msg={msg} />
+            <div className="flex gap-2">
+                <button
+                    onClick={() => { setOpen(false); setTyped(''); }}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide border border-white/10 text-zinc-300 hover:bg-white/5"
+                >
+                    {t('Cancel')}
+                </button>
+                <button
+                    onClick={destroy}
+                    disabled={!confirmed || busy}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-red-500/90 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    {t('Delete for ever')}
+                </button>
+            </div>
         </div>
     );
 };

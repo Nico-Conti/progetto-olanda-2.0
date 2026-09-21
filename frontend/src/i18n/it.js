@@ -99,8 +99,20 @@ export default {
     "Match data since 2014": "Dati dal 2014",
     "Corners, goals, cards, fouls": "Corner, gol, cartellini, falli",
     "Published backtest": "Backtest pubblico",
-    "Statistics and models, published for information. No bets are taken or handled on this site.":
-        "Statistiche e modelli, pubblicati a scopo informativo. Su questo sito non si accettano né si gestiscono scommesse.",
+    "Statistics and models, published for information. No bets are taken or handled on this site. Over 18s only.":
+        "Statistiche e modelli, pubblicati a scopo informativo. Su questo sito non si accettano né si gestiscono scommesse. Riservato ai maggiori di 18 anni.",
+    "Terms": "Termini",
+    "Privacy policy": "Informativa privacy",
+    "Terms of service": "Termini di servizio",
+    "I am at least 18 years old.": "Ho almeno 18 anni.",
+    "Delete account": "Elimina account",
+    "This deletes your account, your saved slips and your profile picture. It cannot be undone.":
+        "Questo elimina il tuo account, le schedine salvate e l'immagine del profilo. L'operazione è irreversibile.",
+    "Type your username to confirm": "Scrivi il tuo nome utente per confermare",
+    "Cancel": "Annulla",
+    "Delete for ever": "Elimina per sempre",
+    "By registering you accept the terms of service and the privacy policy.":
+        "Registrandoti accetti i termini di servizio e l'informativa privacy.",
     "An account stores your email, username, favourite leagues and saved slips. Never sold, never shared for advertising.":
         "Un account conserva email, username, campionati preferiti e le schedine salvate. Mai venduti, mai condivisi a fini pubblicitari.",
     "Try again": "Riprova",

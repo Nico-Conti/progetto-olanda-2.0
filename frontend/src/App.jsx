@@ -25,6 +25,7 @@ import Standings from './components/Standings';
 import Select from './components/ui/Select';
 import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
+import LegalFooter from './components/ui/LegalFooter';
 import { t, tk, useLanguage, setLanguage } from './i18n';
 
 const TABS = [
@@ -539,7 +540,9 @@ export default function App() {
             />
           </div>
 
-          <main className="max-w-7xl mx-auto px-4 md:px-8 pb-28 lg:pb-12">
+          {/* The bottom clearance for the fixed LiquidNav moved to LegalFooter
+              below, which is now the last thing in the scroll flow. */}
+          <main className="max-w-7xl mx-auto px-4 md:px-8 pb-8 lg:pb-12">
             {activeTab === 'team-details' && selectedTeam && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <TeamDetails
@@ -637,6 +640,8 @@ export default function App() {
               </div>
             )}
           </main>
+
+          <LegalFooter />
         </>
       )}
     </div>
