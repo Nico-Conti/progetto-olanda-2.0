@@ -415,8 +415,9 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                 {detailPred?.probOver && (
                     <div className="animate-waterfall" style={{ animationDelay: '120ms' }}>
                         <ProbabilityLadder prediction={detailPred} statistic={localStatistic}
-                            home={home} away={away} priceFor={priceFor} pricedLines={pricedLines}
-                            bets={bets} addToBet={addToBet} removeFromBet={removeFromBet} />
+                            home={home} away={away} date={selectedMatch?.date}
+                            bets={bets} addToBet={addToBet} removeFromBet={removeFromBet}
+                            priceFor={priceFor} pricedLines={pricedLines} />
                     </div>
                 )}
 

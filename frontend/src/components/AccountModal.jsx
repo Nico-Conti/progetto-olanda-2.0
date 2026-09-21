@@ -445,6 +445,24 @@ const DeleteAccount = ({ user }) => {
     );
 };
 
+/**
+ * The kickoff of a leg whose match has not been played yet, or null.
+ *
+ * `addToBet` stores the fixture's date on every bet, so a saved slip already
+ * carries this - nothing is looked up against matchData. A postponed fixture
+ * has a date and no kick-off time (it stores as 22:00Z the previous day), and
+ * diretta's date-only rows have no `T`, so the time is shown only when there
+ * genuinely is one.
+ */
+const upcomingKickoff = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d) || d <= new Date()) return null;
+    const day = d.toLocaleDateString(dateLocale(), { day: '2-digit', month: '2-digit' });
+    if (!String(date).includes('T')) return day;
+    return `${day} ${d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}`;
+};
+
 const HistoryTab = ({ matchData }) => {
     const [slips, setSlips] = useState(null);
     const [error, setError] = useState(null);
@@ -563,12 +581,23 @@ const HistoryTab = ({ matchData }) => {
                                         // `max-w-md` on every screen, so `sm:flex-row`
                                         // would put the clipping back on every desktop.
                                         <li key={i} className="text-xs flex flex-col">
-                                            <span className="text-white font-semibold truncate">
-                                                <span className={`mr-1.5 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
+                                            {/* The name TRUNCATES and the kickoff does not:
+                                                this card is max-w-md at every width, and a
+                                                flex sibling that cannot shrink clips instead
+                                                of overflowing - which is how the fixture name
+                                                once vanished entirely. The date is short and
+                                                fixed-width, so the name is the one that yields. */}
+                                            <span className="text-white font-semibold flex items-baseline gap-1.5 min-w-0">
+                                                <span className={`shrink-0 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
                                                       title={t((LEG_MARK[legStatus] ?? LEG_MARK.null).title)}>
                                                     {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
                                                 </span>
-                                                {bet.game}
+                                                <span className="truncate">{bet.game}</span>
+                                                {upcomingKickoff(bet.date) && (
+                                                    <span className="ml-auto shrink-0 font-normal font-mono text-[10px] text-zinc-500 tabular-nums">
+                                                        {upcomingKickoff(bet.date)}
+                                                    </span>
+                                                )}
                                             </span>
                                             <span className="shrink-0 text-zinc-400 truncate pl-[1.375rem]">
                                                 <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}

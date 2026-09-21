@@ -28,7 +28,7 @@ import { t } from '../../i18n';
  * dead "— / —" columns - and hovering (or tapping) a price opens a card that
  * adds its Over or Under to the slip.
  */
-const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, pricedLines, bets, addToBet, removeFromBet }) => {
+const ProbabilityLadder = ({ prediction, statistic, home, away, date, priceFor, pricedLines, bets, addToBet, removeFromBet }) => {
     // The side just added, e.g. '7.5O', for the check that draws itself in.
     const [justAdded, setJustAdded] = useState(null);
     if (!prediction?.probOver) return null;
@@ -77,7 +77,10 @@ const ProbabilityLadder = ({ prediction, statistic, home, away, priceFor, priced
             removeFromBet?.(game, statistic, 'total');
             return;
         }
-        addToBet?.(game, option, line, statistic);
+        // `team` and `date` explicitly: omitting them left the slip's history
+        // with no kickoff to show, since addToBet defaults date to null and a
+        // saved leg carries whatever it was given at the time.
+        addToBet?.(game, option, line, statistic, 'total', date ?? null);
         setJustAdded(`${line}${option}`);
         setTimeout(() => setJustAdded(null), 1500);
     };
