@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Every crawlable URL this site has.
+
+  The app itself is ONE url: navigation is client state, there are no routes,
+  so nothing under / can be listed separately. The other four are the static
+  legal pages, which are real files and the only reason a sitemap earns its
+  place here - without it Google would only ever know about the landing page.
+
+  Listed as `.html`, matching how the app links them. The bare /privacy and
+  /terms paths work too (netlify.toml), but listing one canonical form avoids
+  offering Google two URLs for one page.
+
+  No <lastmod>: it is optional, Google ignores it unless it is consistently
+  accurate, and a date nobody remembers to update is worse than none.
+  <changefreq> and <priority> are ignored outright.
+
+  ABSOLUTE urls, so they carry the host - all five change the day the site
+  moves to progettoolanda.it, along with robots.txt and index.html's og: tags.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://progetto-olanda-2punto0.netlify.app/</loc></url>
+  <url><loc>https://progetto-olanda-2punto0.netlify.app/privacy.html</loc></url>
+  <url><loc>https://progetto-olanda-2punto0.netlify.app/privacy.en.html</loc></url>
+  <url><loc>https://progetto-olanda-2punto0.netlify.app/terms.html</loc></url>
+  <url><loc>https://progetto-olanda-2punto0.netlify.app/terms.en.html</loc></url>
+</urlset>

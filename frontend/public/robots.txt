@@ -1,0 +1,17 @@
+# Progetto Olanda 2.0 — everything here is public and crawlable.
+#
+# This file exists mainly so the path stops returning the app. `netlify.toml`
+# rewrites /* to /index.html with status 200, and a real file in the publish
+# directory is what takes precedence over that — so without this, a crawler
+# asking for /robots.txt got 200 OK and a page of React. Google treats an
+# unparseable robots.txt the same as a missing one, so nothing was blocked;
+# it was just untidy at a path reviewers do look at.
+#
+# The Sitemap line must be an ABSOLUTE URL, so it carries the host: change it
+# the day the site moves to progettoolanda.it, along with sitemap.xml and the
+# og: tags in index.html. See docs/frontend-notes.md.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://progetto-olanda-2punto0.netlify.app/sitemap.xml
