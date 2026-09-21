@@ -738,16 +738,51 @@ def write_rows(rows):
 # of roughly one capture window instead of accumulating forever.
 SLIP_PRUNE_AFTER_HOURS = 6   # same grace as ODDS_LOOKBACK_HOURS in backend/main.py
 
+# Slip-only markets that are DELETED outright, versus the ones whose price path
+# is collapsed by --prune-history like a modelled market.
+#
+# The "no reader after kickoff" argument above is circular for a market nobody
+# has measured yet: nothing models gg_ng, so its prices are deleted, so the
+# sample needed to decide whether it COULD be modelled never exists. Measured
+# 2026-09-21, that cost docs section 31 its price block - 134 fixtures that
+# survive only in a file copied by hand before a regenerate.
+#
+# So gg_ng is exempted and handled by --prune-history instead: both endpoints
+# per (fixture, market, line, selection), the same as a modelled market, which
+# is what closing-line value needs. It is the cheapest slip market by far -
+# 308 closes over 6 match days in that dump, ~51 rows a day against a sweep of
+# ~33,000 - and the only slip market with a plausible model behind it (two
+# independent marginals; see docs sections 25, 31 and 32). The combos and the
+# multigol bands stay in the delete list: no model, ~2,100 rows a day.
+#
+# Nothing here is a second hand-kept list. Both pruners read the SAME derived
+# set from _prunable_slip_markets(), so a market cannot end up in neither (kept
+# for ever, the table grows) or in both (deleted anyway, silently).
+SLIP_KEEP_CLOSE = {"gg_ng"}
+
+
+def _prunable_slip_markets():
+    """Slip-only markets that --prune-slip deletes and --prune-history skips."""
+    names = {name for name, _shape in SLIP_MARKETS.values()}
+    unknown = SLIP_KEEP_CLOSE - names
+    if unknown:
+        # A typo here would silently exempt nothing and keep deleting the rows.
+        sys.exit(f"SLIP_KEEP_CLOSE names no such slip market: {sorted(unknown)}")
+    return sorted(names - SLIP_KEEP_CLOSE)
+
 
 def prune_slip(hours=SLIP_PRUNE_AFTER_HOURS):
-    """Delete slip-only prices for fixtures that have already been played."""
+    """Delete slip-only prices for fixtures that have already been played.
+
+    Except those in SLIP_KEEP_CLOSE, which --prune-history collapses instead.
+    """
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
         sys.exit("Missing SUPABASE_URL / SUPABASE_KEY")
     # Derived from SLIP_MARKETS rather than written out, so a market added there
     # is pruned automatically. A hand-kept second list is how the three league
     # lists in this project drifted apart.
-    markets = sorted({name for name, _shape in SLIP_MARKETS.values()})
+    markets = _prunable_slip_markets()
     cutoff = (datetime.datetime.now(datetime.timezone.utc)
               - datetime.timedelta(hours=hours)).isoformat()
     headers = {"apikey": key, "Authorization": f"Bearer {key}",
@@ -794,8 +829,9 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
 
     This is irreversible - a price that existed three hours ago cannot be
     re-fetched - so it is a dry run unless `--write` is passed, and it never
-    touches the slip-only markets (`--prune-slip` owns those) or a fixture that
-    has not been played.
+    touches a fixture that has not been played. It covers the modelled markets
+    plus SLIP_KEEP_CLOSE; the remaining slip-only markets are `--prune-slip`'s,
+    which deletes them outright.
     """
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
     if not url or not key:
@@ -804,7 +840,10 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
     cutoff = (now - datetime.timedelta(hours=hours)).isoformat()
     mark_cutoff = (now - datetime.timedelta(hours=CLOSING_MARK_AFTER_HOURS)).isoformat()
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
-    slip = sorted({name for name, _shape in SLIP_MARKETS.values()})
+    # The markets --prune-slip owns. Its complement inside SLIP_MARKETS
+    # (SLIP_KEEP_CLOSE) is deliberately NOT excluded here: those rows are
+    # collapsed to endpoints by this function instead of being deleted.
+    slip = _prunable_slip_markets()
 
     # Paged on `id`. Ending on a short page is wrong (PostgREST caps at 1000)
     # and paging an UNORDERED result is undefined in Postgres - that pair once
@@ -863,7 +902,9 @@ def prune_history(hours=HISTORY_PRUNE_AFTER_HOURS, write=False, leagues=None):
         keep = {snaps[0][1], closing_id}
         doomed += [i for _when, i in snaps if i not in keep]
 
-    print(f"{len(rows):,} modelled snapshots, fixtures kicked off before {mark_cutoff[:16]}")
+    kept = "+".join(sorted(SLIP_KEEP_CLOSE)) or "none"
+    print(f"{len(rows):,} snapshots (modelled + {kept}), "
+          f"fixtures kicked off before {mark_cutoff[:16]}")
     print(f"   {len(paths):,} distinct prices, {len(rows) / max(len(paths), 1):.1f} snapshots each")
     print(f"   marking {len(to_mark):,} rows is_closing")
     print(f"   deleting {len(doomed):,} middles, paths older than {cutoff[:16]} "

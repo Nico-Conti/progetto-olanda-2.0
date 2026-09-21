@@ -57,3 +57,9 @@ docs/
 logs/
 
 brag-output
+
+# The closing-odds dump as it stood BEFORE `--prune-slip` ran (see docs
+# section 20/31). The slip-only markets are gone from odds_snapshots and this
+# file is the only remaining record of their closes.
+frontend/src/utils/__experiments__/odds_closing_preslipprune_2026-09-16.json
+
