@@ -248,29 +248,6 @@
     45%, 100% { transform: translateX(480%) skewX(-20deg); }
 }
 
-/* A four-point sparkle: a glowing core with two thin flares crossing it.
-   Ice by default; recolour it by setting --sparkle-core / --sparkle-glow.
-   Fallbacks rather than declarations here: this rule is unlayered, so it would
-   beat the Tailwind classes that set them. */
-.sparkle {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: radial-gradient(circle, var(--sparkle-core, #ecfeff) 0 18%, var(--sparkle-glow, rgb(34 211 238 / 0.55)) 32%, transparent 60%);
-}
-
-.sparkle::before,
-.sparkle::after {
-    content: "";
-    position: absolute;
-    inset: 4.25px 0;
-    background: linear-gradient(90deg, transparent, var(--sparkle-core, #ecfeff), transparent);
-}
-
-.sparkle::after {
-    transform: rotate(90deg);
-}
-
 /* Ticker: a price line draws itself across the card behind a scanning cursor,
    odds deltas tick upward, and the icon beats like a live feed. */
 .fx-chart {
@@ -690,7 +667,7 @@ input[type=number] {
 /*
    League picker hover: a champion's glory, the gold sibling of the feature
    cards' fire, lightning and ticker. It rides the same .fx plumbing above (fade
-   in on hover, paused otherwise) and reuses the glint and the sparkle.
+   in on hover, paused otherwise) and reuses the glint.
 */
 
 /* Rays of light turning slowly behind the trophy, fading out from its centre. */
@@ -706,18 +683,39 @@ input[type=number] {
     to { transform: rotate(360deg); }
 }
 
-/* Gold dust rising off the card: the sparkle, in gold. */
-.fx-dust {
-    --sparkle-core: #fffbeb;
-    --sparkle-glow: rgb(251 191 36 / 0.7);
-    animation: fx-rise var(--dur) cubic-bezier(0.3, 0, 0.6, 1) var(--delay) infinite;
+/* League marquee (LeagueMarquee in LandingPage.jsx). The row slides left by
+   half its length, one full copy, then repeats. Each logo carries its gap as a
+   margin rather than the row using `gap`, so half the row is exactly one copy.
+   The mask fades it in by the arrow and out before the title. Each logo keeps
+   its own colours, a little faded so the row stays in the background. */
+.fx-marquee {
+    mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
 }
 
-@keyframes fx-rise {
-    0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
-    15% { opacity: 1; }
-    70% { opacity: 0.8; }
-    100% { transform: translate(var(--sway), -95px) scale(1) rotate(90deg); opacity: 0; }
+.fx-marquee-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    display: flex;
+    width: max-content;
+    translate: 0 -50%;
+    animation: fx-marquee var(--period) linear infinite;
+}
+
+@keyframes fx-marquee {
+    to { transform: translateX(-50%); }
+}
+
+.fx-marquee-logo {
+    width: 34px;
+    max-width: none;
+    height: 34px;
+    margin-right: 26px;
+    object-fit: contain;
+    /* A soft light halo, so crests drawn in dark colours still show on the dark card. */
+    filter: drop-shadow(0 0 5px rgb(255 255 255 / 0.22)) brightness(1.1);
+    opacity: 0.75;
 }
 
 /* Bonus Planner: gold coins rain down behind the content, over a fuchsia haze.
@@ -823,7 +821,7 @@ input[type=number] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fx-dust,
+    .fx-marquee,
     .fx-coin,
     .fx-coin-haze,
     .fx-coin-slot {

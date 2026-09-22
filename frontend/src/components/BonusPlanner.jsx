@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Ticket, Minus, Plus, Check, Search, ChevronUp, ChevronDown, ListChecks, CalendarCheck, ShieldCheck, Gem, Sparkles, ShoppingCart, SearchX } from 'lucide-react';
 import Header from './Header';
 import SlidingTabs from './ui/SlidingTabs';
@@ -12,12 +12,8 @@ import { usePersistedPrefs } from '../hooks/usePersistedPrefs';
 import { t, dateLocale } from '../i18n';
 import { CoinCascade } from './LandingPage';
 
-const SLIP_MARKETS = PLANNER_MARKETS.filter(m => m.slipOnly).map(m => m.id);
-const MODELLED = PLANNER_MARKETS.filter(m => !m.slipOnly);
-
-const legLabel = (leg, market) => (market.slipOnly
-    ? `${getStatLabel(market.stat)}${leg.line != null ? ` ${leg.line}` : ''} · ${formatSelection(leg.selection)}`
-    : `${getStatLabel(market.stat)} ${formatSelection(leg.selection, leg.line)}`);
+// Over/under totals only - every market here has a model behind it.
+const legLabel = (leg, market) => `${getStatLabel(market.stat)} ${formatSelection(leg.selection, leg.line)}`;
 
 /**
  * A number the punter sets: type it or nudge it. What is typed is held as text
@@ -76,13 +72,13 @@ const ChanceRing = ({ prob }) => {
     );
 };
 
-/** What `addToBet` takes for a leg: slip-only markets carry the book's own selection. */
-const betArgs = (leg) => {
-    const market = PLANNER_MARKETS.find(m => m.id === leg.market);
-    return market.slipOnly
-        ? { game: gameKey(leg.home_team, leg.away_team), option: leg.selection, value: leg.line, stat: market.stat }
-        : { game: gameKey(leg.home_team, leg.away_team), option: leg.selection === 'over' ? 'O' : 'U', value: Number(leg.line), stat: market.stat };
-};
+/** What `addToBet` takes for a leg. */
+const betArgs = (leg) => ({
+    game: gameKey(leg.home_team, leg.away_team),
+    option: leg.selection === 'over' ? 'O' : 'U',
+    value: Number(leg.line),
+    stat: PLANNER_MARKETS.find(m => m.id === leg.market).stat,
+});
 
 const Chance = ({ leg }) => (
     <span className="text-[10px] tabular-nums"
@@ -248,7 +244,7 @@ const SectionTitle = ({ icon, title, count, children }) => (
     </div>
 );
 
-const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSettings, teamLogos, onBack, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
+const BonusPlanner = ({ oddsRows, oddsLoading, matchData, modelSettings, teamLogos, onBack, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     // Remembered between visits: the same bonus tends to come back with the same rules.
     const [prefs, set] = usePersistedPrefs('olanda_bonus_planner', {
         events: 4, minOdds: 1.5, maxOdds: 10, sameDay: false, stake: 5, mode: 'safe',
@@ -259,38 +255,33 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
     const setMinOdds = (v) => set({ minOdds: v, maxOdds: Math.max(maxOdds, v) });
     const setMaxOdds = (v) => set({ maxOdds: v, minOdds: Math.min(minOdds, v) });
 
-    // GG/NG and multigol are served on request only (see useOdds.loadMarket).
-    const [loadingSlip, setLoadingSlip] = useState(true);
-    useEffect(() => {
-        Promise.all(SLIP_MARKETS.map(m => loadMarket(m))).finally(() => setLoadingSlip(false));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     // One model per modelled statistic, built exactly as Hot Matches builds its one.
-    const models = useMemo(() => Object.fromEntries(MODELLED.map(m =>
+    const models = useMemo(() => Object.fromEntries(PLANNER_MARKETS.map(m =>
         [m.id, buildPredictionModel(matchData, m.stat, { trackResiduals: true })])), [matchData]);
 
     // Our chance for a leg, or null to fall back to the book's: no model for the
     // market, or a prediction below the confidence floor Hot Matches also uses.
+    // One prediction per fixture and market, worked out here once rather than per
+    // price row, and kept while only the rules change - nudging a number is free.
     const modelProb = useMemo(() => {
         const { nGames, useGeneralStats, forceMean } = modelSettings;
+        const fixtureKey = (r) => `${r.market}|${r.home_team}|${r.away_team}`;
         const preds = new Map();
-        return (r) => {
+        for (const r of oddsRows) {
             const model = models[r.market];
-            if (!model || r.line == null) return null;
-            const key = `${r.market}|${r.home_team}|${r.away_team}`;
-            if (!preds.has(key)) {
-                preds.set(key, predictFromModel(model, r.home_team, r.away_team, {
-                    nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
-                    asOf: new Date(r.match_date), engine: ENGINES.COUNT,
-                }));
-            }
-            const pred = preds.get(key);
+            if (!model || preds.has(fixtureKey(r))) continue;
+            preds.set(fixtureKey(r), predictFromModel(model, r.home_team, r.away_team, {
+                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
+                asOf: new Date(r.match_date), engine: ENGINES.COUNT,
+            }));
+        }
+        return (r) => {
+            const pred = r.line == null ? null : preds.get(fixtureKey(r));
             const over = pred?.confident ? pred.probOver?.(Number(r.line)) : null;
             if (over == null) return null;
             return r.selection === 'over' ? over : 1 - over;
         };
-    }, [models, modelSettings]);
+    }, [oddsRows, models, modelSettings]);
 
     const { slips, legs, eligible } = useMemo(
         () => planSlips(oddsRows, { events, minOdds, maxOdds, sameDay, markets, mode, modelProb }),
@@ -299,7 +290,7 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
     // Remounts the tickets on a rule change, so they deal in afresh.
     const deal = `${events}|${minOdds}|${maxOdds}|${sameDay}|${mode}|${markets.join()}`;
 
-    const loading = oddsLoading || loadingSlip;
+    const loading = oddsLoading;
 
     // Wide screens: as many event rows as it takes to reach the bottom of the
     // stacked tickets, so the two columns end level. Measured, not guessed: a
@@ -404,9 +395,9 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                     <div className="relative mt-5 pt-5 border-t border-white/5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
                         <NumberField label={t('Events')} value={events} step={1} min={1} max={12}
                             onChange={v => set({ events: v })} />
-                        <NumberField label={t('Minimum odds per event')} value={minOdds} step={0.05} min={1.01} max={20} decimals={2}
+                        <NumberField label={t('Minimum price per event')} value={minOdds} step={0.05} min={1.01} max={20} decimals={2}
                             onChange={setMinOdds} />
-                        <NumberField label={t('Maximum odds per event')} value={maxOdds} step={0.05} min={1.01} max={20} decimals={2}
+                        <NumberField label={t('Maximum price per event')} value={maxOdds} step={0.05} min={1.01} max={20} decimals={2}
                             onChange={setMaxOdds} />
                         <NumberField label={t('Bonus amount')} value={stake} step={5} min={0} max={100000} prefix="€"
                             onChange={v => set({ stake: v })} />
@@ -436,8 +427,6 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                     </p>
                 </section>
 
-                {/* Every market or none: slips drawn from half the board ranked GG/NG
-                    alone whenever it answered before the main /odds fetch. */}
                 <div className="bp-split">
                     <section ref={leftRef} className="bp-split-left w-full max-w-3xl mx-auto space-y-4 animate-waterfall" style={{ animationDelay: '160ms' }}>
                         <SectionTitle icon={<ListChecks className="w-5 h-5 text-amber-300" />} title={t('All events')} count={loading ? null : legs.length}>
@@ -468,7 +457,7 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                                 <SearchX className="w-10 h-10 text-zinc-600" />
                                 <p className="text-white font-bold">{t('No slip fits these rules right now.')}</p>
                                 <p className="text-sm text-zinc-500">
-                                    {t('{n} matches qualify, {events} needed. Widen the odds range, allow more markets or other days.', { n: eligible, events })}
+                                    {t('{n} matches qualify, {events} needed. Widen the price range, allow more markets or other days.', { n: eligible, events })}
                                 </p>
                             </div>
                         )}

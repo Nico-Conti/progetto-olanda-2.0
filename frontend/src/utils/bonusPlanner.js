@@ -29,8 +29,6 @@ export const PLANNER_MARKETS = [
     { id: 'total_corners', stat: 'corners' },
     { id: 'total_fouls', stat: 'fouls' },
     { id: 'total_card_points', stat: 'card_points' },
-    { id: 'gg_ng', stat: 'gg_ng', slipOnly: true },
-    { id: 'multigol', stat: 'multigol', slipOnly: true },
 ];
 
 const localDay = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
