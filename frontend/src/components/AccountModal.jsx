@@ -3,9 +3,10 @@ import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight } from 'lu
 import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
+import LanguageSwitch from './ui/LanguageSwitch';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
-import { t, tk, dateLocale, getLanguage, setLanguage, LANGUAGES } from '../i18n';
+import { t, tk, dateLocale } from '../i18n';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
@@ -74,18 +75,23 @@ export const Avatar = ({ user, className = 'w-9 h-9' }) => {
 };
 
 /** Header/landing entry point: the avatar when signed in, a person icon otherwise. */
+/** Top right of every page: the avatar, and the language flags while signed out (signed in, they live in Profile). */
 export const AccountButton = () => {
     const { user, openAccount } = useAccount();
-    if (!supabase) return null;
     return (
-        <button
-            onClick={openAccount}
-            aria-label={user ? t('Your account') : t('Sign in')}
-            title={user ? t('Your account') : t('Sign in')}
-            className="rounded-full hover:ring-2 hover:ring-emerald-500/50 transition"
-        >
-            <Avatar user={user} />
-        </button>
+        <div className="flex items-center gap-2">
+            {!user && <LanguageSwitch />}
+            {supabase && (
+                <button
+                    onClick={openAccount}
+                    aria-label={user ? t('Your account') : t('Sign in')}
+                    title={user ? t('Your account') : t('Sign in')}
+                    className="rounded-full hover:ring-2 hover:ring-emerald-500/50 transition"
+                >
+                    <Avatar user={user} />
+                </button>
+            )}
+        </div>
     );
 };
 
@@ -247,13 +253,7 @@ const ProfileTab = ({ user, leagues }) => {
 
             <div>
                 <span className={LABEL}>{t('Language')}</span>
-                <SlidingTabs
-                    items={LANGUAGES}
-                    value={getLanguage()}
-                    onChange={(lang) => { setLanguage(lang); saveMeta({ language: lang }); }}
-                    className="w-full"
-                    tabClassName="flex-1 font-semibold"
-                />
+                <LanguageSwitch onChange={(lang) => saveMeta({ language: lang })} className="w-fit" />
             </div>
 
             <div>
