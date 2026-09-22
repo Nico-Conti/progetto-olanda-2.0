@@ -70,6 +70,7 @@ export default {
     "Standings": "Classifica",
     "Back to Hot Matches": "Torna a Partite calde",
     "Back to Fixtures": "Torna alle partite",
+    "Back to Standings": "Torna alla classifica",
     "{league} fixtures": "Partite di {league}",
     "Counting corners…": "Contando i corner…",
     "Checking with VAR…": "Controllo al VAR…",
