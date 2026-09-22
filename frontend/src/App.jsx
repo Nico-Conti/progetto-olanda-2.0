@@ -29,12 +29,21 @@ import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
 import LegalFooter from './components/ui/LegalFooter';
 import { t, tk, useLanguage, setLanguage } from './i18n';
-import { parseRoute, buildPath, resolveBySlug, matchSlug, backTargetFor, statFromSearch, withStat } from './utils/routes';
+import { parseRoute, buildPath, resolveBySlug, matchSlug, backTargetFor, statFromSearch, withStat, titleFor, isNoIndex } from './utils/routes';
 import { LoadFailed, NotFound } from './components/Fallback';
 import { PREDICTED_STAT_OPTIONS } from './utils/statistics';
 import { useDeferredLocation } from './hooks/useDeferredLocation';
 
 const PREDICTED_STAT_VALUES = PREDICTED_STAT_OPTIONS.map(o => o.value);
+
+// Route -> the name in its <title>. Separate from routes.js's SECTION_TITLE so
+// the keys stay visible to src/i18n/check.mjs from a file it scans.
+const SECTION_TITLES = {
+  'hot-matches': tk('Hot Matches'),
+  'market-moves': tk('Market Moves'),
+  'highest-winning-factor': tk('Winning Factor'),
+  'bonus-planner': tk('Best Bonus Slips'),
+};
 
 const TABS = [
   { id: 'predictor', label: tk('Predictor'), Icon: Calculator },
@@ -367,6 +376,44 @@ export default function App() {
   const settled = !loading && !dataFailed && matchData.length > 0;
   const teamUnknown = settled && Boolean(route.team) && !selectedTeam;
   const matchUnknown = settled && Boolean(route.match) && !routeMatch;
+
+  /* The document head follows the route. Titles use RESOLVED display names,
+     never slugs, so this waits for resolution and leaves index.html's static
+     title in place until then - which is also why '/' is byte-identical to it
+     and the first paint never flickers.
+
+     Canonical, because ?stat= variants would otherwise be indexed as separate
+     URLs. og: tags are deliberately NOT updated: social scrapers do not run
+     JS, so per-route previews need SSR and every shared link previews as the
+     site root regardless. Half-implementing that would just be a lie in the
+     markup.
+
+     noindex on team and match routes: a match is stale within the week and a
+     team page is a handful of numbers, so thousands of thin URLs is an SEO
+     liability - and, given this site's Safe Browsing history, not a risk worth
+     running. League roots and sections stay indexable. */
+  useEffect(() => {
+    document.title = titleFor(route, {
+      league: selectedLeague,
+      team: selectedTeam,
+      match: routeMatch ? `${routeMatch.home} vs ${routeMatch.away}` : null,
+      section: SECTION_TITLES[route.view] ? t(SECTION_TITLES[route.view]) : null,
+      standings: t('Standings'),
+    });
+
+    const link = document.querySelector('link[rel="canonical"]')
+      ?? document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'canonical' }));
+    link.href = window.location.origin + shown.pathname;
+
+    const robots = document.querySelector('meta[name="robots"]');
+    if (isNoIndex(route)) {
+      (robots ?? document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'robots' })))
+        .setAttribute('content', 'noindex');
+    } else if (robots) {
+      robots.remove();
+    }
+  }, [route, shown.pathname, selectedLeague, selectedTeam, routeMatch]);
+
 
   // Winning Factor counts raw hit rates over matches already played, so unlike
   // the predictor it must see exactly one season. Two reasons, and the second is
