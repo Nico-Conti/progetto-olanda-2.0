@@ -238,6 +238,49 @@
   .t-modal { transition: none !important; }
 }
 
+/* `.t-modal` for a NATIVE <dialog> opened with showModal().
+   
+   Same tokens, different mechanics. A dialog lives in the top layer, so it
+   cannot be faded by a parent's opacity and it needs `overlay`/`display` with
+   `allow-discrete` to stay visible while the close transition runs - without
+   those it vanishes on the first frame. The backdrop is `::backdrop`, not a
+   wrapper div, and `[open]` replaces the `.is-open` / `.is-closing` classes
+   because the element tracks its own state.
+
+   Prefer this over `.t-modal` for anything modal: showModal() brings Escape,
+   focus trapping and an inert page for free. `.trailer` in index.css predates
+   this and duplicates it; fold it in when that file is next touched. */
+.t-dialog,
+.t-dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity  var(--modal-close-dur) var(--modal-ease),
+    transform var(--modal-close-dur) var(--modal-ease),
+    overlay  var(--modal-close-dur) allow-discrete,
+    display  var(--modal-close-dur) allow-discrete;
+}
+.t-dialog {
+  transform-origin: center;
+  transform: scale(var(--modal-scale-close));
+}
+.t-dialog[open],
+.t-dialog[open]::backdrop {
+  opacity: 1;
+  transition-duration: var(--modal-open-dur);
+}
+.t-dialog[open] {
+  transform: scale(1);
+}
+@starting-style {
+  .t-dialog[open],
+  .t-dialog[open]::backdrop { opacity: 0; }
+  .t-dialog[open] { transform: scale(var(--modal-scale)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-dialog, .t-dialog::backdrop { transition: none !important; }
+}
+
 /* Not from the skill: React mounts these already `.is-open`, so there is no
    pre-open frame to transition from. @starting-style supplies one. */
 @starting-style {

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight } from 'lucide-react';
-import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
+import Modal from './ui/Modal';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
 import { t, tk, dateLocale, getLanguage, setLanguage, LANGUAGES } from '../i18n';
@@ -656,7 +656,6 @@ const TABS = [
 
 const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
     const { user } = useAccount();
-    const mounted = usePresence(isOpen, '--modal-close-dur');
     const [tab, setTab] = useState('profile');
     // Opened signed out, it stays the sign-in form until it has closed: the
     // user arrives a moment before signInWithPassword returns, and would flash
@@ -669,14 +668,14 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
         if (isOpen) setSignedOutAtOpen(!user);
     }
 
-    if (!mounted || !supabase) return null;
+    if (!supabase) return null;
 
+    // A native <dialog> (ui/Modal): Escape, the focus trap, an inert page and
+    // focus returning to the avatar button all come from showModal(). The
+    // hand-rolled .t-modal div this replaced had none of them.
     return (
-        <div className={`fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity starting:opacity-0 ${isOpen ? 'duration-250' : 'duration-150 opacity-0'}`}>
-            <div
-                role="dialog" aria-modal="true" aria-label={t('Account')}
-                className={`t-modal ${isOpen ? 'is-open' : 'is-closing'} bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[85vh]`}
-            >
+        <Modal open={isOpen} onClose={onClose} label={t('Account')} className="w-[min(92vw,28rem)]">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
                         {user && !signedOutAtOpen ? <Avatar user={user} className="w-7 h-7 text-sm" /> : <User className="w-5 h-5 text-emerald-400" />}
@@ -697,7 +696,7 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
 
