@@ -29,7 +29,7 @@ import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
 import LegalFooter from './components/ui/LegalFooter';
 import { t, tk, useLanguage, setLanguage } from './i18n';
-import { parseRoute, buildPath, resolveBySlug } from './utils/routes';
+import { parseRoute, buildPath, resolveBySlug, matchSlug, backTargetFor } from './utils/routes';
 import { useDeferredLocation } from './hooks/useDeferredLocation';
 
 const TABS = [
@@ -38,7 +38,6 @@ const TABS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('predictor');
 
   /* The URL is the source of truth for WHERE we are; `shown` is what is
      currently PAINTED, which lags behind it for the length of an entry
@@ -58,20 +57,14 @@ export default function App() {
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
   const { matchData, fixturesData, teamLogos, leagues, shellLoading, loading, error, refetch } = useMatchData();
-  // Where Back on a team page leads: one entry per team page opened, holding
-  // the tab, team page and open match it was opened from, so hopping from
-  // opponent to opponent unwinds one step at a time and a badge clicked on a
-  // match page returns to that match.
-  const [teamTrail, setTeamTrail] = useState([]);
-  // Bumped to remount the Predictor on its fixture list, when a match it was
-  // showing as a preview is closed while its tab stays open.
-  const [predictorKey, setPredictorKey] = useState(0);
+  /* `teamTrail` used to live here: a hand-rolled back stack, one frame per
+     team page, so opponent-hopping unwound a step at a time. That is what the
+     browser's own history does, now that every step has a URL - and
+     `predictorKey`, the remount counter that reset the Predictor to its list,
+     goes with it because the match comes from the route rather than from
+     child state that had to be cleared. */
 
   const [matchStatistics, setMatchStatistics] = useState({});
-  const [preSelectedMatch, setPreSelectedMatch] = useState(null);
-  const [selectedTeam, setSelectedTeam] = useState(null);
-  const [backView, setBackView] = useState('hot-matches');
-  const [backLabel, setBackLabel] = useState(tk('Back to Hot Matches'));
 
   // Bet Slip State
   const [bets, setBets] = useState([]);
@@ -124,85 +117,6 @@ export default function App() {
     setBets([]);
   };
 
-  // The spiral transition is for entering a section - a league, Hot Matches,
-  // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
-  // a match) is instant.
-  const handleTabChange = (tab) => {
-    if (tab === activeTab || animating) return;
-    setActiveTab(tab);
-  };
-
-  // Opening a match is going to a fixture, not entering a section, so it is
-  // instant - the rule above, which the team page already followed and these
-  // three did not. It also keeps the league stinger where it belongs:
-  // `transitionFor` only plays it when the journey STARTS at the landing page.
-  const openMatchFrom = (match, from, label) => {
-    setPreSelectedMatch(match);
-    setBackView(from);
-    setBackLabel(label);
-    setActiveTab('predictor');
-    // Commit 4 gives a match its own URL. Until then this lands on the
-    // league's path and keeps the match in `preSelectedMatch`, which is the
-    // behaviour it had before - instant, no stinger.
-    navigate(buildPath({ view: 'dashboard', league: match.league }), { state: { from: location.pathname } });
-  };
-
-  const handleLeagueChange = (league) => {
-    const to = buildPath({ view: 'dashboard', league });
-    if (to === location.pathname || animating) return;
-    setSelectedTeam(null);
-    setTeamTrail([]);
-    setActiveTab('predictor');  // a league opens on the Predictor (was `pendingTab`)
-    navigate(to);
-  };
-
-  /* Which animation plays is no longer decided here: `transitionFor` derives
-     it from where we came from, so leaving a section stays instant and the
-     FORWARD button replays the stinger, which the old machine could not do. */
-  const handleViewChange = (newView) => {
-    const to = buildPath({ view: newView });
-    if (to === location.pathname || animating) return;
-    if (newView === 'landing') setPreSelectedMatch(null);
-    navigate(to);
-  };
-
-  // `fromMatch`: the match on screen when the badge was clicked, to return to.
-  const handleTeamClick = (team, fromMatch = null) => {
-    if (animating) return;
-    setTeamTrail(trail => [...trail, {
-      tab: activeTab, team: selectedTeam, match: fromMatch,
-      preview: Boolean(preSelectedMatch), backView, backLabel,
-    }]);
-    setSelectedTeam(team);
-    setActiveTab('team-details');
-  };
-
-  const handleTeamBack = () => {
-    const back = teamTrail.at(-1);
-    setTeamTrail(trail => trail.slice(0, -1));
-    if (!back) {
-      setSelectedTeam(null);
-      setActiveTab('standings');
-      return;
-    }
-    setSelectedTeam(back.team);
-    if (back.match) {
-      // Reopened as a preview. One opened from the fixture list closes back to
-      // that list; one that was already a preview closes where it did before.
-      setPreSelectedMatch(back.match);
-      setBackView(back.preview ? back.backView : 'dashboard');
-      setBackLabel(back.preview ? back.backLabel : tk('Back to Fixtures'));
-    }
-    setActiveTab(back.tab);
-  };
-
-  // The header's tabs start afresh: no team page to return to.
-  const handleNavTab = (tab) => {
-    setTeamTrail([]);
-    setSelectedTeam(null);
-    handleTabChange(tab);
-  };
-
   // Extract unique leagues from data
   const availableLeagues = useMemo(() => {
     const fromMatches = new Set(matchData.map(m => m.league).filter(Boolean));
@@ -228,6 +142,50 @@ export default function App() {
      landing page rather than crashing - wrong URL, but nothing breaks. */
   const unresolved = route.view === 'dashboard' && !shellLoading && !selectedLeague;
   const view = (route.view === 'not-found' || unresolved) ? 'landing' : route.view;
+  const activeTab = route.tab ?? 'predictor';
+
+  // The spiral transition is for entering a section - a league, Hot Matches,
+  // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
+  // a match) is instant.
+  const handleTabChange = (tab) => {
+    if (tab === route.tab || animating) return;
+    navigate(buildPath({ view: 'dashboard', league: selectedLeague, tab }));
+  };
+
+  /* Opening a match is going to a fixture, not entering a section, so it is
+     instant - `transitionFor` only animates a journey that starts at '/'.
+     `from` is the ORIGIN PATH, not a rendered label: the label is a
+     translation key resolved at render time, so storing the string would go
+     stale the moment someone switched language. */
+  const openMatchFrom = (match) => {
+    navigate(buildPath({ view: 'dashboard', league: match.league, match }),
+      { state: { from: location.pathname } });
+  };
+
+  const handleLeagueChange = (league) => {
+    const to = buildPath({ view: 'dashboard', league });
+    if (to === location.pathname || animating) return;
+    navigate(to);
+  };
+
+  /* Which animation plays is no longer decided here: `transitionFor` derives
+     it from where we came from, so leaving a section stays instant and the
+     FORWARD button replays the stinger, which the old machine could not do. */
+  const handleViewChange = (newView) => {
+    const to = buildPath({ view: newView });
+    if (to === location.pathname || animating) return;
+    navigate(to);
+  };
+
+  // `fromMatch` is no longer needed: the match we came from is the previous
+  // history entry, and Back is navigate(-1).
+  const handleTeamClick = (team) => {
+    if (animating) return;
+    navigate(buildPath({ view: 'dashboard', league: selectedLeague, team }),
+      { state: { from: location.pathname } });
+  };
+
+
 
   // Seasons available for the league in view, newest first
   const availableSeasons = useMemo(
@@ -320,6 +278,56 @@ export default function App() {
     });
     return fixturesData.filter(f => !f.season || f.season === latestByLeague[f.league]);
   }, [matchData, fixturesData]);
+
+  /* Resolving the identity in the URL. Slugs are lossy, so this slugifies the
+     candidates and compares - never parses the slug back. A team needs the
+     5.5MB, since /teams carries no league association; a league does not. */
+  const teamNames = useMemo(() => new Set([
+    ...filteredFixtures.flatMap(f => [f.home, f.away]),
+    ...filteredMatchData.flatMap(m => (m.squadre ? [m.squadre.home, m.squadre.away] : [])),
+  ].filter(Boolean)), [filteredFixtures, filteredMatchData]);
+
+  /* Memoised even though it is one lookup: React Compiler treats a memoised
+     value passed into an imported function as possibly mutated by it, and
+     bails on the whole component's memoisation. Same reason below. */
+  const selectedTeam = useMemo(
+    () => (route.team ? resolveBySlug(teamNames, route.team) : null),
+    [route.team, teamNames]);
+
+  // The team whose page the PREVIOUS entry was, for a "Back to {team}" label.
+  const teamFromOrigin = useMemo(() => {
+    const origin = location.state?.from ? parseRoute(location.state.from) : null;
+    return origin?.team ? resolveBySlug(teamNames, origin.team) : null;
+  }, [location, teamNames]);
+
+  /* Back on a team or match page. `navigate(-1)` when there IS an entry behind
+     us, so opponent-hopping unwinds one step at a time exactly as the old
+     `teamTrail` did - and never a forward push, which would record a new
+     origin and bounce between the same two pages for ever. A pasted link has
+     nothing behind it, so it falls back to the parent. */
+  const back = useMemo(
+    () => backTargetFor(location, { fromTeam: teamFromOrigin }),
+    [location, teamFromOrigin]);
+  const handleBack = () => {
+    if (!back) return;
+    /* Is there an in-app entry behind us? React Router gives the session's
+       first entry the key 'default', so anything else means we pushed at least
+       once; history.state.idx is the fallback if that ever changes. Read HERE
+       rather than during render - window.history is mutable global state, so
+       touching it in the render body is impure and stops React Compiler
+       optimising this component. */
+    const canGoBack = location.key !== 'default' || (window.history.state?.idx ?? 0) > 0;
+    if (back.history && canGoBack) navigate(-1);
+    else navigate(back.to);
+  };
+
+
+  /* The open match. Fixtures only: a match page is a forecast, and the
+     Predictor's list and every cross-league view all hand it a fixture. */
+  const routeMatch = useMemo(
+    () => (route.match ? filteredFixtures.find(f => matchSlug(f) === route.match) ?? null : null),
+    [route.match, filteredFixtures],
+  );
 
   // Winning Factor counts raw hit rates over matches already played, so unlike
   // the predictor it must see exactly one season. Two reasons, and the second is
@@ -558,7 +566,7 @@ export default function App() {
               <SlidingTabs
                 items={tabs}
                 value={activeTab}
-                onChange={handleNavTab}
+                onChange={handleTabChange}
                 className="border border-white/5 shadow-lg shadow-black/20"
                 tabClassName="font-semibold"
               />
@@ -580,7 +588,7 @@ export default function App() {
             <LiquidNav
               items={[{ id: 'home', label: t('Leagues'), Icon: Home }, ...tabs]}
               value={activeTab}
-              onChange={(id) => (id === 'home' ? handleViewChange('landing') : handleNavTab(id))}
+              onChange={(id) => (id === 'home' ? handleViewChange('landing') : handleTabChange(id))}
             />
           </div>
 
@@ -600,15 +608,10 @@ export default function App() {
                   season={latestResultSeason}
                   modelMatchData={currentSeasonMatchData}
                   modelSettings={modelSettingsApi.modelSettings}
-                  onBack={handleTeamBack}
+                  onBack={handleBack}
                   onTeamClick={(team) => handleTeamClick(team)}
                   selectedStatistic={selectedStatistic}
-                  onMatchClick={(match) => {
-                    setBackView('dashboard');
-                    setBackLabel(t('Back to {team}', { team: selectedTeam }));
-                    setPreSelectedMatch(match);
-                    handleTabChange('predictor');
-                  }}
+                  onMatchClick={openMatchFrom}
                 />
               </div>
             )}
@@ -616,7 +619,6 @@ export default function App() {
             {activeTab === 'predictor' && (
               <div className="animate-in fade-in slide-in-from-bottom-4">
                 <Predictor
-                  key={predictorKey}
                   {...modelSettingsApi}
                   priceFor={priceFor}
                   pricedLines={pricedLines}
@@ -641,27 +643,16 @@ export default function App() {
                   addToBet={addToBet}
                   removeFromBet={removeFromBet}
                   bets={bets}
-                  preSelectedMatch={preSelectedMatch}
-                  onExitPreview={() => {
-                    setPreSelectedMatch(null);
-                    if (backView === 'dashboard') {
-                      if (selectedTeam) setActiveTab('team-details');
-                      else setPredictorKey(k => k + 1);
-                    } else {
-                      // Instant, like the way in: `openMatchFrom` does not
-                      // animate, so animating the way out was a spiral on one
-                      // leg of the same round trip. It stays instant for free
-                      // now - `transitionFor` only animates away from '/'.
-                      navigate(buildPath({ view: backView }));
-                    }
-                  }}
-                  // Only when it is somewhere else: from the fixture list the
-                  // back button already lands on the league.
-                  onExitToLeague={backView === 'dashboard' ? undefined : () => {
-                    setPreSelectedMatch(null);
-                    setPredictorKey(k => k + 1);
-                  }}
-                  backButtonLabel={backLabel}
+                  preSelectedMatch={routeMatch}
+                  /* Closing a match is Back: whatever opened it is the entry
+                     behind us. `predictorKey`, which used to remount the
+                     Predictor onto its fixture list, is gone - there is no
+                     stale child state left to clear. */
+                  onExitPreview={handleBack}
+                  // Only when Back leads somewhere else; from the fixture list
+                  // it already lands on the league.
+                  onExitToLeague={back?.history ? () => navigate(buildPath({ view: 'dashboard', league: selectedLeague })) : undefined}
+                  backButtonLabel={back ? t(back.labelKey, back.vars) : undefined}
                   onTeamClick={handleTeamClick}
                 />
               </div>
