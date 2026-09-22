@@ -2,13 +2,6 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { usePresence } from '../../hooks/usePresence';
 
-// Written out in full: Tailwind scans for literal class strings, so a
-// template-interpolated `ring-${accent}-500/50` would never be generated.
-const ACCENT_RING = {
-    emerald: 'focus:ring-emerald-500/50',
-    cyan: 'focus:ring-cyan-500/50',
-};
-
 /**
  * Labelled dropdown trigger with a popover panel.
  *
@@ -23,7 +16,6 @@ const Dropdown = ({
     children,
     width = 'min-w-[140px]',
     className = '',
-    accent = 'emerald',
 }) => {
     const isPanelMounted = usePresence(active, '--dropdown-close-dur');
 
@@ -33,7 +25,8 @@ const Dropdown = ({
             <div className="relative">
                 <button
                     onClick={onToggle}
-                    className={`bg-zinc-900 border border-white/10 text-white text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 ${ACCENT_RING[accent] ?? ACCENT_RING.emerald} font-bold text-left flex items-center justify-between ${width}`}
+                    data-open={active}
+                    className={`bp-control text-white text-sm rounded-lg pl-3 pr-8 py-1.5 font-bold text-left flex items-center justify-between ${width}`}
                 >
                     <span className="truncate">{value}</span>
                     <ChevronRight className={`absolute right-2 w-3 h-3 text-zinc-500 transition-transform ${active ? '-rotate-90' : 'rotate-90'}`} />
@@ -41,7 +34,7 @@ const Dropdown = ({
                 {isPanelMounted && (
                     <div
                         data-origin="top-left"
-                        className={`t-dropdown ${active ? 'is-open' : 'is-closing'} absolute top-full mt-2 left-0 bg-zinc-950 border border-white/10 p-2 rounded-xl shadow-2xl min-w-[200px] z-50`}
+                        className={`t-dropdown ${active ? 'is-open' : 'is-closing'} bp-pop absolute top-full mt-2 left-0 p-2 rounded-xl shadow-2xl min-w-[200px] z-50`}
                     >
                         {children}
                     </div>

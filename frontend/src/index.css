@@ -1091,6 +1091,79 @@ input[type=number] {
 
 @keyframes bp-spin { to { --bp-angle: 360deg; } }
 
+/* Selectors, their popovers and the segmented controls, in the colour of the page
+   they sit in: --ctl is the app's emerald by default and follows the section's
+   --fx-a inside a themed page or a header panel, so the chrome reads as part of
+   the panel instead of a zinc box dropped on it. Same wiring as .bp-step below. */
+:root {
+    --ctl: #10b981;
+    --ctl-light: #6ee7b7;
+}
+
+.fx-fire,
+.fx-volt,
+.fx-ticker,
+.bp-hero {
+    --ctl: var(--fx-a);
+    --ctl-light: var(--fx-light);
+}
+
+.bp-control {
+    background: color-mix(in srgb, var(--ctl) 7%, rgb(9 9 11 / 0.55));
+    border: 1px solid color-mix(in srgb, var(--ctl) 20%, rgb(255 255 255 / 0.1));
+    transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, color 200ms ease;
+}
+
+.bp-control:hover {
+    background: color-mix(in srgb, var(--ctl) 14%, rgb(9 9 11 / 0.55));
+    border-color: color-mix(in srgb, var(--ctl) 45%, transparent);
+}
+
+.bp-control:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--ctl) 60%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ctl) 18%, transparent);
+}
+
+.bp-control[data-open="true"] {
+    border-color: color-mix(in srgb, var(--ctl) 55%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--ctl) 14%, transparent);
+}
+
+.bp-control[data-open="true"] svg { color: var(--ctl-light); }
+
+/* The popover: darker than its trigger, so text stays readable over the cards. */
+.bp-pop {
+    background: color-mix(in srgb, var(--ctl) 6%, rgb(9 9 11 / 0.94));
+    border: 1px solid color-mix(in srgb, var(--ctl) 20%, rgb(255 255 255 / 0.1));
+    backdrop-filter: blur(16px);
+}
+
+.bp-opt { color: #a1a1aa; transition: background 150ms ease, color 150ms ease; }
+.bp-opt:hover { color: #fff; background: rgb(255 255 255 / 0.05); }
+
+.bp-opt-on {
+    color: var(--ctl-light);
+    background: color-mix(in srgb, var(--ctl) 16%, transparent);
+}
+
+.bp-pop input[type="checkbox"] { accent-color: var(--ctl); }
+
+/* The sliding pill (.t-tabs in transitions.css) lit from the same colour. */
+.bp-hero .t-tabs,
+.bp-control-tabs {
+    border: 1px solid color-mix(in srgb, var(--ctl) 18%, rgb(255 255 255 / 0.08));
+    --tabs-bar-bg: rgb(9 9 11 / 0.45);
+    --tabs-pill-bg: color-mix(in srgb, var(--ctl) 28%, rgb(9 9 11 / 0.9));
+    --tabs-text-active: #fff;
+}
+
+.bp-hero .t-tabs-pill,
+.bp-control-tabs .t-tabs-pill {
+    border: 1px solid color-mix(in srgb, var(--ctl) 50%, transparent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--ctl) 22%, transparent);
+}
+
 .bp-step {
     width: 2.5rem;
     height: 2.5rem;

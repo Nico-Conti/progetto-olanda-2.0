@@ -271,7 +271,7 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                             ]}
                             value={tab}
                             onChange={setTab}
-                            className="border border-white/10 self-start lg:self-center bg-zinc-950/40"
+                            className="self-start lg:self-center"
                             tabClassName="font-semibold"
                         />
                     </div>

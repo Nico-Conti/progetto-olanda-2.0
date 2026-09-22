@@ -57,7 +57,7 @@ const Header = ({
                         <button
                             onClick={onOpenBetSlip}
                             aria-label={t('Open bet slip')}
-                            className="relative p-2 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 hover:text-white hover:border-emerald-500/50 transition group"
+                            className="bp-control relative p-2 rounded-lg text-zinc-400 hover:text-white group"
                         >
                             {/* Always mounted so it can pop in and out (transitions.dev
                                 badge); the count re-keys so each change replays the

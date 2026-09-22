@@ -5,7 +5,6 @@ import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
 import ElectricBorder from './originkit/ElectricBorder';
 import GlowBorder from './originkit/GlowBorder';
-import FireBorder from './FireBorder';
 import TrophyIntro, { TrophyIcon } from './TrophyIntro';
 import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
@@ -62,14 +61,17 @@ const CHART_POINTS = '0,30 8,27 16,31 24,22 32,25 40,17 48,20 56,12 64,16 72,9 8
 const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
     .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
 
+/** Embers rising off the bottom edge, over a heat glow. Also the Hot Matches header. */
+export const EmberLayer = ({ className = '' }) => (
+    <div className={`absolute inset-x-0 -top-16 bottom-0 pointer-events-none ${className}`} aria-hidden="true">
+        <div className="fx-heat" />
+        {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
+    </div>
+);
+
 /** The effect layer behind a feature card's content; see "Landing feature-card hover effects" in index.css. */
 const HoverFx = ({ kind }) => {
-    if (kind === 'fire') return (
-        <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
-            <div className="fx-heat" />
-            {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
-        </div>
-    );
+    if (kind === 'fire') return <EmberLayer className="fx" />;
     if (kind === 'ticker') return (
         <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
@@ -132,12 +134,11 @@ const FEATURES = [
 
 const FeatureCard = ({ feature, onClick }) => {
     const { Icon } = feature;
-    // The electric and fire borders redraw a canvas every frame, so they only exist while
+    // The electric border redraws a canvas every frame, so it only exists while
     // hovered (plus its fade-out); the CSS effects just pause instead.
     const [hovered, setHovered] = React.useState(false);
     const [reducedMotion] = React.useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const electric = usePresence(!reducedMotion && feature.fx === 'lightning' && hovered, '--fx-fade-out');
-    const burning = usePresence(!reducedMotion && feature.fx === 'fire' && hovered, '--fx-fade-out');
 
     return (
         <button
@@ -159,11 +160,6 @@ const FeatureCard = ({ feature, onClick }) => {
                         speed={1.2}
                         borderRadius={16}
                     />
-                </div>
-            )}
-            {burning && (
-                <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
-                    <FireBorder borderRadius={16} density={1.2} height={0.7} />
                 </div>
             )}
             <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-32 blur-[40px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none ${feature.glow}`} />

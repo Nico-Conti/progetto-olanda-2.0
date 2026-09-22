@@ -43,7 +43,7 @@ const ConfigurationPanel = ({
                     ]}
                     value={analysisMode}
                     onChange={setAnalysisMode}
-                    className="w-full border border-white/10 bg-zinc-950/40"
+                    className="w-full"
                     tabClassName="flex-1 justify-center whitespace-nowrap !px-2 font-semibold"
                 />
             </Field>
@@ -56,7 +56,7 @@ const ConfigurationPanel = ({
                     ]}
                     value={operator}
                     onChange={setOperator}
-                    className="w-full border border-white/10 bg-zinc-950/40"
+                    className="w-full"
                     tabClassName="flex-1 justify-center whitespace-nowrap !px-2 font-semibold"
                 />
             </Field>

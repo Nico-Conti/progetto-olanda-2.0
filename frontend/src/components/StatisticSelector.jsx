@@ -30,28 +30,18 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`
-                    flex items-center justify-between gap-2 w-full
-                    bg-zinc-900/80 border border-white/5 
-                    text-zinc-300 text-sm font-semibold uppercase tracking-wide
-                    rounded-full px-4 py-2 
-                    focus:outline-none focus:ring-2 focus:ring-emerald-500/50
-                    transition duration-200
-                    hover:bg-white/5 hover:text-white hover:border-white/10
-                    ${isOpen ? 'ring-2 ring-emerald-500/50 bg-zinc-900 border-emerald-500/50' : ''}
-                `}
+                data-open={isOpen}
+                className="bp-control flex items-center justify-between gap-2 w-full text-zinc-300 hover:text-white text-sm font-semibold uppercase tracking-wide rounded-full px-4 py-2"
             >
                 <span className="truncate">{t(selectedOption.label)}</span>
-                <ChevronDown
-                    className={`w-4 h-4 text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180 text-emerald-400' : ''}`}
-                />
+                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             <div
                 className={`
                     absolute z-50 mt-2 w-full min-w-[180px] right-0
-                    bg-zinc-900 border border-white/10 rounded-lg shadow-xl backdrop-blur-xl
+                    bp-pop rounded-lg shadow-xl
                     transform transition duration-200 origin-top
                     ${isOpen
                         ? 'opacity-100 translate-y-0 scale-100 visible'
@@ -63,13 +53,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                         <button
                             key={option.value}
                             onClick={() => handleSelect(option.value)}
-                            className={`
-                                w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold uppercase tracking-wide
-                                transition duration-150
-                                ${value === option.value
-                                    ? 'bg-emerald-500/10 text-emerald-400'
-                                    : 'text-zinc-400 hover:bg-white/5 hover:text-white'}
-                            `}
+                            className={`bp-opt w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-semibold uppercase tracking-wide ${value === option.value ? 'bp-opt-on' : ''}`}
                         >
                             <span className="flex items-center gap-2">
                                 {t(option.label)}
@@ -77,7 +61,7 @@ const StatisticSelector = ({ value, onChange, className = "" }) => {
                                 <DerivedBadge statistic={option.value} />
                             </span>
                             {value === option.value && (
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <Check className="w-3.5 h-3.5" />
                             )}
                         </button>
                     ))}

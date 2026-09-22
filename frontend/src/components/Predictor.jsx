@@ -531,7 +531,6 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
                                     <Select
-                                        accent="emerald"
                                         value={selectedMatchday}
                                         onChange={setSelectedMatchday}
                                         options={availableMatchdays.map(d => ({ value: d, label: t('Matchday {n}', { n: d }) }))}

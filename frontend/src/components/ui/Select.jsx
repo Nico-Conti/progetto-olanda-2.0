@@ -3,25 +3,7 @@ import { ChevronDown, Check } from 'lucide-react';
 import { usePresence } from '../../hooks/usePresence';
 import { t } from '../../i18n';
 
-// Written out in full: Tailwind only sees literal class strings, so an
-// interpolated `border-${accent}-500/50` would never be generated.
-const ACCENTS = {
-    purple: {
-        border: 'hover:border-purple-500/50',
-        open: 'border-purple-500/50',
-        text: 'group-hover:text-purple-400',
-        selected: 'bg-purple-500 text-white shadow-lg',
-    },
-    emerald: {
-        border: 'hover:border-emerald-500/50',
-        open: 'border-emerald-500/50',
-        text: 'group-hover:text-emerald-400',
-        selected: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20',
-    },
-};
-
-const Select = ({ value, onChange, options, placeholder, className = "", accent = "purple" }) => {
-    const theme = ACCENTS[accent] ?? ACCENTS.purple;
+const Select = ({ value, onChange, options, placeholder, className = "" }) => {
     const [isOpen, setIsOpen] = useState(false);
     const isMenuMounted = usePresence(isOpen, '--dropdown-close-dur');
     const dropdownRef = useRef(null);
@@ -50,40 +32,27 @@ const Select = ({ value, onChange, options, placeholder, className = "", accent 
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`
-                    flex items-center justify-between gap-2 w-full
-                    bg-zinc-950 rounded-lg border border-white/10 
-                    px-3 py-2 h-10
-                    text-sm font-bold text-white
-                    ${theme.border} transition-colors group
-                    ${isOpen ? theme.open : ''}
-                `}
+                data-open={isOpen}
+                className="bp-control group flex items-center justify-between gap-2 w-full rounded-lg px-3 py-2 h-10 text-sm font-bold text-white"
             >
-                <span className={`truncate ${!selectedOption ? 'text-zinc-500' : `${theme.text} transition-colors`}`}>
+                <span className={`truncate ${!selectedOption ? 'text-zinc-500' : ''}`}>
                     {selectedOption ? selectedOption.label : (placeholder ?? t('Select...'))}
                 </span>
-                <ChevronDown
-                    className={`w-4 h-4 text-zinc-600 ${theme.text} transition ${isOpen ? 'rotate-180' : ''}`}
-                />
+                <ChevronDown className={`w-4 h-4 text-zinc-500 transition ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isMenuMounted && (
                 <div
                     data-origin="top-center"
-                    className={`t-dropdown ${isOpen ? 'is-open' : 'is-closing'} absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 max-h-60 overflow-y-auto custom-scrollbar`}
+                    className={`t-dropdown ${isOpen ? 'is-open' : 'is-closing'} bp-pop absolute top-full left-0 right-0 mt-2 rounded-xl shadow-2xl p-2 z-50 max-h-60 overflow-y-auto custom-scrollbar`}
                 >
                     <div className="flex flex-col gap-1">
                         {options.map((option) => (
                             <button
                                 key={option.value}
                                 onClick={() => handleSelect(option.value)}
-                                className={`
-                                    w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold text-left transition
-                                    ${value === option.value
-                                        ? theme.selected
-                                        : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}
-                                `}
+                                className={`bp-opt w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-bold text-left ${value === option.value ? 'bp-opt-on' : ''}`}
                             >
                                 {option.label}
                                 {value === option.value && (

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Flame, TrendingUp, BrainCircuit, SearchX } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
@@ -13,8 +13,8 @@ import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import Header from './Header';
 import SlidingTabs from './ui/SlidingTabs';
-import FireBorder from './FireBorder';
 import { motionAllowed } from '../utils/leaguePickerFx';
+import { EmberLayer } from './LandingPage';
 import { useCountUp } from '../hooks/useCountUp';
 import { staggerDelay } from '../utils/stagger';
 import MatchCard from './MatchCard';
@@ -147,17 +147,8 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
 
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    // Flames round the header, as on the homepage card. A canvas redrawn every
-    // frame, so it only burns while the header is on screen.
-    const heroRef = useRef(null);
-    const [heroVisible, setHeroVisible] = useState(false);
+    // Embers off the header's bottom edge, as on the homepage card.
     const [fire] = useState(motionAllowed);
-    useEffect(() => {
-        if (!fire) return;
-        const io = new IntersectionObserver(([e]) => setHeroVisible(e.isIntersecting));
-        io.observe(heroRef.current);
-        return () => io.disconnect();
-    }, [fire]);
 
     const { availableLeagues, availableDates, candidates } =
         useUpcomingFixtures(fixtures, stats, { selectedLeagues, selectedDate });
@@ -298,8 +289,8 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-4">
                 <div className="space-y-8 relative">
                     {/* One panel: title, ranking and filters. z-50: the dropdowns open over the cards below. */}
-                    <section ref={heroRef} className={`bp-hero bp-hero-open animate-waterfall relative z-50 ${fire ? 'bp-live-edge fire-edge' : ''}`}>
-                        {fire && heroVisible && <FireBorder borderRadius={24} density={0.8} />}
+                    <section className="bp-hero bp-hero-open animate-waterfall relative z-50">
+                        {fire && <EmberLayer />}
                         <div className="bp-orbs" aria-hidden="true">
                             <div className="bp-orb bp-orb-a" />
                             <div className="bp-orb bp-orb-b" />
@@ -328,7 +319,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 ]}
                                 value={effectiveRankBy}
                                 onChange={setRankBy}
-                                className="border border-white/10 self-start lg:self-center bg-zinc-950/40"
+                                className="self-start lg:self-center"
                                 tabClassName="font-semibold"
                             />
                         </div>
@@ -345,9 +336,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     <button
                                         onClick={() => handleLeagueToggle('All')}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedLeagues.includes('All')
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                        className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold mb-1 ${selectedLeagues.includes('All') ? 'bp-opt-on' : ''}`}
                                     >
                                         {t('All Leagues')}
                                     </button>
@@ -355,13 +344,11 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                     {availableLeagues.map(league => (
                                         <label
                                             key={league}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedLeagues.includes(league)
-                                                ? 'bg-zinc-800 text-white'
-                                                : 'text-zinc-500 hover:bg-white/5'}`}
+                                            className={`bp-opt flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${selectedLeagues.includes(league) ? 'bp-opt-on' : ''}`}
                                         >
                                             <input
                                                 type="checkbox"
-                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/20 focus:ring-offset-0"
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 focus:ring-offset-0"
                                                 checked={selectedLeagues.includes(league)}
                                                 onChange={() => handleLeagueToggle(league)}
                                             />
@@ -383,9 +370,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     <button
                                         onClick={() => { setSelectedDate(null); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedDate === null
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                        className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold mb-1 ${selectedDate === null ? 'bp-opt-on' : ''}`}
                                     >
                                         {t('Upcoming Matches')}
                                     </button>
@@ -399,9 +384,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                             <button
                                                 key={date.toISOString()}
                                                 onClick={() => { setSelectedDate(date); setActiveDropdown(null); }}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${isSelected
-                                                    ? 'bg-zinc-800 text-white'
-                                                    : 'text-zinc-500 hover:bg-white/5'}`}
+                                                className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold ${isSelected ? 'bp-opt-on' : ''}`}
                                             >
                                                 {label}
                                             </button>
