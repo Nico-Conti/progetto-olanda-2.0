@@ -2,7 +2,8 @@
  * Bonus planner: the best slips a bonus's rules allow, from the prices on the
  * board right now.
  *
- * A bonus slip is usually "N events, every leg at least X". One leg per
+ * A bonus slip is usually "N events, every leg at least X" - and a punter may
+ * cap each leg too (`maxOdds`), to keep long shots off the slip. One leg per
  * fixture, because the book counts a fixture as one event.
  *
  * A leg's chance is OUR MODEL'S where `modelProb` has one (goals, corners,
@@ -34,7 +35,7 @@ export const PLANNER_MARKETS = [
 
 const localDay = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
-export const planSlips = (rows, { events, minOdds, sameDay, markets, mode = 'safe', now = new Date(), count = 3, modelProb = null }) => {
+export const planSlips = (rows, { events, minOdds, maxOdds = Infinity, sameDay, markets, mode = 'safe', now = new Date(), count = 3, modelProb = null }) => {
     const allowed = new Set(markets);
     const today = localDay(now);
 
@@ -59,7 +60,7 @@ export const planSlips = (rows, { events, minOdds, sameDay, markets, mode = 'saf
         const kickoff = new Date(r.match_date);
         const book = books.get(lineKey(r));
         // A line with only this side captured cannot be devigged, and would read as margin-free.
-        if (!book || book <= 1 / price + 1e-9 || price < minOdds || !(kickoff > now)) continue;
+        if (!book || book <= 1 / price + 1e-9 || price < minOdds || price > maxOdds || !(kickoff > now)) continue;
         if (sameDay && localDay(kickoff) !== today) continue;
         const bookProb = (1 / price) / book;
         const model = modelProb?.(r) ?? null;
