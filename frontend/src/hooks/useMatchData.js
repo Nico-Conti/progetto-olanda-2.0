@@ -5,6 +5,8 @@ export const useMatchData = () => {
     const [matchData, setMatchData] = useState([]);
     const [fixturesData, setFixturesData] = useState([]);
     const [teamLogos, setTeamLogos] = useState({});
+    // squads.stadium_image_url, set by hand in Supabase: it beats TheSportsDB's photo (hooks/useJersey).
+    const [stadiumPhotos, setStadiumPhotos] = useState({});
     const [leagues, setLeagues] = useState([]);
     // TWO loading states, because the two halves differ by three orders of
     // magnitude: /leagues and /teams are 5KB and 120KB and land in ~0.3s, while
@@ -28,8 +30,13 @@ export const useMatchData = () => {
             if (teamsResponse.ok) {
                 const teams = await teamsResponse.json();
                 const teamLogosMap = {};
-                teams.forEach(t => { teamLogosMap[t.name] = t.logo_url; });
+                const stadiumPhotosMap = {};
+                teams.forEach(t => {
+                    teamLogosMap[t.name] = t.logo_url;
+                    if (t.stadium_image_url) stadiumPhotosMap[t.name] = t.stadium_image_url;
+                });
                 setTeamLogos(teamLogosMap);
+                setStadiumPhotos(stadiumPhotosMap);
             } else {
                 console.error("Failed to fetch teams:", teamsResponse.statusText);
             }
@@ -211,5 +218,5 @@ export const useMatchData = () => {
 
     const refetch = () => { fetchShell().then(fetchData); };
 
-    return { matchData, fixturesData, teamLogos, leagues, shellLoading, loading, error, refetch };
+    return { matchData, fixturesData, teamLogos, stadiumPhotos, leagues, shellLoading, loading, error, refetch };
 };

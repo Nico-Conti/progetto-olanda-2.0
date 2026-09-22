@@ -5,7 +5,7 @@ import { useEffect, useReducer } from 'react';
 // venue row has a photo of the stadium (`strThumb`).
 const API = 'https://www.thesportsdb.com/api/v1/json/3/';
 const TEAMS_KEY = 'olanda_teams';
-const VENUES_KEY = 'olanda_venues';
+const VENUES_KEY = 'olanda_venues_v2';
 
 /**
  * Our league names against TheSportsDB's, because the per-team search cannot
@@ -40,7 +40,9 @@ const save = (key, value) => {
 // The kit-only caches this one replaces. A miss is cached and never retried, so
 // a matching rule that changes has to drop the old store or the fix reaches
 // nobody - the same reason the model settings key was bumped.
-for (const old of ['olanda_jerseys', 'olanda_jerseys_v3']) {
+// olanda_venues stored a ground without a photo as a miss, so Livorno's Armando
+// Picchi - named, 14,267 seats, no picture - never showed even its name.
+for (const old of ['olanda_jerseys', 'olanda_jerseys_v3', 'olanda_venues']) {
     try { localStorage.removeItem(old); } catch { /* private mode */ }
 }
 
@@ -183,8 +185,10 @@ const lookupTeam = (team, league, country) => once(`team:${team}`, () => leagueT
 const lookupVenue = (id) => once(`venue:${id}`, () => getJson('lookupvenue.php?id=' + encodeURIComponent(id))
     .then(({ venues: rows }) => {
         const v = rows?.[0];
-        const photo = v && (v.strThumb || v.strFanart1);
-        venues[id] = photo ? {
+        // TheSportsDB writes a missing picture as the string "None".
+        const photo = [v?.strThumb, v?.strFanart1].find(p => p && p !== 'None') ?? null;
+        // A named ground without a photo is still worth its name and seats.
+        venues[id] = v?.strVenue ? {
             photo,
             name: v.strVenue,
             capacity: Number(v.intCapacity) || null,
@@ -210,12 +214,18 @@ export function useJersey(team, league, country) {
     return (team && teams[team]?.kit) || null;
 }
 
-/** The team's stadium `{ photo, name, capacity, location }`, or null while unknown or when there is none. */
-export function useStadium(team, league, country) {
+/**
+ * The team's stadium `{ photo, name, capacity, location }` (`photo` may be null),
+ * or null while unknown or when there is none. `ownPhoto` is the photo set on
+ * the team's own row (squads.stadium_image_url): it wins over TheSportsDB's,
+ * or stands in where it has none - TheSportsDB still supplies name and seats.
+ */
+export function useStadium(team, league, country, ownPhoto = null) {
     useJersey(team, league, country);
     const id = team && teams[team]?.venue;
     useLookup(id, () => id in venues, () => lookupVenue(id));
-    return (id && venues[id]) || null;
+    const venue = (id && venues[id]) || null;
+    return ownPhoto ? { name: null, capacity: null, location: null, ...venue, photo: ownPhoto } : venue;
 }
 
 export const __test = { sameClub, sameCountry, fromLeague, fromSearch, SDB_LEAGUE };

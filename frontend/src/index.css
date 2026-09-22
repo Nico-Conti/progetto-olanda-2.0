@@ -1712,3 +1712,103 @@ input[type=number] {
         animation: none !important;
     }
 }
+
+/* The account window in the favourite team's colours (AccountModal.jsx). Its
+   root carries --team-a/--team-b, read off the crest, and --ctl, the accent
+   (utils/crestColours teamTheme), which the tabs (.bp-control-tabs), buttons,
+   inputs and chips below read. Only under .profile-themed: without a team the
+   window keeps its emerald buttons and amber chips. */
+.profile-themed {
+    --ctl-light: color-mix(in srgb, var(--ctl) 55%, white);
+    border-color: color-mix(in srgb, var(--team-a) 40%, rgb(255 255 255 / 0.1));
+    background:
+        radial-gradient(120% 55% at 50% 0%, color-mix(in srgb, var(--team-a) 16%, transparent), transparent 70%),
+        radial-gradient(90% 45% at 100% 100%, color-mix(in srgb, var(--team-b) 10%, transparent), transparent 70%),
+        rgb(24 24 27);
+    box-shadow: 0 25px 60px -20px color-mix(in srgb, var(--team-a) 50%, transparent);
+    transition: background 500ms ease, border-color 500ms ease, box-shadow 500ms ease;
+}
+
+.profile-themed .profile-head {
+    border-color: color-mix(in srgb, var(--team-a) 30%, rgb(255 255 255 / 0.1));
+    background: linear-gradient(100deg,
+        color-mix(in srgb, var(--team-a) 32%, rgb(9 9 11 / 0.6)),
+        color-mix(in srgb, var(--team-b) 16%, rgb(9 9 11 / 0.6)));
+}
+
+.profile-themed .profile-primary { background: var(--ctl); color: var(--on-ctl); }
+.profile-themed .profile-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.profile-themed .profile-input:focus { border-color: color-mix(in srgb, var(--ctl) 60%, transparent); }
+.profile-themed .avatar-letter { color: var(--ctl-light); }
+.profile-themed .profile-pick-on { background: color-mix(in srgb, var(--ctl) 18%, transparent); }
+/* Borders take the tint at rest; sign out keeps its red on hover. */
+.profile-themed .profile-section:not(:hover) { border-color: color-mix(in srgb, var(--ctl) 25%, rgb(255 255 255 / 0.08)); }
+.profile-themed .profile-soft { background: color-mix(in srgb, var(--ctl) 22%, rgb(255 255 255 / 0.04)); }
+.profile-themed .profile-soft:hover:not(:disabled) { background: color-mix(in srgb, var(--ctl) 34%, rgb(255 255 255 / 0.06)); }
+
+.profile-themed .profile-chip-on {
+    color: var(--ctl-light);
+    background: color-mix(in srgb, var(--ctl) 16%, transparent);
+    border-color: color-mix(in srgb, var(--ctl) 45%, transparent);
+}
+
+.profile-themed .profile-chip-on svg { color: var(--ctl-light); fill: var(--ctl-light); }
+
+/* The favourite team's ground behind the profile card: darkened from the left,
+   where the text is, and tinted with the team's colour so it reads as theirs. */
+.profile-stadium-shade {
+    background:
+        linear-gradient(90deg, rgb(9 9 11 / 0.92), rgb(9 9 11 / 0.72) 55%, rgb(9 9 11 / 0.35)),
+        linear-gradient(0deg, color-mix(in srgb, var(--team-a) 30%, transparent), transparent 70%);
+}
+
+.profile-team:has(.profile-stadium-shade) { background: rgb(24 24 27); }
+
+/* Its shirt, standing at the card's right edge like the team page's. */
+.profile-jersey {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    width: 4.75rem;
+    height: 4.75rem;
+    max-width: none;
+    object-fit: contain;
+    translate: 0 -50%;
+    filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.55));
+}
+
+.profile-themed .profile-pin { color: var(--ctl-light); }
+
+/* Last season's title on the profile card: gold, whatever the team's colours. */
+.profile-title { text-shadow: 0 0 12px rgb(251 191 36 / 0.45); }
+.profile-title svg { filter: drop-shadow(0 0 4px rgb(251 191 36 / 0.6)); }
+
+/* Profile card in the favourite team's colours (ProfileCard in AccountModal.jsx):
+   --team-a and --team-b are read off the crest. */
+.profile-team {
+    border: 1px solid color-mix(in srgb, var(--team-a) 45%, rgb(255 255 255 / 0.1));
+    background:
+        radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--team-a) 45%, transparent), transparent 60%),
+        radial-gradient(110% 130% at 100% 100%, color-mix(in srgb, var(--team-b) 35%, transparent), transparent 65%),
+        rgb(24 24 27);
+    box-shadow: 0 12px 32px -14px color-mix(in srgb, var(--team-a) 55%, transparent);
+}
+
+.profile-team-crest {
+    position: absolute;
+    right: -1.5rem;
+    top: 50%;
+    width: 11rem;
+    max-width: none;
+    height: 11rem;
+    object-fit: contain;
+    translate: 0 -50%;
+    rotate: -12deg;
+    opacity: 0.13;
+    pointer-events: none;
+}
+
+.profile-team .profile-avatar {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px var(--team-a), 0 0 18px color-mix(in srgb, var(--team-a) 55%, transparent);
+}

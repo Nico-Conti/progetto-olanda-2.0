@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight, ChevronDown, Shield, Trophy, MapPin } from 'lucide-react';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import Modal from './ui/Modal';
@@ -8,9 +8,13 @@ import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
 import { t, tk, dateLocale } from '../i18n';
 import { privacyHref, termsHref } from '../utils/legal';
+import { crestColours, KIT_COLOURS, teamTheme } from '../utils/crestColours';
+import { lastChampions } from '../utils/standings';
+import { useJersey, useStadium } from '../hooks/useJersey';
+import { leagueMeta } from '../utils/leaguePickerFx';
 
-const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50';
-const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed';
+const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 profile-input';
+const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed profile-primary';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
 const LEGAL_LINK = 'underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60';
 const STATUS_LABEL = { pending: tk('pending'), won: tk('won'), lost: tk('lost'), void: tk('void') };
@@ -70,7 +74,7 @@ export const Avatar = ({ user, className = 'w-9 h-9' }) => {
             {meta.avatar_url
                 ? <img src={meta.avatar_url} alt="" className="w-full h-full object-cover" />
                 : user
-                    ? <span className="font-bold text-emerald-400 uppercase">{name[0]}</span>
+                    ? <span className="avatar-letter font-bold text-emerald-400 uppercase">{name[0]}</span>
                     : <User className="w-1/2 h-1/2 text-zinc-400" />}
         </span>
     );
@@ -224,12 +228,189 @@ const AuthForm = ({ onSignedIn }) => {
     );
 };
 
-const ProfileTab = ({ user, leagues }) => {
+/**
+ * This season's teams, each with the league of its latest fixture (a promoted
+ * side is listed where it plays now), A-Z. Before the fixtures land, every
+ * crest we have, league unknown. Squad-only clubs are listed without a league.
+ */
+const teamsFrom = (fixtures, teamLogos) => {
+    const latest = new Map();
+    for (const f of fixtures) {
+        for (const name of [f.home, f.away]) {
+            if (!name || name === 'Unknown') continue;
+            const seen = latest.get(name);
+            if (!seen || f.date > seen.date) latest.set(name, { league: f.league, date: f.date });
+        }
+    }
+    // Plus every crest in `squads`, so a club added only to be a favourite
+    // (Livorno: no league we cover, no fixtures) can still be picked.
+    const names = [...new Set([...latest.keys(), ...Object.keys(teamLogos)])];
+    return names.sort((a, b) => a.localeCompare(b))
+        .map(name => ({ name, league: latest.get(name)?.league ?? null, logo: teamLogos[name] ?? null }));
+};
+
+/** The team's next fixture still to be played, or null. */
+const nextMatchOf = (fixtures, team) => {
+    const now = new Date().toISOString();
+    let best = null;
+    for (const f of fixtures) {
+        if ((f.home === team || f.away === team) && f.status !== 'PLAYED' && f.date > now && (!best || f.date < best.date)) best = f;
+    }
+    return best;
+};
+
+/** A crest's two colours once read (see utils/crestColours), else null. */
+const useCrestColours = (url) => {
+    const [read, setRead] = useState({ url: null, colours: null });
+    useEffect(() => {
+        let live = true;
+        crestColours(url).then(colours => live && setRead({ url, colours }));
+        return () => { live = false; };
+    }, [url]);
+    return read.url === url ? read.colours : null;
+};
+
+/**
+ * The favourite-team section, closed by default: its header shows the pick, and
+ * opening it gives a search over this season's teams, with crests and leagues.
+ * Picking one closes it again.
+ */
+const TeamSection = ({ teams, value, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const current = teams.find(team => team.name === value);
+    const q = query.trim().toLowerCase();
+    const found = teams.filter(team => `${team.name} ${team.league ?? ''}`.toLowerCase().includes(q)).slice(0, 80);
+    const pick = (name) => { onChange(name); setOpen(false); setQuery(''); };
+    return (
+        <section className="profile-section rounded-xl border border-white/10 bg-white/[0.02]">
+            <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-xl hover:bg-white/[0.03] transition-colors">
+                <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider shrink-0">{t('Favourite team')}</span>
+                <span className="flex-1 min-w-0 flex items-center justify-end gap-2">
+                    {current?.logo
+                        ? <img src={current.logo} alt="" className="w-5 h-5 object-contain shrink-0" />
+                        : <Shield className="w-4 h-4 text-zinc-500 shrink-0" />}
+                    <span className={`text-sm font-semibold truncate ${value ? 'text-white' : 'text-zinc-500'}`}>{value || t('Choose your team')}</span>
+                </span>
+                <ChevronDown className={`w-4 h-4 text-zinc-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && (
+                <div className="px-3 pb-3 space-y-2">
+                    <p className="text-[11px] text-zinc-500">{t('Its colours and next match on your profile card.')}</p>
+                    <input type="search" autoFocus value={query} onChange={e => setQuery(e.target.value)}
+                        placeholder={t('Search team')} aria-label={t('Search team')} className={INPUT} />
+                    <ul className="max-h-56 overflow-y-auto custom-scrollbar space-y-0.5">
+                        {value && (
+                            <li>
+                                <button type="button" onClick={() => pick(null)} className="w-full px-2 py-1.5 rounded-lg text-left text-xs font-semibold text-zinc-400 hover:bg-white/5 hover:text-white">
+                                    {t('No favourite team')}
+                                </button>
+                            </li>
+                        )}
+                        {found.map(team => (
+                            <li key={team.name}>
+                                <button type="button" onClick={() => pick(team.name)} aria-pressed={team.name === value}
+                                    className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left transition ${team.name === value ? 'bg-emerald-500/15 profile-pick-on' : 'hover:bg-white/5'}`}>
+                                    {team.logo
+                                        ? <img src={team.logo} alt="" loading="lazy" className="w-6 h-6 object-contain shrink-0" />
+                                        : <Shield className="w-5 h-5 text-zinc-600 shrink-0" />}
+                                    <span className="flex-1 truncate text-sm font-semibold text-white">{team.name}</span>
+                                    {team.league && <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 truncate max-w-[40%]">{team.league}</span>}
+                                </button>
+                            </li>
+                        ))}
+                        {!found.length && <li className="px-2 py-3 text-center text-xs text-zinc-500">{t('No team matches.')}</li>}
+                    </ul>
+                </div>
+            )}
+        </section>
+    );
+};
+
+/**
+ * The top of the profile, dressed in the favourite team's colours (the window
+ * sets them, see AccountModal): its home ground behind, darkened towards the
+ * text, and its current shirt standing at the right edge - both found the way
+ * the team page finds them (hooks/useJersey), so they are cached and shared
+ * with it. Without a shirt the crest stands in, faint; without a team it is the
+ * plain card.
+ */
+const ProfileCard = ({ team, country, ownPhoto, next, titles = [], children }) => {
+    const home = next && next.home === team?.name;
+    const jersey = useJersey(team?.name, team?.league, country);
+    const stadium = useStadium(team?.name, team?.league, country, ownPhoto);
+    return (
+        <div className={`relative overflow-hidden rounded-2xl p-4 transition-[background,border-color,box-shadow] duration-500 ${team ? 'profile-team' : 'border border-white/10 bg-white/[0.03]'}`}>
+            {team && stadium?.photo && (
+                <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
+                    <img src={stadium.photo} alt="" onLoad={(e) => e.currentTarget.classList.add('is-loaded')}
+                        className="stadium-photo absolute inset-0 w-full h-full object-cover" />
+                    <div className="profile-stadium-shade absolute inset-0" />
+                </div>
+            )}
+            {team && (jersey
+                ? <img src={jersey} alt={t('{team} kit', { team: team.name })} className="jersey profile-jersey" />
+                : team.logo && <img src={team.logo} alt="" aria-hidden="true" className="profile-team-crest" />)}
+            <div className={`relative space-y-3 ${team && jersey ? 'pr-16' : ''}`}>
+                {children}
+                {team && (
+                    <div className="pt-3 border-t border-white/10 space-y-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm font-black text-white truncate">{team.name}</span>
+                            {team.league && <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300/80 truncate">{team.league}</span>}
+                        </div>
+                        {stadium?.name && (
+                            <p className="flex items-center gap-1.5 text-xs text-zinc-300 min-w-0" title={stadium.location ?? undefined}>
+                                <MapPin className="profile-pin w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">{stadium.name}</span>
+                                {stadium.capacity && <span className="shrink-0 text-[10px] font-semibold text-zinc-400">{t('{n} seats', { n: stadium.capacity.toLocaleString(dateLocale()) })}</span>}
+                            </p>
+                        )}
+                        {titles.map(({ league, season }) => (
+                            <p key={league} className="profile-title flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                                {t('{league} champions {season}', { league, season })}
+                            </p>
+                        ))}
+                        {next && (
+                            <p className="text-xs text-zinc-300 truncate">
+                                {t('Next match')}: <b className="text-white">{home ? next.away : next.home}</b>
+                                {' '}({home ? t('home') : t('away')}) · {new Date(next.date).toLocaleString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+/**
+ * A setting stored on the account. It follows the account, so a change saved in
+ * another tab shows here too (Supabase broadcasts USER_UPDATED to every open
+ * tab). While this tab's own change is saving it shows that at once instead,
+ * and gives way when the account agrees - or when the save fails.
+ */
+const useAccountSetting = (saved) => {
+    const [pending, setPending] = useState(null); // { value } while a save is in flight
+    if (pending && JSON.stringify(pending.value) === JSON.stringify(saved)) setPending(null);
+    return [pending ? pending.value : saved, setPending];
+};
+
+const ProfileTab = ({ user, leagues, teams, fixtures, team, teamSetting, titles, country, ownPhoto }) => {
     const meta = user.user_metadata ?? {};
-    // Local copy so two quick clicks each build on the other, not on a stale user.
-    const [favourites, setFavourites] = useState(meta.favourite_leagues ?? []);
+    // Two quick clicks each build on the other: the second reads the first's
+    // pending value, not the account it has not reached yet.
+    const [favourites, setPendingFavourites] = useAccountSetting(meta.favourite_leagues ?? []);
+    const [teamName, setPendingTeam] = teamSetting;
+    const next = useMemo(() => (teamName ? nextMatchOf(fixtures, teamName) : null), [fixtures, teamName]);
     const { busy, msg, run } = useAction();
     const saveMeta = (data, okText) => run(() => supabase.auth.updateUser({ data }), okText);
+    const saveSetting = (setPending, field, value) => {
+        setPending({ value });
+        saveMeta({ [field]: value }).then(ok => { if (!ok) setPending(null); });
+    };
 
     const uploadAvatar = async (file) => {
         if (!file) return;
@@ -243,17 +424,20 @@ const ProfileTab = ({ user, leagues }) => {
         saveMeta({ avatar_url: `${publicUrl}?v=${Date.now()}` }, t('Picture updated.'));
     };
 
+    const chooseTeam = (name) => saveSetting(setPendingTeam, 'favourite_team', name);
+
     const toggleFavourite = (league) => {
         const next = favourites.includes(league) ? favourites.filter(l => l !== league) : [...favourites, league];
-        setFavourites(next);
-        saveMeta({ favourite_leagues: next });
+        saveSetting(setPendingFavourites, 'favourite_leagues', next);
     };
 
     return (
         <div className="space-y-6">
+            <ProfileCard team={team} country={country} ownPhoto={ownPhoto} next={next} titles={titles}>
             <div className="flex items-center gap-4">
                 <label className="relative cursor-pointer group" title={t('Change picture')}>
-                    <Avatar user={user} className="w-16 h-16 text-2xl" />
+                    <Avatar user={user} className="w-16 h-16 text-2xl profile-avatar" />
+                    {team?.logo && <img src={team.logo} alt="" className="absolute -bottom-1 -right-1 w-7 h-7 p-0.5 rounded-full bg-zinc-900 border border-white/15 object-contain" />}
                     <span className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 flex items-center justify-center transition">
                         <Camera className="w-5 h-5 text-white" />
                     </span>
@@ -278,12 +462,15 @@ const ProfileTab = ({ user, leagues }) => {
                 >
                     <label className="flex-1">
                         <span className={LABEL}>{t('Username')}</span>
-                        <input name="username" defaultValue={meta.username ?? ''} required {...USERNAME_RULES} className={INPUT} />
+                        <input key={meta.username ?? ''} name="username" defaultValue={meta.username ?? ''} required {...USERNAME_RULES} className={INPUT} />
                     </label>
-                    <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Save')}</button>
+                    <button disabled={busy} className="profile-soft px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Save')}</button>
                 </form>
             </div>
-            <p className="text-xs text-zinc-500 -mt-4">{user.email}</p>
+            <p className="text-xs text-zinc-400">{user.email}</p>
+            </ProfileCard>
+
+            <TeamSection teams={teams} value={teamName} onChange={chooseTeam} />
 
             <div>
                 <span className={LABEL}>{t('Language')}</span>
@@ -302,7 +489,7 @@ const ProfileTab = ({ user, leagues }) => {
                                 onClick={() => toggleFavourite(league)}
                                 aria-pressed={on}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on
-                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 profile-chip-on'
                                     : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'}`}
                             >
                                 <Star className={`w-3 h-3 ${on ? 'fill-amber-400 text-amber-400' : ''}`} />
@@ -325,14 +512,14 @@ const ProfileTab = ({ user, leagues }) => {
                     <span className={LABEL}>{t('New password')}</span>
                     <input name="password" type="password" required minLength={8} autoComplete="new-password" className={INPUT} />
                 </label>
-                <button disabled={busy} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Change')}</button>
+                <button disabled={busy} className="profile-soft px-4 py-2.5 rounded-xl text-sm font-bold bg-white/10 hover:bg-white/15 text-white disabled:opacity-50">{t('Change')}</button>
             </form>
 
             <Message msg={msg} />
 
             <button
                 onClick={() => supabase.auth.signOut()}
-                className="w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 flex items-center justify-center gap-2"
+                className="profile-section w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition border border-white/10 text-zinc-400 hover:text-red-400 hover:border-red-500/30 flex items-center justify-center gap-2"
             >
                 <LogOut className="w-4 h-4" /> {t('Sign out')}
             </button>
@@ -654,8 +841,11 @@ const TABS = [
     { id: 'history', label: tk('Slip history'), Icon: History },
 ];
 
-const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
+const AccountModal = ({ isOpen, onClose, leagues, leagueRows = [], matchData, fixtures = [], teamLogos = {}, stadiumPhotos = {} }) => {
     const { user } = useAccount();
+    const teams = useMemo(() => teamsFrom(fixtures, teamLogos), [fixtures, teamLogos]);
+    // Last season's champion of every league, from the results we hold.
+    const champions = useMemo(() => lastChampions(matchData ?? [], fixtures), [matchData, fixtures]);
     const [tab, setTab] = useState('profile');
     // Opened signed out, it stays the sign-in form until it has closed: the
     // user arrives a moment before signInWithPassword returns, and would flash
@@ -668,6 +858,19 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
         if (isOpen) setSignedOutAtOpen(!user);
     }
 
+    // The favourite team themes the whole window, both tabs. Held here, not in
+    // the profile tab, so a pick shows at once everywhere while it saves.
+    const teamSetting = useAccountSetting(user?.user_metadata?.favourite_team ?? null);
+    const teamName = teamSetting[0];
+    const team = teamName ? (teams.find(x => x.name === teamName) ?? { name: teamName, league: null, logo: null }) : null;
+    // Kit colours where the crest cannot be read; the app's emerald while it is
+    // being read, or if it cannot be at all.
+    const read = useCrestColours(team && !KIT_COLOURS[team.name] ? team.logo : null);
+    const themed = user && !signedOutAtOpen && team;
+    const theme = themed ? teamTheme(KIT_COLOURS[team.name] ?? read ?? ['#10b981', null]) : null;
+    // Every title it won last season: a promoted side shows the division it won.
+    const titles = team ? Object.entries(champions).filter(([, c]) => c.team === team.name).map(([league, c]) => ({ league, season: c.season })) : [];
+
     if (!supabase) return null;
 
     // A native <dialog> (ui/Modal): Escape, the focus trap, an inert page and
@@ -675,8 +878,9 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
     // hand-rolled .t-modal div this replaced had none of them.
     return (
         <Modal open={isOpen} onClose={onClose} label={t('Account')} className="w-[min(92vw,28rem)]">
-            <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left">
-                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
+            <div className={`bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left ${theme ? 'profile-themed' : ''}`}
+                style={theme ? { '--team-a': theme.a, '--team-b': theme.b, '--ctl': theme.accent, '--on-ctl': theme.onAccent } : undefined}>
+                <div className="profile-head p-4 border-b border-white/10 flex items-center justify-between bg-zinc-950/50">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
                         {user && !signedOutAtOpen ? <Avatar user={user} className="w-7 h-7 text-sm" /> : <User className="w-5 h-5 text-emerald-400" />}
                         <span className="truncate">{user && !signedOutAtOpen ? (user.user_metadata?.username || t('Your account')) : t('Welcome')}</span>
@@ -688,9 +892,9 @@ const AccountModal = ({ isOpen, onClose, leagues, matchData }) => {
                 <div className="p-4 overflow-y-auto custom-scrollbar space-y-4">
                     {!user || signedOutAtOpen ? <AuthForm onSignedIn={onClose} /> : (
                         <>
-                            <SlidingTabs items={TABS.map(tab => ({ ...tab, label: t(tab.label) }))} value={tab} onChange={setTab} className="w-full" tabClassName="flex-1 font-semibold" />
+                            <SlidingTabs items={TABS.map(tab => ({ ...tab, label: t(tab.label) }))} value={tab} onChange={setTab} className={`w-full ${theme ? 'bp-control-tabs' : ''}`} tabClassName="flex-1 font-semibold" />
                             {tab === 'profile'
-                                ? <ProfileTab key={user.id} user={user} leagues={leagues} />
+                                ? <ProfileTab key={user.id} user={user} leagues={leagues} teams={teams} fixtures={fixtures} team={team} teamSetting={teamSetting} titles={titles} country={team ? leagueMeta(leagueRows, team.league).country : null} ownPhoto={team ? stadiumPhotos[team.name] : null} />
                                 : <HistoryTab key={user.id} matchData={matchData} />}
                         </>
                     )}

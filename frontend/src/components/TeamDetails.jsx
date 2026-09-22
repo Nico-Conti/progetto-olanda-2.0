@@ -103,13 +103,15 @@ const VsLeague = ({ value, avg }) => {
  * concede against the league average. Everything is this league and season,
  * except the prediction, which reads the pooled model history like the Predictor.
  */
-const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, season, modelMatchData, modelSettings, selectedStatistic, onBack, onMatchClick, onTeamClick }) => {
+const TeamDetails = ({ team, teamLogos, stadiumPhotos = {}, matches, fixtures, leagues, league, season, modelMatchData, modelSettings, selectedStatistic, onBack, onMatchClick, onTeamClick }) => {
     const [stat, setStat] = useState(selectedStatistic);
     const [openMatch, setOpenMatch] = useState(null);
     const meta = leagueMeta(leagues, league);
     // The league and the nation are what let a club be found at all - see useJersey.
     const jersey = useJersey(team, league, meta.country);
-    const stadium = useStadium(team, league, meta.country);
+    const stadium = useStadium(team, league, meta.country, stadiumPhotos[team]);
+    // A ground can come without a picture (Livorno's): its name still shows, the photo layout does not.
+    const photo = stadium?.photo ?? null;
     const logo = teamLogos[team];
     const statKey = resolveStatKey(stat);
     const statLabel = getStatLabel(stat);
@@ -195,21 +197,21 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
             <div className="relative rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md shadow-xl overflow-hidden">
                 {/* The home ground: behind everything, darkened towards the text, up to
                     xl; from xl its own uncropped column (below). */}
-                {stadium && (
+                {photo && (
                     <div aria-hidden="true" className="absolute inset-0 overflow-hidden xl:hidden">
-                        <StadiumPhoto src={stadium.photo} />
+                        <StadiumPhoto src={photo} />
                         <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/10" />
                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent" />
                     </div>
                 )}
-                {!stadium && (meta.flag || meta.bands) && (
+                {!photo && (meta.flag || meta.bands) && (
                     <div aria-hidden="true" className="absolute inset-y-0 left-0 w-2/3 opacity-[0.10]" style={flagWash(meta, 'linear-gradient(to right, black, transparent 85%)')} />
                 )}
                 {/* The badge, huge and blurred: the club's own colours as ambient light. */}
                 {logo && <img src={logo} alt="" aria-hidden="true" className="absolute -right-20 -top-24 w-[28rem] h-[28rem] object-contain opacity-[0.14] blur-3xl pointer-events-none" />}
 
-                <div className={`relative ${stadium ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : ''}`}>
-                    <div className={`p-5 md:p-8 flex flex-col gap-6 ${stadium ? 'justify-center' : 'xl:flex-row xl:gap-10 xl:items-center'}`}>
+                <div className={`relative ${photo ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]' : ''}`}>
+                    <div className={`p-5 md:p-8 flex flex-col gap-6 ${photo ? 'justify-center' : 'xl:flex-row xl:gap-10 xl:items-center'}`}>
                         <div className="flex items-center gap-4 md:gap-6 min-w-0 hero-in-left">
                             <div className="relative flex items-end gap-2 md:gap-3 shrink-0">
                                 <img src={logo} alt={team} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-2xl" />
@@ -230,7 +232,7 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                                             {countryName(meta.country)}
                                         </span>
                                     )}
-                                    {stadium && (
+                                    {stadium?.name && (
                                         <span className="basis-full inline-flex flex-wrap items-center gap-x-1.5 text-zinc-300" title={stadium.location ?? undefined}>
                                             <MapPin className="w-3.5 h-3.5 text-emerald-400" />
                                             {stadium.name}
@@ -243,7 +245,7 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                         </div>
 
                         {row ? (
-                            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 hero-in-right ${stadium ? '' : 'xl:ml-auto'}`}>
+                            <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 hero-in-right ${photo ? '' : 'xl:ml-auto'}`}>
                                 <HeroStat label={t('Position')} sub={t('of {n}', { n: table.length })} accent>{ordinal(pos + 1)}</HeroStat>
                                 <HeroStat label={t('Points')} sub={t('{n} played', { n: row.mp })}><CountUp value={row.pts} /></HeroStat>
                                 <HeroStat label={`${t('W')} · ${t('D')} · ${t('L')}`} sub={homeRow && awayRow ? t('{home} home · {away} away pts', { home: homeRow.pts, away: awayRow.pts }) : null}>
@@ -281,9 +283,9 @@ const TeamDetails = ({ team, teamLogos, matches, fixtures, leagues, league, seas
                             <p className="xl:ml-auto text-sm text-zinc-500">{t('No results yet this season.')}</p>
                         )}
                     </div>
-                    {stadium && (
+                    {photo && (
                         <div aria-hidden="true" className="hidden xl:block relative aspect-video overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_30%)]">
-                            <StadiumPhoto src={stadium.photo} />
+                            <StadiumPhoto src={photo} />
                         </div>
                     )}
                 </div>
