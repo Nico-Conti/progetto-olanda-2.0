@@ -28,12 +28,11 @@ import { t, tk, dateLocale } from '../i18n';
 // STAT_OPTIONS holds it, so take it from there rather than writing a label here.
 const MAIN_OPTION = STAT_OPTIONS.filter((o) => o.value === 'main');
 
-const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, preSelectedMatch, onExitPreview, onExitToLeague, backButtonLabel, onTeamClick }) => {
+const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, routeMatch, onOpenMatch, onExitPreview, onExitToLeague, backButtonLabel, onTeamClick }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
     // league's own and still drives the league averages, the backtest and the
     // distribution, all of which are claims about THIS league.
     const modelData = modelMatchData ?? matchData;
-    const [selectedMatch, setSelectedMatch] = useState(null);
     // Shared with Hot Matches and Market Moves. These were local useState, which
     // meant they reset to the defaults on every mount while the other two
     // screens remembered theirs - so the same fixture could show two different
@@ -43,12 +42,12 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
     const [showAccuracy, setShowAccuracy] = useState(false);
     const [showDistribution, setShowDistribution] = useState(false);
 
-    // Sync preSelectedMatch
-    useEffect(() => {
-        if (preSelectedMatch) {
-            setSelectedMatch(preSelectedMatch);
-        }
-    }, [preSelectedMatch]);
+    /* The open match comes from the ROUTE, not from local state. It used to be
+       `useState` plus an effect syncing `preSelectedMatch` into it, which meant
+       the fixture list could open a match without the URL changing - the match
+       was on screen at the league's address, so it could not be shared and
+       Back could not find it. `routeMatch` is now the single source. */
+    const selectedMatch = routeMatch;
 
     // One prediction model per statistic. 'main' and 'goals' both read the goals
     // column, so the underlying keys are built once and shared.
@@ -330,7 +329,7 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
         });
 
         // A badge here opens the team page, and that page's Back returns to this match.
-        const openFromMatch = onTeamClick && ((team) => onTeamClick(team, selectedMatch));
+        const openFromMatch = onTeamClick;
 
         if (!detailPred) {
             return (
@@ -340,7 +339,7 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                         {t('No prediction yet - neither side has played enough matches this season to model from. Come back once the first results are in.')}
                     </p>
                     <button
-                        onClick={() => { setSelectedMatch(null); if (onExitPreview) onExitPreview(); }}
+                        onClick={onExitPreview}
                         className="mt-5 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-bold rounded-lg border border-white/10 transition-colors"
                     >
                         {t('Back')}
@@ -360,21 +359,17 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={() => {
-                            if (preSelectedMatch && onExitPreview) {
-                                onExitPreview();
-                            } else {
-                                setSelectedMatch(null);
-                            }
+                            onExitPreview();
                         }}
                         className="group inline-flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full border border-white/10 bg-zinc-900/60 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
                         <span className="font-bold text-xs uppercase tracking-wider">
-                            {preSelectedMatch ? t(backButtonLabel || tk('Back to Previous')) : t('Back to Fixtures')}
+                            {t(backButtonLabel || tk('Back to Fixtures'))}
                         </span>
                     </button>
 
-                    {preSelectedMatch && onExitToLeague && selectedMatch.league && (
+                    {onExitToLeague && selectedMatch.league && (
                         <button
                             onClick={onExitToLeague}
                             className="group inline-flex items-center gap-2 pl-2.5 pr-4 py-1.5 rounded-full border border-white/10 bg-zinc-900/60 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 transition-colors"
@@ -603,7 +598,7 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                                     style={{ animationDelay: staggerDelay(idx) }}
                                     onClick={(e) => {
                                         if (e.target.closest('select') || e.target.closest('button')) return;
-                                        setSelectedMatch(match);
+                                        onOpenMatch(match);
                                     }}
                                     className="glass-panel p-4 rounded-xl border border-white/10 relative overflow-hidden animate-waterfall active:scale-[0.98] transition-transform"
                                 >
@@ -698,7 +693,7 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                                         onClick={(e) => {
                                             // Prevent navigation if clicking on the dropdown
                                             if (e.target.closest('select')) return;
-                                            setSelectedMatch(match);
+                                            onOpenMatch(match);
                                         }}
                                         // A fixture already in the slip is marked here too, so
                                         // the same bet reads the same way on every screen. Tint

@@ -187,7 +187,16 @@ export const backTargetFor = ({ pathname, state } = {}, names = {}) => {
     if (origin?.match && here.team) {
         return { to: from, history: true, labelKey: tk('Back to Previous') };
     }
-    // No origin: a pasted link, so there is nothing behind us in this session.
+    /* An origin we do not have a special name for - the fixture list, or the
+       standings. Still `history: true`: there IS an entry behind us, so Back
+       must step back onto it rather than push a new one, or the next Back
+       goes forwards again. */
+    if (origin) {
+        return here.match
+            ? { to: from, history: true, labelKey: tk('Back to Fixtures') }
+            : { to: from, history: true, labelKey: tk('Back to Standings') };
+    }
+    // No origin at all: a pasted link, nothing behind us in this session.
     // Fall back to the parent, matching what the old empty-trail case did.
     return here.match
         ? { to: `/${LEAGUE_PREFIX}/${league}`, history: false, labelKey: tk('Back to Fixtures') }

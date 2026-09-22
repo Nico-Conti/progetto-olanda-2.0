@@ -139,6 +139,19 @@ const fromTeam = backTargetFor(
 assert.equal(fromTeam.labelKey, 'Back to {team}');
 assert.equal(fromTeam.vars.team, 'Milan', 'the label uses the resolved name, not the slug');
 
+// Opened from the league's own fixture list: there IS an entry behind us, so
+// Back must STEP BACK onto it. Returning history:false here pushed a new entry
+// instead, and the next Back went forwards again.
+const fromList = back('/league/serie-a/match/a-vs-b-2026-01-01', '/league/serie-a');
+assert.equal(fromList.history, true, 'an origin means navigate(-1), never a push');
+assert.equal(fromList.to, '/league/serie-a');
+assert.equal(fromList.labelKey, 'Back to Fixtures');
+
+// A team opened FROM a match returns to that match, not to the standings.
+const teamFromMatch = back('/league/serie-a/team/roma', '/league/serie-a/match/a-vs-b-2026-01-01');
+assert.equal(teamFromMatch.history, true);
+assert.equal(teamFromMatch.to, '/league/serie-a/match/a-vs-b-2026-01-01');
+
 // A pasted link has no history behind it: fall back to the parent, and say so
 // with `history: false` so the caller pushes instead of calling navigate(-1).
 const pasted = back('/league/serie-a/match/a-vs-b-2026-01-01');

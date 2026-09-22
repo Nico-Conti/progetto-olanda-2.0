@@ -758,7 +758,8 @@ export default function App() {
                   addToBet={addToBet}
                   removeFromBet={removeFromBet}
                   bets={bets}
-                  preSelectedMatch={routeMatch}
+                  routeMatch={routeMatch}
+                  onOpenMatch={openMatchFrom}
                   /* Closing a match is Back: whatever opened it is the entry
                      behind us. `predictorKey`, which used to remount the
                      Predictor onto its fixture list, is gone - there is no
