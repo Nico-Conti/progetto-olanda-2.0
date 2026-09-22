@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Flame, Calendar, TrendingUp, ChevronRight, Zap, ZapOff, BrainCircuit } from 'lucide-react';
+import { Flame, TrendingUp, BrainCircuit, SearchX } from 'lucide-react';
 import { buildPredictionModel, predictFromModel, ENGINES, MIN_EFFECTIVE_FOR_EV } from '../utils/predictTotal';
 import { expectedValue, devig } from '../utils/countModel';
 import { getStatLabel, STAT_CONFIG, resolveStatKey, UNJOINED_STATS } from '../utils/statistics';
@@ -12,6 +12,10 @@ import StatisticSelector from './StatisticSelector';
 import SignalBadge from './SignalBadge';
 import DerivedBadge from './DerivedBadge';
 import Header from './Header';
+import SlidingTabs from './ui/SlidingTabs';
+import { motionAllowed } from '../utils/leaguePickerFx';
+import { EmberLayer } from './LandingPage';
+import { useCountUp } from '../hooks/useCountUp';
 import { staggerDelay } from '../utils/stagger';
 import MatchCard from './MatchCard';
 import { hasBet } from '../utils/bets';
@@ -76,6 +80,38 @@ const linesFor = (stat, extra = []) => {
         .sort((a, b) => a - b);
 };
 
+/**
+ * The expected total, counted up inside a ring that fills to P(over line).
+ * Stops read the page's --fx colours, so the ring follows its theme.
+ */
+const HeatRing = ({ total, prob }) => {
+    const shownTotal = useCountUp(total, 1100);
+    const shownProb = useCountUp(prob ?? 0, 1100);
+    const r = 42;
+    const c = 2 * Math.PI * r;
+    return (
+        <div className="relative w-24 h-24 shrink-0">
+            <svg viewBox="0 0 96 96" className="w-full h-full -rotate-90">
+                <defs>
+                    <linearGradient id="hm-heat" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" style={{ stopColor: 'var(--fx-light)' }} />
+                        <stop offset="0.5" style={{ stopColor: 'var(--fx-a)' }} />
+                        <stop offset="1" style={{ stopColor: 'var(--fx-b)' }} />
+                    </linearGradient>
+                </defs>
+                <circle cx="48" cy="48" r={r} fill="none" stroke="rgb(255 255 255 / 0.07)" strokeWidth="6" />
+                {prob != null && (
+                    <circle cx="48" cy="48" r={r} fill="none" stroke="url(#hm-heat)" strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={c} strokeDashoffset={c * (1 - shownProb)} className="bp-ring-glow" />
+                )}
+            </svg>
+            <div className="absolute inset-0 grid place-items-center">
+                <span className="text-3xl font-black tracking-tighter tabular-nums bp-gold-text leading-none">{shownTotal.toFixed(1)}</span>
+            </div>
+        </div>
+    );
+};
+
 const STORAGE_KEY = 'olanda_hotmatches_prefs';
 // nGames / useGeneralStats / forceMean deliberately do NOT live here: they are
 // shared with Market Moves and the Predictor through useModelSettings, so the
@@ -110,6 +146,9 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
     const setMaxPrice = (v) => setPrefs({ maxPrice: v });
 
     const [activeDropdown, setActiveDropdown] = useState(null);
+
+    // Embers off the header's bottom edge, as on the homepage card.
+    const [fire] = useState(motionAllowed);
 
     const { availableLeagues, availableDates, candidates } =
         useUpcomingFixtures(fixtures, stats, { selectedLeagues, selectedDate });
@@ -226,12 +265,12 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
 
     const pageName = (
         <h1 className="text-lg font-black tracking-tight text-white leading-none">
-            {t('Hot Matches').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
+            {t('Hot Matches').split(' ')[0]} <span className="bp-gold-text">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
         </h1>
     );
 
     return (
-        <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
+        <div className="fx-fire min-h-screen text-zinc-200 font-sans relative pb-12">
             <Header
                 title={appTitle}
                 onLogoClick={onBack}
@@ -247,29 +286,44 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                 />
             </Header>
 
-            <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-                <div className="space-y-6 relative">
-
-                    <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col xl:flex-row justify-between items-center gap-4 relative z-50">
-                        <div className="flex items-center gap-3 xl:min-w-max w-full xl:w-auto justify-center xl:justify-start border-b xl:border-b-0 border-white/5 pb-4 xl:pb-0">
-                            <div className="p-2 bg-zinc-900 rounded-lg border border-white/10">
-                                <Flame className="w-5 h-5 text-orange-500" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg md:text-xl font-black text-white leading-none tracking-tight">
-                                    {t('Hot Matches').split(' ')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
-                                </h2>
-                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                                    <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-wide">
-                                        {t('Top {stat} picks', { stat: getStatLabel(selectedStatistic) })}
-                                    </p>
-                                    <SignalBadge statistic={selectedStatistic} showLabel />
-                                    <DerivedBadge statistic={selectedStatistic} />
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-4">
+                <div className="space-y-8 relative">
+                    {/* One panel: title, ranking and filters. z-50: the dropdowns open over the cards below. */}
+                    <section className="bp-hero bp-hero-open animate-waterfall relative z-50">
+                        {fire && <EmberLayer />}
+                        <div className="bp-orbs" aria-hidden="true">
+                            <div className="bp-orb bp-orb-a" />
+                            <div className="bp-orb bp-orb-b" />
+                            <div className="bp-orb bp-orb-c" />
+                        </div>
+                        <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className="bp-icon"><Flame className="w-7 h-7 text-orange-300" /></div>
+                                <div className="min-w-0">
+                                    <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
+                                        {t('Hot Matches').split(' ')[0]} <span className="bp-gold-text">{t('Hot Matches').split(' ').slice(1).join(' ')}</span>
+                                    </h2>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <p className="text-sm text-zinc-400">
+                                            {t('Top {stat} picks', { stat: getStatLabel(selectedStatistic) })}
+                                        </p>
+                                        <SignalBadge statistic={selectedStatistic} showLabel />
+                                        <DerivedBadge statistic={selectedStatistic} />
+                                    </div>
                                 </div>
                             </div>
+                            <SlidingTabs
+                                items={[
+                                    { id: 'total', label: t(RANK_MODES.total.label), Icon: Flame },
+                                    { id: 'ev', label: t(RANK_MODES.ev.label), Icon: TrendingUp },
+                                ]}
+                                value={effectiveRankBy}
+                                onChange={setRankBy}
+                                className="self-start lg:self-center"
+                                tabClassName="font-semibold"
+                            />
                         </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-3 w-full flex-1">
+                        <div className="relative mt-5 pt-5 border-t border-white/5 flex flex-wrap items-center justify-between gap-3 w-full">
                             {/* League Multi-Filter */}
                             <Dropdown
                                 label={t('Leagues')}
@@ -282,9 +336,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     <button
                                         onClick={() => handleLeagueToggle('All')}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedLeagues.includes('All')
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                        className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold mb-1 ${selectedLeagues.includes('All') ? 'bp-opt-on' : ''}`}
                                     >
                                         {t('All Leagues')}
                                     </button>
@@ -292,13 +344,11 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                     {availableLeagues.map(league => (
                                         <label
                                             key={league}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${selectedLeagues.includes(league)
-                                                ? 'bg-zinc-800 text-white'
-                                                : 'text-zinc-500 hover:bg-white/5'}`}
+                                            className={`bp-opt flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${selectedLeagues.includes(league) ? 'bp-opt-on' : ''}`}
                                         >
                                             <input
                                                 type="checkbox"
-                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/20 focus:ring-offset-0"
+                                                className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-900 focus:ring-offset-0"
                                                 checked={selectedLeagues.includes(league)}
                                                 onChange={() => handleLeagueToggle(league)}
                                             />
@@ -320,9 +370,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                 <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                                     <button
                                         onClick={() => { setSelectedDate(null); setActiveDropdown(null); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors mb-1 ${selectedDate === null
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
-                                            : 'text-zinc-400 hover:bg-white/5 border border-transparent'}`}
+                                        className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold mb-1 ${selectedDate === null ? 'bp-opt-on' : ''}`}
                                     >
                                         {t('Upcoming Matches')}
                                     </button>
@@ -336,9 +384,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                             <button
                                                 key={date.toISOString()}
                                                 onClick={() => { setSelectedDate(date); setActiveDropdown(null); }}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${isSelected
-                                                    ? 'bg-zinc-800 text-white'
-                                                    : 'text-zinc-500 hover:bg-white/5'}`}
+                                                className={`bp-opt w-full text-left px-3 py-2 rounded-lg text-xs font-bold ${isSelected ? 'bp-opt-on' : ''}`}
                                             >
                                                 {label}
                                             </button>
@@ -366,35 +412,6 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                                 : 'text-zinc-400 hover:bg-white/5'}`}
                                         >
                                             {t('{n} matches', { n })}
-                                        </button>
-                                    ))}
-                                </div>
-                            </Dropdown>
-
-                            {/* Rank by */}
-                            <Dropdown
-                                label={t('Rank by')}
-                                active={activeDropdown === 'rank'}
-                                onToggle={() => setActiveDropdown(activeDropdown === 'rank' ? null : 'rank')}
-                                value={t(RANK_MODES[effectiveRankBy].label)}
-                                width="w-full"
-                                className="flex-1 min-w-[150px]"
-                            >
-                                <div className="space-y-1">
-                                    {Object.values(RANK_MODES).map(mode => (
-                                        <button
-                                            key={mode.value}
-                                            onClick={() => { setRankBy(mode.value); setActiveDropdown(null); }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-colors ${effectiveRankBy === mode.value
-                                                ? 'bg-emerald-500/20 text-emerald-400'
-                                                : 'text-zinc-400 hover:bg-white/5'}`}
-                                        >
-                                            {t(mode.label)}
-                                            {mode.needsPrice && (
-                                                <span className="block text-[9px] font-medium text-zinc-500 normal-case mt-0.5">
-                                                    {t('needs a captured price')}
-                                                </span>
-                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -518,7 +535,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                             </div>
 
                         </div>
-                    </div>
+                    </section>
 
                     {coverage && (
                         <div className="glass-panel rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 flex items-start gap-3">
@@ -541,22 +558,23 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {topMatches.map((match, idx) => {
                             const share = match.prediction.expHome / ((match.prediction.expHome + match.prediction.expAway) || 1);
+                            const inSlip = hasBet(bets, match.home, match.away);
                             return (
                             <MatchCard
-                                key={`${match.home}-${match.away}-${idx}`}
+                                key={`${effectiveRankBy}-${selectedStatistic}-${match.home}-${match.away}`}
                                 match={match}
                                 rank={idx + 1}
                                 meta={leagueMeta(leagues, match.league)}
                                 teamLogos={teamLogos}
-                                inSlip={hasBet(bets, match.home, match.away)}
-                                style={{ animationDelay: staggerDelay(idx) }}
+                                inSlip={inSlip}
+                                className={`hm-card ${inSlip ? '' : 'hm-glow'} ${idx === 0 && !inSlip ? 'hm-card-top' : ''}`}
+                                overlay={<div className="bp-holo" aria-hidden="true" />}
+                                style={{ animationDelay: `calc(160ms + ${staggerDelay(idx)})` }}
                                 onClick={() => onMatchClick && onMatchClick(match)}
                                 center={(
                                     <>
-                                        <div className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none drop-shadow-[0_0_12px_rgba(255,255,255,0.15)]">
-                                            {match.prediction.total.toFixed(1)}
-                                        </div>
-                                        <span className="mt-2 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                        <HeatRing total={match.prediction.total} prob={match.probability} />
+                                        <span className="mt-2 text-[10px] font-bold text-orange-300 uppercase tracking-wider">
                                             {t('Exp. {stat}', { stat: getStatLabel(selectedStatistic) })}
                                         </span>
                                         {match.probability != null && (
@@ -576,7 +594,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-lg font-black text-emerald-400 tabular-nums">{match.prediction.expHome.toFixed(2)}</span>
-                                        <div className="flex-1 flex h-1.5 rounded-full overflow-hidden bg-zinc-800 gap-0.5">
+                                        <div className="hm-bar flex-1 flex h-1.5 rounded-full overflow-hidden bg-zinc-800 gap-0.5">
                                             <div className="bg-emerald-400 rounded-l-full" style={{ width: `${100 * share}%` }} />
                                             <div className="flex-1 bg-blue-400 rounded-r-full" />
                                         </div>
@@ -625,7 +643,9 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                     </div>
 
                     {topMatches.length === 0 && (
-                        <div className="text-center py-12 text-zinc-500 text-sm">
+                        <div className="bp-empty animate-waterfall">
+                            <SearchX className="w-10 h-10 text-zinc-600" />
+                            <p className="text-sm text-zinc-400 max-w-xl">
                             {effectiveRankBy === 'ev'
                                 // The book posts these and we capture them; we
                                 // decline to join them, so "no captured price"
@@ -636,6 +656,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                         ? t('No upcoming {stat} market has both a captured price under {cap} and enough history to trust. Try a higher max price, another statistic, or rank by expected total.', { stat: getStatLabel(selectedStatistic).toLowerCase(), cap: maxPrice.toFixed(2) })
                                         : t('No upcoming {stat} market has both a captured price and enough history to trust. Try another statistic, or rank by expected total.', { stat: getStatLabel(selectedStatistic).toLowerCase() }))
                                 : t('No upcoming matches found to analyze.')}
+                            </p>
                         </div>
                     )}
                 </div>

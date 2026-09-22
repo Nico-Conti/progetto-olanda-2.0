@@ -250,5 +250,5 @@ export const useOdds = () => {
         };
     }, [refForBet]);
 
-    return { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl, loading, count: rows.length };
+    return { priceFor, priceForBet, pricedLines, outcomesFor, loadMarket, betslipUrl, loading, rows, count: rows.length };
 };

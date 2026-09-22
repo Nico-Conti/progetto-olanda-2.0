@@ -258,7 +258,6 @@ const Standings = ({
                     <Group label={t('Season')}>
                         {seasons.length > 1 ? (
                             <Select
-                                accent="emerald"
                                 value={season}
                                 onChange={glide(onSeasonChange)}
                                 options={seasons.map(sn => ({ value: sn, label: sn === latestSeason ? t('{season} (current)', { season: sn }) : sn }))}

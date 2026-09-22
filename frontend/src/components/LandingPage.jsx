@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Play } from 'lucide-react';
+import { Flame, ArrowRight, ArrowLeft, Zap, X, Globe, Activity, Star, Play, Ticket } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { useAccount } from '../hooks/useAuth';
 import { AccountButton } from './AccountModal';
@@ -62,14 +62,17 @@ const CHART_POINTS = '0,30 8,27 16,31 24,22 32,25 40,17 48,20 56,12 64,16 72,9 8
 const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
     .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
 
+/** Embers rising off the bottom edge, over a heat glow. Also the Hot Matches header. */
+export const EmberLayer = ({ className = '' }) => (
+    <div className={`absolute inset-x-0 -top-16 bottom-0 pointer-events-none ${className}`} aria-hidden="true">
+        <div className="fx-heat" />
+        {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
+    </div>
+);
+
 /** The effect layer behind a feature card's content; see "Landing feature-card hover effects" in index.css. */
 const HoverFx = ({ kind }) => {
-    if (kind === 'fire') return (
-        <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
-            <div className="fx-heat" />
-            {EMBERS.map((style, i) => <span key={i} className="fx-ember" style={style} />)}
-        </div>
-    );
+    if (kind === 'fire') return <EmberLayer className="fx" />;
     if (kind === 'ticker') return (
         <div className="fx absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
@@ -86,6 +89,12 @@ const HoverFx = ({ kind }) => {
                 <div className="fx-cursor" />
             </div>
             {TICKS.map(({ style, text }, i) => <span key={i} className="fx-tick" style={style}>{text}</span>)}
+        </div>
+    );
+    if (kind === 'gold') return (
+        <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
+            <div className="fx-glint" style={{ '--glint': 'rgb(252 211 77 / 0.2)' }} />
+            {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
         </div>
     );
     return null;
@@ -114,6 +123,13 @@ const FEATURES = [
         iconBox: 'bg-emerald-500/10 border-emerald-500/20 group-hover:border-emerald-500/50',
         icon: 'text-emerald-500 group-hover:text-emerald-400', iconFx: 'fx-beat',
         title: 'group-hover:text-emerald-300', arrow: 'group-hover:text-emerald-400',
+    },
+    {
+        id: 'bonus', label: tk('Bonus Planner'), caption: tk('Best Bonus Slips'), Icon: Ticket, fx: 'gold',
+        card: 'hover-gold', glow: 'bg-amber-500/20',
+        iconBox: 'bg-amber-500/10 border-amber-500/20 group-hover:border-amber-500/50',
+        icon: 'text-amber-400 group-hover:text-amber-300', iconFx: 'fx-ticket',
+        title: 'group-hover:text-amber-300', arrow: 'group-hover:text-amber-400',
     },
 ];
 
@@ -232,7 +248,7 @@ const ScrambleText = ({ text, delay = 300, duration = 1500 }) => {
     );
 };
 
-const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves }) => {
+const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSelectLeague, onOpenTopCorners, onOpenHighestWinningFactor, onOpenMarketMoves, onOpenBonusPlanner }) => {
     // `loadError` is the MATCH fetch failing, and this page no longer needs it -
     // the picker fills from the League table. Offering a retry while holding a
     // perfectly good list of leagues is what Google's renderer screenshotted on
@@ -244,7 +260,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
     const [modalCountry, setModalCountry] = React.useState(null);
     const [isTrophyShowing, setIsTrophyShowing] = React.useState(false);
     const panelRef = React.useRef(null);
-    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves };
+    const featureClicks = { hot: onOpenTopCorners, factor: onOpenHighestWinningFactor, moves: onOpenMarketMoves, bonus: onOpenBonusPlanner };
     const [trailerOpen, setTrailerOpen] = React.useState(false);
     // The signed-in user's favourite leagues, as one-click shortcuts under the picker.
     const { user } = useAccount();
@@ -461,7 +477,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
 
                     {/* Feature Buttons */}
                     <div
-                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 animate-waterfall pointer-events-auto"
+                        className="w-full max-w-5xl mx-auto mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 animate-waterfall pointer-events-auto"
                         style={{ animationDelay: '300ms' }}
                     >
                         {FEATURES.map(feature => (

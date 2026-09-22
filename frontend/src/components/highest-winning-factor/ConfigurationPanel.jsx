@@ -1,9 +1,17 @@
 import React from 'react';
-import { Calculator, ChevronDown, Plus, Minus } from 'lucide-react';
-import GlassPanel from '../ui/GlassPanel';
+import { Plus, Minus, Sigma, User, TrendingUp, TrendingDown } from 'lucide-react';
 import Select from '../ui/Select';
+import SlidingTabs from '../ui/SlidingTabs';
 import { t } from '../../i18n';
 
+const Field = ({ label, children }) => (
+    <div className="space-y-2 min-w-0">
+        <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
+        {children}
+    </div>
+);
+
+/** The ranking's rules, laid out as one row inside the page header. */
 const ConfigurationPanel = ({
     selectedLeague,
     setSelectedLeague,
@@ -22,117 +30,51 @@ const ConfigurationPanel = ({
     const thresholdOptions = currentConfig.options.map(opt => ({ value: opt, label: opt.toString() }));
 
     return (
-        <GlassPanel className="p-4 sm:p-6 rounded-2xl sticky top-24">
-            <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-purple-400" />
-                {t('Configuration')}
-            </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1.25fr_1fr_1fr] gap-5">
+            <Field label={t('League')}>
+                <Select value={selectedLeague} onChange={setSelectedLeague} options={leagueOptions} />
+            </Field>
 
-            <div className="space-y-6">
-                {/* Section 1: Analysis Scope */}
-                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">{t('Analysis Scope')}</h3>
+            <Field label={t('Mode')}>
+                <SlidingTabs
+                    items={[
+                        { id: 'total', label: t('Match Total'), Icon: Sigma },
+                        { id: 'individual', label: t('Team Stats'), Icon: User },
+                    ]}
+                    value={analysisMode}
+                    onChange={setAnalysisMode}
+                    className="w-full"
+                    tabClassName="flex-1 justify-center whitespace-nowrap !px-2 font-semibold"
+                />
+            </Field>
 
-                    {/* League Selection */}
-                    <div className="space-y-2">
-                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('League')}</label>
-                        <Select
-                            value={selectedLeague}
-                            onChange={setSelectedLeague}
-                            options={leagueOptions}
-                        />
+            <Field label={t('Operator')}>
+                <SlidingTabs
+                    items={[
+                        { id: 'over', label: t('Over'), Icon: TrendingUp },
+                        { id: 'under', label: t('Under'), Icon: TrendingDown },
+                    ]}
+                    value={operator}
+                    onChange={setOperator}
+                    className="w-full"
+                    tabClassName="flex-1 justify-center whitespace-nowrap !px-2 font-semibold"
+                />
+            </Field>
+
+            <Field label={t('Threshold')}>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => adjustThreshold(-currentConfig.step)} aria-label={t('Decrease')} className="bp-step">
+                        <Minus className="w-4 h-4" />
+                    </button>
+                    <div className="flex-grow min-w-0">
+                        <Select value={threshold} onChange={setThreshold} options={thresholdOptions} />
                     </div>
-
-                    {/* Mode Selection */}
-                    <div className="space-y-2">
-                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Mode')}</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => setAnalysisMode('total')}
-                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${analysisMode === 'total'
-                                    ? 'bg-blue-500 text-white shadow-lg'
-                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                            >
-                                {t('Match Total')}
-                            </button>
-                            <button
-                                onClick={() => setAnalysisMode('individual')}
-                                className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${analysisMode === 'individual'
-                                    ? 'bg-purple-500 text-white shadow-lg'
-                                    : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                            >
-                                {t('Team Stats')}
-                            </button>
-                        </div>
-                    </div>
+                    <button type="button" onClick={() => adjustThreshold(currentConfig.step)} aria-label={t('Increase')} className="bp-step">
+                        <Plus className="w-4 h-4" />
+                    </button>
                 </div>
-
-                {/* Section 2: Winning Criteria */}
-                <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">
-                    <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">{t('Winning Criteria')}</h3>
-
-                    {/* Statistic Selection */}
-
-
-                    <div className="grid grid-cols-1 gap-4">
-                        {/* Operator Selection */}
-                        <div className="space-y-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Operator')}</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => setOperator('over')}
-                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${operator === 'over'
-                                        ? 'bg-emerald-500 text-white shadow-lg'
-                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                        }`}
-                                >
-                                    {t('Over')}
-                                </button>
-                                <button
-                                    onClick={() => setOperator('under')}
-                                    className={`px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-wide transition ${operator === 'under'
-                                        ? 'bg-red-500 text-white shadow-lg'
-                                        : 'bg-zinc-900 border border-white/10 text-zinc-500 hover:text-zinc-300'
-                                        }`}
-                                >
-                                    {t('Under')}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Threshold Selection */}
-                        <div className="space-y-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">{t('Threshold')}</label>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => adjustThreshold(-currentConfig.step)}
-                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition h-10 w-10 flex items-center justify-center"
-                                >
-                                    <Minus className="w-4 h-4" />
-                                </button>
-
-                                <div className="flex-grow">
-                                    <Select
-                                        value={threshold}
-                                        onChange={setThreshold}
-                                        options={thresholdOptions}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={() => adjustThreshold(currentConfig.step)}
-                                    className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800 transition h-10 w-10 flex items-center justify-center"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </GlassPanel>
+            </Field>
+        </div>
     );
 };
 

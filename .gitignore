@@ -63,3 +63,6 @@ brag-output
 # file is the only remaining record of their closes.
 frontend/src/utils/__experiments__/odds_closing_preslipprune_2026-09-16.json
 
+# Agent scratch directories (from the ui branch)
+.agents
+.claude

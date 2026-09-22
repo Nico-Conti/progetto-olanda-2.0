@@ -41,7 +41,7 @@ const SlidingTabs = ({ items, value, onChange, className = '', tabClassName = ''
 
     return (
         <div ref={barRef} role="tablist" className={`t-tabs ${className}`}>
-            <span ref={pillRef} className="t-tabs-pill shadow-md shadow-emerald-500/20" aria-hidden="true" />
+            <span ref={pillRef} className="t-tabs-pill" aria-hidden="true" />
             {items.map(item => (
                 <button
                     key={item.id}

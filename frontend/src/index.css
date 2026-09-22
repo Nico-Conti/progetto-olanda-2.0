@@ -96,6 +96,11 @@
         @apply border-emerald-500/50 bg-zinc-800/90;
         box-shadow: 0 0 30px rgba(16, 185, 129, 0.2), inset 0 0 24px rgba(52, 211, 153, 0.08);
     }
+
+    .hover-gold:hover {
+        @apply border-amber-400/50 bg-zinc-800/90;
+        box-shadow: 0 0 30px rgba(251, 191, 36, 0.2), inset 0 0 24px rgba(252, 211, 77, 0.08);
+    }
 }
 
 @keyframes float {
@@ -897,4 +902,719 @@ input[type=number] {
 
 @media (prefers-reduced-motion: reduce) {
     .pitch-line, .pitch-turf, .pitch-player, .pitch-headline { animation: none; stroke-dashoffset: 0; }
+}
+
+/* Bonus planner (BonusPlanner.jsx): gold-and-fuchsia tickets that deal in,
+   a holographic sheen on the best one, an aurora border round the rules. */
+/* The planner's look is shared by the feature pages, each in its own colours:
+   gold and fuchsia by default, `.fx-fire` for Hot Matches, `.fx-volt` for
+   Winning Factor, `.fx-ticker` for Market Moves. */
+:root {
+    --fx-a: #fbbf24;
+    --fx-b: #e879f9;
+    --fx-light: #fde68a;
+    --fx-light-b: #f0abfc;
+}
+
+.fx-volt {
+    --fx-a: #a855f7;
+    --fx-b: #ec4899;
+    --fx-light: #e9d5ff;
+    --fx-light-b: #fbcfe8;
+}
+
+.fx-ticker {
+    --fx-a: #22d3ee;
+    --fx-b: #10b981;
+    --fx-light: #a5f3fc;
+    --fx-light-b: #a7f3d0;
+}
+
+.fx-fire {
+    --fx-a: #fb923c;
+    --fx-b: #ef4444;
+    --fx-light: #fed7aa;
+    --fx-light-b: #fca5a5;
+}
+
+@property --bp-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+.group:hover .fx-ticket {
+    animation: fx-ticket 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes fx-ticket {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    30% { transform: rotate(-12deg) scale(1.12); }
+    60% { transform: rotate(8deg) scale(1.05); }
+}
+
+.bp-gold-text {
+    background: linear-gradient(100deg, var(--fx-light), var(--fx-a) 35%, var(--fx-light-b) 70%, var(--fx-light));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: bp-gold-flow 6s linear infinite;
+}
+
+@keyframes bp-gold-flow { to { background-position: -200% 0; } }
+
+.bp-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 1.75rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(135deg, rgb(24 24 27 / 0.8), rgb(9 9 11 / 0.6));
+    backdrop-filter: blur(12px);
+}
+
+/* A hero holding dropdowns cannot clip: its orbs get their own clipping layer. */
+.bp-hero-open { overflow: visible; }
+
+/* The merged header spans the page: warm the whole panel, not just its right end. */
+.bp-hero-open {
+    background:
+        linear-gradient(100deg, color-mix(in srgb, var(--fx-a) 10%, transparent), transparent 45%, transparent 60%, color-mix(in srgb, var(--fx-b) 8%, transparent)),
+        linear-gradient(135deg, rgb(24 24 27 / 0.8), rgb(9 9 11 / 0.6));
+}
+
+.bp-hero-open .bp-orb { width: 26rem; height: 26rem; opacity: 0.3; }
+.bp-hero-open .bp-orb-b { right: 45%; opacity: 0.18; }
+.bp-orb-c { background: var(--fx-a); top: -18rem; left: -10rem; animation-delay: -3.5s; opacity: 0.18; }
+
+/* A live edge (electric, fire) replaces the turning one. */
+.bp-live-edge::before { display: none; }
+
+/* Winning Factor: the glow behind the electric edge flashes now and then. */
+
+.fx-volt .bp-hero-open .bp-orb {
+    animation: bp-drift 14s ease-in-out infinite alternate, wf-flash 7s steps(1, end) infinite;
+}
+
+.fx-volt .bp-hero-open .bp-orb-b { animation-delay: -7s, -2.3s; }
+.fx-volt .bp-hero-open .bp-orb-c { animation-delay: -3.5s, -4.6s; }
+
+@keyframes wf-flash {
+    0%, 100% { filter: blur(70px); }
+    91% { filter: blur(70px) brightness(1.9); }
+    92% { filter: blur(70px); }
+    94% { filter: blur(70px) brightness(1.6); }
+    95% { filter: blur(70px); }
+}
+
+/* Market Moves: the homepage ticker, slowed to a header's width and always on. */
+.mm-live { opacity: 0.8; }
+.mm-live .fx-chart,
+.mm-live .fx-cursor { animation-duration: 6s; }
+.mm-live .fx-cursor { inset: 0; }
+/* The strip's top edge: a hairline the feed runs under. */
+.mm-live { border-top: 1px solid rgb(255 255 255 / 0.05); }
+.mm-live .fx-cursor::before { background: linear-gradient(transparent, color-mix(in srgb, var(--fx-a) 80%, transparent), transparent); box-shadow: 0 0 12px var(--fx-a); }
+.mm-beat { animation: fx-beat 1.2s ease-out infinite; }
+
+/* Narrow, the same orbs cover the whole panel and wash out the text. */
+@media (max-width: 1023px) {
+    .bp-hero-open .bp-orb { width: 18rem; height: 18rem; opacity: 0.22; }
+    .bp-hero-open .bp-orb-c { display: none; }
+}
+
+.bp-orbs {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.bp-orb {
+    position: absolute;
+    width: 22rem;
+    height: 22rem;
+    border-radius: 9999px;
+    filter: blur(70px);
+    opacity: 0.35;
+    animation: bp-drift 14s ease-in-out infinite alternate;
+}
+
+.bp-orb-a { background: var(--fx-a); top: -12rem; right: -6rem; }
+.bp-orb-b { background: var(--fx-b); bottom: -14rem; right: 18rem; animation-delay: -7s; opacity: 0.25; }
+
+@keyframes bp-drift {
+    to { transform: translate(-4rem, 2rem) scale(1.15); }
+}
+
+.bp-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--fx-a) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fx-a) 30%, transparent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--fx-a) 25%, transparent);
+    animation: bp-bob 3.2s ease-in-out infinite;
+}
+
+@keyframes bp-bob {
+    50% { transform: translateY(-4px) rotate(-6deg); }
+}
+
+/* A rotating conic edge: the gradient sits on a padded background and a mask
+   cuts the inside out, leaving only a 1px ring. */
+.bp-rules {
+    position: relative;
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    background: rgb(24 24 27 / 0.6);
+    backdrop-filter: blur(12px);
+}
+
+.bp-rules::before,
+.bp-hero-open::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: conic-gradient(from var(--bp-angle), rgb(255 255 255 / 0.06) 0 60%, var(--fx-a) 75%, var(--fx-b) 85%, rgb(255 255 255 / 0.06) 100%);
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    animation: bp-spin 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes bp-spin { to { --bp-angle: 360deg; } }
+
+/* Selectors, their popovers and the segmented controls, in the colour of the page
+   they sit in: --ctl is the app's emerald by default and follows the section's
+   --fx-a inside a themed page or a header panel, so the chrome reads as part of
+   the panel instead of a zinc box dropped on it. Same wiring as .bp-step below. */
+:root {
+    --ctl: #10b981;
+    --ctl-light: #6ee7b7;
+}
+
+.fx-fire,
+.fx-volt,
+.fx-ticker,
+.bp-hero {
+    --ctl: var(--fx-a);
+    --ctl-light: var(--fx-light);
+}
+
+.bp-control {
+    background: color-mix(in srgb, var(--ctl) 7%, rgb(9 9 11 / 0.55));
+    border: 1px solid color-mix(in srgb, var(--ctl) 20%, rgb(255 255 255 / 0.1));
+    transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, color 200ms ease;
+}
+
+.bp-control:hover {
+    background: color-mix(in srgb, var(--ctl) 14%, rgb(9 9 11 / 0.55));
+    border-color: color-mix(in srgb, var(--ctl) 45%, transparent);
+}
+
+.bp-control:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--ctl) 60%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ctl) 18%, transparent);
+}
+
+.bp-control[data-open="true"] {
+    border-color: color-mix(in srgb, var(--ctl) 55%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--ctl) 14%, transparent);
+}
+
+.bp-control[data-open="true"] svg { color: var(--ctl-light); }
+
+/* The popover: darker than its trigger, so text stays readable over the cards. */
+.bp-pop {
+    background: color-mix(in srgb, var(--ctl) 6%, rgb(9 9 11 / 0.94));
+    border: 1px solid color-mix(in srgb, var(--ctl) 20%, rgb(255 255 255 / 0.1));
+    backdrop-filter: blur(16px);
+}
+
+.bp-opt { color: #a1a1aa; transition: background 150ms ease, color 150ms ease; }
+.bp-opt:hover { color: #fff; background: rgb(255 255 255 / 0.05); }
+
+.bp-opt-on {
+    color: var(--ctl-light);
+    background: color-mix(in srgb, var(--ctl) 16%, transparent);
+}
+
+.bp-pop input[type="checkbox"] { accent-color: var(--ctl); }
+
+/* The sliding pill (.t-tabs in transitions.css) lit from the same colour. */
+.bp-hero .t-tabs,
+.bp-control-tabs {
+    border: 1px solid color-mix(in srgb, var(--ctl) 18%, rgb(255 255 255 / 0.08));
+    --tabs-bar-bg: rgb(9 9 11 / 0.45);
+    --tabs-pill-bg: color-mix(in srgb, var(--ctl) 28%, rgb(9 9 11 / 0.9));
+    --tabs-text-active: #fff;
+}
+
+.bp-hero .t-tabs-pill,
+.bp-control-tabs .t-tabs-pill {
+    border: 1px solid color-mix(in srgb, var(--ctl) 50%, transparent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--ctl) 22%, transparent);
+}
+
+.bp-step {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.75rem;
+    color: #d4d4d8;
+    background: rgb(9 9 11 / 0.6);
+    border: 1px solid rgb(255 255 255 / 0.1);
+    transition: transform 150ms ease, border-color 200ms ease, color 200ms ease, background 200ms ease;
+}
+
+.bp-step:hover:not(:disabled) { color: var(--fx-light); border-color: color-mix(in srgb, var(--fx-a) 50%, transparent); background: color-mix(in srgb, var(--fx-a) 8%, transparent); }
+.bp-step:active:not(:disabled) { transform: scale(0.9); }
+.bp-step:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.bp-range {
+    appearance: none;
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--fx-a), var(--fx-b));
+    outline: none;
+}
+
+.bp-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fx-a) 30%, transparent), 0 0 16px color-mix(in srgb, var(--fx-a) 60%, transparent);
+    cursor: pointer;
+    transition: transform 150ms ease;
+}
+
+.bp-range::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+.bp-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fx-a) 30%, transparent), 0 0 16px color-mix(in srgb, var(--fx-a) 60%, transparent);
+    cursor: pointer;
+}
+
+/* The same-day checkbox, drawn as a switch. The input stays real (sr-only). */
+.bp-toggle {
+    position: relative;
+    width: 2.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: rgb(63 63 70);
+    transition: background 250ms ease, box-shadow 250ms ease;
+}
+
+.bp-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    background: #fff;
+    transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.peer:checked ~ .bp-toggle {
+    background: linear-gradient(90deg, var(--fx-a), var(--fx-b));
+    box-shadow: 0 0 16px color-mix(in srgb, var(--fx-a) 45%, transparent);
+}
+
+.peer:checked ~ .bp-toggle::after { transform: translateX(1rem); }
+.peer:focus-visible ~ .bp-toggle { outline: 2px solid var(--fx-a); outline-offset: 2px; }
+.bp-check:has(:checked) { border-color: color-mix(in srgb, var(--fx-a) 40%, transparent); }
+
+.bp-chip {
+    padding: 0.375rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #71717a;
+    background: rgb(9 9 11 / 0.5);
+    border: 1px solid rgb(255 255 255 / 0.08);
+    transition: all 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bp-chip:hover { color: #d4d4d8; transform: translateY(-1px); }
+
+.bp-chip-on {
+    color: var(--fx-light);
+    background: color-mix(in srgb, var(--fx-a) 12%, transparent);
+    border-color: color-mix(in srgb, var(--fx-a) 40%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--fx-a) 15%, transparent);
+}
+
+/* A suggested slip is cut like the lucide ticket icon beside the title: a
+   notch bitten out of the middle of each side (a real hole, via mask), and a
+   perforated stub. The mask would clip a border, so the outline is drawn by
+   drop-shadows on the unmasked wrapper, which follow the cut shape. */
+.bp-tickets {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 0.5rem 0.25rem 1rem;
+    margin: -0.5rem -0.25rem 0;
+}
+
+.bp-tickets > * {
+    flex: 0 0 min(88%, 26rem);
+    scroll-snap-align: start;
+}
+
+/* Wide screens: events on the left, the three tickets stacked on the right,
+   ending level. BonusPlanner.jsx sizes the event page to the tickets' height;
+   the tickets then stretch the last few pixels to meet the table. */
+.bp-split {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+@media (min-width: 1280px) {
+    .bp-split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        align-items: stretch;
+    }
+
+    .bp-split-left { max-width: none; margin: 0; align-self: start; }
+    .bp-split-right { display: flex; flex-direction: column; }
+
+    .bp-tickets {
+        flex: 1;
+        flex-direction: column;
+        overflow: visible;
+        padding: 0;
+        margin: 0;
+    }
+
+    .bp-tickets > * { flex: 1 0 auto; }
+    .bp-ticket-wrap { display: flex; }
+    .bp-ticket { flex: 1; }
+}
+
+.bp-ticket-wrap {
+    --edge: rgb(255 255 255 / 0.14);
+    filter: drop-shadow(1px 0 0 var(--edge)) drop-shadow(-1px 0 0 var(--edge))
+            drop-shadow(0 1px 0 var(--edge)) drop-shadow(0 -1px 0 var(--edge))
+            drop-shadow(0 18px 24px rgb(0 0 0 / 0.55));
+    transform-origin: 50% 100%;
+    animation: bp-deal 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bp-ticket-wrap:hover { transform: translateY(-4px) rotate(-0.4deg); --edge: color-mix(in srgb, var(--fx-a) 45%, transparent); }
+
+.bp-ticket-best {
+    --edge: color-mix(in srgb, var(--fx-a) 55%, transparent);
+    filter: drop-shadow(1px 0 0 var(--edge)) drop-shadow(-1px 0 0 var(--edge))
+            drop-shadow(0 1px 0 var(--edge)) drop-shadow(0 -1px 0 var(--edge))
+            drop-shadow(0 0 18px color-mix(in srgb, var(--fx-a) 25%, transparent));
+}
+
+@keyframes bp-deal {
+    from {
+        opacity: 0;
+        transform: perspective(900px) translateY(40px) rotateX(18deg) scale(0.95);
+    }
+}
+
+.bp-ticket {
+    --notch: 13px;
+    position: relative;
+    display: grid;
+    --stub: 8.5rem;
+    grid-template-columns: minmax(0, 1fr) var(--stub);
+    height: 100%;
+    border-radius: 1.25rem;
+    overflow: hidden;
+    background: linear-gradient(160deg, rgb(39 39 42 / 0.95), rgb(9 9 11 / 0.95));
+    mask:
+        radial-gradient(circle var(--notch) at 0 50%, #0000 calc(var(--notch) - 0.5px), #000 var(--notch)) left / 51% 100% no-repeat,
+        radial-gradient(circle var(--notch) at 100% 50%, #0000 calc(var(--notch) - 0.5px), #000 var(--notch)) right / 51% 100% no-repeat;
+}
+
+.bp-stub {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    padding: 1rem 1.25rem 1rem 0.75rem;
+}
+
+/* Both halves keep their own height, centred, so a stretched ticket still
+   says how tall its contents are. The stub's tint and the icon's dashed tear
+   line belong to the ticket, and run its full height. */
+.bp-ticket > :not(.bp-holo) { align-self: center; }
+
+.bp-ticket::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: var(--stub);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--fx-a) 6%, transparent), color-mix(in srgb, var(--fx-b) 5%, transparent));
+    border-left: 2px dashed rgb(255 255 255 / 0.16);
+    background-clip: padding-box;
+    pointer-events: none;
+}
+
+.bp-holo {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(115deg, transparent 30%, rgb(253 230 138 / 0.12) 42%, rgb(240 171 252 / 0.14) 50%, rgb(165 243 252 / 0.1) 58%, transparent 70%);
+    background-size: 250% 100%;
+}
+
+.bp-ticket-best .bp-holo,
+.bp-ticket-wrap:hover .bp-holo {
+    opacity: 1;
+    animation: bp-holo 3.5s ease-in-out infinite;
+}
+
+@keyframes bp-holo {
+    0% { background-position: 150% 0; }
+    100% { background-position: -100% 0; }
+}
+
+.bp-leg {
+    animation: waterfall 500ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+/* Pick-your-own list. */
+.bp-events {
+    border-radius: 1.25rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(24 24 27 / 0.55);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+}
+
+/* One row = one reel window: the row spins inside it and is clipped at its edges. */
+.bp-slot {
+    overflow: hidden;
+    border-bottom: 1px solid rgb(255 255 255 / 0.05);
+}
+
+.bp-slot:last-child { border-bottom: 0; }
+
+.bp-event {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem 1rem;
+    transition: background 200ms ease;
+}
+
+.bp-event:hover { background: rgb(255 255 255 / 0.03); }
+
+/* The spin: in from one edge of the window, a hair past the stop, then back -
+   the settle of a reel. Motion-blurred on the way in. Rows start 55ms apart,
+   so the five land one after another like reels from left to right. */
+.bp-spin-down { animation: bp-reel-down 520ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards; }
+.bp-spin-up { animation: bp-reel-up 520ms cubic-bezier(0.2, 0.9, 0.3, 1.25) backwards; }
+
+@keyframes bp-reel-down {
+    from { transform: translateY(100%); filter: blur(3px); opacity: 0.3; }
+    60% { filter: blur(0); opacity: 1; }
+}
+
+@keyframes bp-reel-up {
+    from { transform: translateY(-100%); filter: blur(3px); opacity: 0.3; }
+    60% { filter: blur(0); opacity: 1; }
+}
+
+.bp-reels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.bp-reels > .bp-events { width: 100%; }
+
+.bp-arrow {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    color: var(--fx-light);
+    background: rgb(9 9 11 / 0.7);
+    border: 1px solid color-mix(in srgb, var(--fx-a) 30%, transparent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--fx-a) 12%, transparent);
+    transition: background 250ms ease, box-shadow 300ms ease, transform 150ms ease;
+    animation: bp-arrow-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bp-arrow:hover { background: color-mix(in srgb, var(--fx-a) 15%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--fx-a) 30%, transparent); }
+.bp-arrow:active { transform: scale(0.9); }
+/* A nudge in the direction it goes, while hovered. */
+.bp-arrow-down:hover svg { animation: bp-nudge-down 900ms ease-in-out infinite; }
+.bp-arrow-up:hover svg { animation: bp-nudge-up 900ms ease-in-out infinite; }
+
+@keyframes bp-nudge-down { 50% { transform: translateY(3px); } }
+@keyframes bp-nudge-up { 50% { transform: translateY(-3px); } }
+@keyframes bp-arrow-in { from { opacity: 0; transform: scale(0.6); } }
+
+.bp-market {
+    flex-shrink: 0;
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--fx-light-b);
+    background: color-mix(in srgb, var(--fx-b) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fx-b) 20%, transparent);
+}
+
+/* Phone: match on the first line, bet / price / button on the second. */
+@media (max-width: 639px) {
+    .bp-event { flex-wrap: wrap; row-gap: 0.5rem; }
+    .bp-event > .flex-1 { flex-basis: calc(100% - 5.5rem); }
+    .bp-market { flex-shrink: 1; min-width: 0; margin-right: auto; }
+    .bp-tickets > * { flex-basis: 94%; }
+    .bp-ticket { --stub: 7rem; }
+    .bp-stub { padding-inline: 0.5rem 1rem; }
+}
+
+.bp-add {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--fx-light);
+    background: color-mix(in srgb, var(--fx-a) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fx-a) 30%, transparent);
+    transition: background 250ms ease, color 250ms ease, border-color 250ms ease, transform 150ms ease, box-shadow 300ms ease;
+}
+
+.bp-add:hover { background: color-mix(in srgb, var(--fx-a) 18%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--fx-a) 25%, transparent); }
+.bp-add:active { transform: scale(0.92); }
+
+.bp-add-on {
+    color: #052e16;
+    background: linear-gradient(100deg, #34d399, #10b981);
+    border-color: transparent;
+    box-shadow: 0 0 18px rgb(16 185 129 / 0.35);
+}
+
+.bp-add-on:hover { background: linear-gradient(100deg, #f87171, #ef4444); color: #fff; box-shadow: 0 0 18px rgb(239 68 68 / 0.35); }
+
+/* The icon swaps with a spin-in, keyed so each change replays it. */
+.bp-add-icon { animation: bp-icon-in 350ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+@keyframes bp-icon-in {
+    from { transform: rotate(-90deg) scale(0.3); opacity: 0; }
+}
+
+.bp-ring-glow { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--fx-a) 50%, transparent)); }
+
+.bp-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #18181b;
+    background: linear-gradient(100deg, var(--fx-light), var(--fx-a) 45%, var(--fx-b));
+    background-size: 200% 100%;
+    transition: background-position 500ms ease, transform 150ms ease, box-shadow 300ms ease;
+}
+
+.bp-cta:hover { background-position: 100% 0; box-shadow: 0 0 24px color-mix(in srgb, var(--fx-a) 45%, transparent); }
+.bp-cta:active { transform: scale(0.97); }
+
+.bp-skeleton {
+    border-radius: 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.06);
+    background: linear-gradient(110deg, rgb(24 24 27 / 0.6) 40%, rgb(63 63 70 / 0.35) 50%, rgb(24 24 27 / 0.6) 60%);
+    background-size: 250% 100%;
+    animation: bp-holo 1.6s linear infinite;
+}
+
+.bp-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 4rem 1rem;
+    text-align: center;
+    border-radius: 1.5rem;
+    border: 1px dashed rgb(255 255 255 / 0.1);
+}
+
+/* Hot Matches cards: dealt in like the planner's tickets, an edge that warms
+   on hover, and the holographic sheen on the hottest one. */
+.hm-card { animation: bp-deal 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+
+.hm-glow:hover {
+    border-color: color-mix(in srgb, var(--fx-a) 45%, transparent);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--fx-a) 18%, transparent), 0 25px 50px -12px rgb(0 0 0 / 0.6);
+}
+
+.hm-card-top {
+    border-color: color-mix(in srgb, var(--fx-a) 50%, transparent);
+    box-shadow: 0 0 32px color-mix(in srgb, var(--fx-a) 20%, transparent);
+}
+
+.hm-card-top .bp-holo,
+.hm-glow:hover .bp-holo {
+    opacity: 1;
+    animation: bp-holo 3.5s ease-in-out infinite;
+}
+
+/* The home/away split fills in from the left once the card lands. */
+.hm-bar {
+    transform-origin: left;
+    animation: hm-grow 900ms cubic-bezier(0.22, 1, 0.36, 1) 450ms backwards;
+}
+
+@keyframes hm-grow { from { transform: scaleX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .bp-gold-text, .bp-orb, .bp-icon, .bp-rules::before, .bp-hero-open::before, .bp-ticket-wrap, .bp-holo,
+    .bp-leg, .bp-skeleton, .bp-add-icon, .hm-card, .hm-bar, .mm-live *, .mm-beat, .bp-spin-down, .bp-spin-up, .bp-arrow, .bp-arrow svg, .group:hover .fx-ticket {
+        animation: none !important;
+    }
 }
