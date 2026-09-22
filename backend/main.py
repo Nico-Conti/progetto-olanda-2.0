@@ -184,6 +184,70 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
 # running the SQL is real. Cleared only by a restart - which the free instance
 # does within the hour anyway, so running the migration takes effect on its own.
 _rpc_unavailable: set = set()
+# RPCs whose columns have been checked once. See fetch_all_body.
+_rpc_validated: set = set()
+
+
+def fetch_all_body(rpc_name, columns):
+    """The RPC's response bytes, UNPARSED, ready to serve as-is.
+
+    Postgres already produced JSON. Parsing it into Python objects only to
+    re-encode identical bytes in `cached_json` is pure waste - and on the
+    0.1-CPU free instance it is the expensive kind: json.dumps of 7,000 rows
+    was measured there at 3.08s. This hands the bytes straight through.
+
+    Columns are validated ONCE per process rather than per call: the check
+    needs a parse, which is the cost being avoided. A schema change therefore
+    takes effect on the next restart, which the free instance does within the
+    hour - the same bargain `_rpc_unavailable` makes.
+
+    Returns None for any problem, so the caller falls back to paging.
+    """
+    if rpc_name in _rpc_unavailable:
+        return None
+    try:
+        resp = get_supabase().postgrest.session.post(f"/rpc/{rpc_name}", json={})
+    except Exception as e:
+        print(f"note: {rpc_name}() unavailable ({str(e)[:120]}); paging instead", flush=True)
+        _rpc_unavailable.add(rpc_name)
+        return None
+
+    if resp.status_code >= 400:
+        print(f"note: {rpc_name}() returned {resp.status_code} ({resp.text[:120]}); paging instead", flush=True)
+        _rpc_unavailable.add(rpc_name)
+        return None
+
+    body = resp.content
+    if rpc_name not in _rpc_validated:
+        if not _columns_match(rpc_name, body, columns):
+            _rpc_unavailable.add(rpc_name)
+            return None
+        _rpc_validated.add(rpc_name)
+    return body
+
+
+def _columns_match(rpc_name, body, columns):
+    """One parse, once per process, to catch the two column lists drifting.
+
+    They live here and in migration 011 and nothing but a comment keeps them
+    in step. Serving a payload the frontend cannot read, silently, is this
+    project's recurring failure shape - so it is worth one parse to refuse.
+    """
+    try:
+        rows = json.loads(body)
+    except Exception as e:
+        print(f"note: {rpc_name}() returned unparseable JSON ({str(e)[:80]}); paging instead", flush=True)
+        return False
+    if not isinstance(rows, list) or not rows:
+        print(f"note: {rpc_name}() returned no usable rows; paging instead", flush=True)
+        return False
+    expected, got = set(columns.split(",")), set(rows[0].keys())
+    if got != expected:
+        print(f"⚠️  {rpc_name}() column drift vs main.py - missing {sorted(expected - got)}, "
+              f"extra {sorted(got - expected)}; paging instead. "
+              f"Re-run backend/migrations/011_bulk_json_reads.sql.", flush=True)
+        return False
+    return True
 
 
 def fetch_all_json(rpc_name, columns):
@@ -237,8 +301,9 @@ def fetch_all_json(rpc_name, columns):
 
 
 def fetch_all(table_name, rpc_name, columns, **paging):
-    """The RPC if migration 011 is in, the paged walk if it is not."""
-    return fetch_all_json(rpc_name, columns) or fetch_all_data(table_name, columns=columns, **paging)
+    """Serve-ready bytes from the RPC, or the paged walk if migration 011 is
+    not in. `cached_json` takes either."""
+    return fetch_all_body(rpc_name, columns) or fetch_all_data(table_name, columns=columns, **paging)
 
 
 # Read-through cache for the read endpoints.
@@ -267,7 +332,11 @@ def cached_json(key, build):
     # Compact separators, as Starlette's own JSONResponse uses. The default
     # ", " / ": " added ~10% to every response - 6.05MB against 5.51MB on
     # /matches - for whitespace nothing reads.
-    body = json.dumps(build(), separators=(",", ":")).encode()
+    built = build()
+    # Already-serialised bytes pass straight through: the RPC path hands back
+    # what Postgres produced, and re-encoding it would be the same JSON twice.
+    body = built if isinstance(built, (bytes, bytearray)) else json.dumps(
+        built, separators=(",", ":")).encode()
     _response_cache[key] = (time.monotonic() + CACHE_TTL_SECONDS, body)
     return Response(content=body, media_type="application/json")
 
