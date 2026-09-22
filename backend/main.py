@@ -177,6 +177,70 @@ def fetch_all_data(table_name, order_col=None, desc=False, columns="*", gte=None
             
     return all_rows
 
+
+# RPCs this process has already found missing or broken. Retrying a function
+# that does not exist costs a full round trip (~1s measured) on every uncached
+# request, and migration 011 is hand-run, so the gap between deploying this and
+# running the SQL is real. Cleared only by a restart - which the free instance
+# does within the hour anyway, so running the migration takes effect on its own.
+_rpc_unavailable: set = set()
+
+
+def fetch_all_json(rpc_name, columns):
+    """Every row in ONE round trip, via an RPC that does the json_agg in Postgres.
+
+    PostgREST caps a page at 1000 rows and ignores a wider Range header, so
+    `fetch_all_data` needs nine requests for `matches`. Measured against
+    production, warm: 2,783 ms, of which ~1,400 ms is nine lots of per-request
+    latency (a 1-row request costs 156 ms, a 100-row request 149 ms - it is
+    round trips, not query time) and only ~466 ms is work. Postgres builds the
+    whole JSON in 117.8 ms, so one call lands around 620 ms.
+
+    Returns None rather than raising for ANY problem, so the caller falls back
+    to paging. Migration 011 is hand-run like every other one, so this has to
+    survive the function simply not being there.
+
+    The column lists live in two places - here and in the migration - and
+    nothing but a comment stops them drifting. So the keys that come back are
+    checked against the ones expected: a mismatch falls back to paging rather
+    than serving a payload the frontend cannot read. That is the failure this
+    guard exists for, and it is silent without it.
+    """
+    if rpc_name in _rpc_unavailable:
+        return None
+    try:
+        rows = get_supabase().rpc(rpc_name, {}).execute().data
+    except Exception as e:
+        print(f"note: {rpc_name}() unavailable ({str(e)[:120]}); paging instead", flush=True)
+        _rpc_unavailable.add(rpc_name)
+        return None
+
+    if not isinstance(rows, list):
+        print(f"note: {rpc_name}() returned {type(rows).__name__}, not a list; paging instead", flush=True)
+        _rpc_unavailable.add(rpc_name)
+        return None
+    if not rows:
+        # An empty table is a legitimate answer, but so is a broken one. Paging
+        # is cheap when there is nothing to page.
+        return None
+
+    expected = set(columns.split(","))
+    got = set(rows[0].keys())
+    if got != expected:
+        missing, extra = sorted(expected - got), sorted(got - expected)
+        print(f"⚠️  {rpc_name}() column drift vs main.py - missing {missing}, extra {extra}; "
+              f"paging instead. Re-run backend/migrations/011_bulk_json_reads.sql.", flush=True)
+        _rpc_unavailable.add(rpc_name)
+        return None
+
+    return rows
+
+
+def fetch_all(table_name, rpc_name, columns, **paging):
+    """The RPC if migration 011 is in, the paged walk if it is not."""
+    return fetch_all_json(rpc_name, columns) or fetch_all_data(table_name, columns=columns, **paging)
+
+
 # Read-through cache for the read endpoints.
 #
 # The cost here is NOT the wire. /matches is 5.5MB of JSON but 510KB once
@@ -218,7 +282,7 @@ def get_teams():
 @app.get("/matches")
 def get_matches():
     try:
-        return cached_json("matches", lambda: fetch_all_data("matches", columns=MATCH_COLUMNS))
+        return cached_json("matches", lambda: fetch_all("matches", "matches_json", MATCH_COLUMNS))
     except Exception as narrow_error:
         # If the schema does not match the column list above (a renamed or
         # missing column makes PostgREST reject the whole query), fall back to
@@ -243,8 +307,8 @@ FIXTURE_COLUMNS = ",".join([
 @app.get("/fixtures")
 def get_fixtures():
     try:
-        return cached_json("fixtures", lambda: fetch_all_data(
-            "fixtures", "match_date", desc=False, columns=FIXTURE_COLUMNS))
+        return cached_json("fixtures", lambda: fetch_all(
+            "fixtures", "fixtures_json", FIXTURE_COLUMNS, order_col="match_date", desc=False))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
