@@ -630,7 +630,6 @@ export default function App() {
             // Matches load after the shell now; without them the model has
             // nothing, and slips ranked on the book alone would reshuffle when they land.
             oddsLoading={oddsLoading || loading}
-            loadMarket={loadMarket}
             matchData={currentSeasonMatchData}
             modelSettings={modelSettingsApi.modelSettings}
             teamLogos={teamLogos}

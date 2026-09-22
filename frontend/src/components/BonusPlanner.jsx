@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Ticket, Minus, Plus, Check, Search, ChevronUp, ChevronDown, ListChecks, CalendarCheck, ShieldCheck, Gem, Sparkles, ShoppingCart, SearchX } from 'lucide-react';
 import Header from './Header';
 import SlidingTabs from './ui/SlidingTabs';
@@ -10,28 +10,41 @@ import { staggerDelay } from '../utils/stagger';
 import { useCountUp } from '../hooks/useCountUp';
 import { usePersistedPrefs } from '../hooks/usePersistedPrefs';
 import { t, dateLocale } from '../i18n';
+import { CoinCascade } from './LandingPage';
 
-const SLIP_MARKETS = PLANNER_MARKETS.filter(m => m.slipOnly).map(m => m.id);
-const MODELLED = PLANNER_MARKETS.filter(m => !m.slipOnly);
+// Over/under totals only - every market here has a model behind it.
+const legLabel = (leg, market) => `${getStatLabel(market.stat)} ${formatSelection(leg.selection, leg.line)}`;
 
-const legLabel = (leg, market) => (market.slipOnly
-    ? `${getStatLabel(market.stat)}${leg.line != null ? ` ${leg.line}` : ''} · ${formatSelection(leg.selection)}`
-    : `${getStatLabel(market.stat)} ${formatSelection(leg.selection, leg.line)}`);
-
-const Stepper = ({ label, value, display, onChange, step, min, max }) => (
-    <div className="space-y-2">
-        <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
-        <div className="flex items-center gap-2">
-            <button type="button" onClick={() => onChange(Math.max(min, +(value - step).toFixed(2)))} disabled={value <= min}
-                aria-label={t('Decrease')} className="bp-step"><Minus className="w-4 h-4" /></button>
-            <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
-                <span key={value} className="pop-in">{display}</span>
-            </span>
-            <button type="button" onClick={() => onChange(Math.min(max, +(value + step).toFixed(2)))} disabled={value >= max}
-                aria-label={t('Increase')} className="bp-step"><Plus className="w-4 h-4" /></button>
+/**
+ * A number the punter sets: type it or nudge it. What is typed is held as text
+ * and only passed on once it reads as a number in range, so the field can be
+ * emptied mid-edit (it used to snap back to 0) and "1," reads as the start of
+ * "1,50". Leaving the field shows the last good value again.
+ */
+const NumberField = ({ label, value, onChange, step, min, max, decimals = 0, prefix }) => {
+    const [draft, setDraft] = useState(null);
+    const clamp = (v) => Math.min(max, Math.max(min, +v.toFixed(decimals)));
+    const type = (text) => {
+        setDraft(text);
+        const v = parseFloat(text.replace(',', '.'));
+        if (Number.isFinite(v) && v >= min && v <= max) onChange(+v.toFixed(decimals));
+    };
+    return (
+        <div className="min-w-0">
+            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1 truncate">{label}</span>
+            <div className="bp-control flex items-center h-10 rounded-lg">
+                <button type="button" onClick={() => onChange(clamp(value - step))} disabled={value <= min}
+                    aria-label={t('Decrease')} className="bp-nudge"><Minus className="w-3.5 h-3.5" /></button>
+                {prefix && <span className="text-sm font-bold text-zinc-500">{prefix}</span>}
+                <input inputMode="decimal" value={draft ?? value.toFixed(decimals)} aria-label={label}
+                    onChange={e => type(e.target.value)} onBlur={() => setDraft(null)}
+                    className="w-full min-w-0 bg-transparent text-center text-sm font-black text-white tabular-nums outline-none" />
+                <button type="button" onClick={() => onChange(clamp(value + step))} disabled={value >= max}
+                    aria-label={t('Increase')} className="bp-nudge"><Plus className="w-3.5 h-3.5" /></button>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 /** Chance of the whole slip landing, as a ring that fills. */
 const ChanceRing = ({ prob }) => {
@@ -59,13 +72,13 @@ const ChanceRing = ({ prob }) => {
     );
 };
 
-/** What `addToBet` takes for a leg: slip-only markets carry the book's own selection. */
-const betArgs = (leg) => {
-    const market = PLANNER_MARKETS.find(m => m.id === leg.market);
-    return market.slipOnly
-        ? { game: gameKey(leg.home_team, leg.away_team), option: leg.selection, value: leg.line, stat: market.stat }
-        : { game: gameKey(leg.home_team, leg.away_team), option: leg.selection === 'over' ? 'O' : 'U', value: Number(leg.line), stat: market.stat };
-};
+/** What `addToBet` takes for a leg. */
+const betArgs = (leg) => ({
+    game: gameKey(leg.home_team, leg.away_team),
+    option: leg.selection === 'over' ? 'O' : 'U',
+    value: Number(leg.line),
+    stat: PLANNER_MARKETS.find(m => m.id === leg.market).stat,
+});
 
 const Chance = ({ leg }) => (
     <span className="text-[10px] tabular-nums"
@@ -231,55 +244,53 @@ const SectionTitle = ({ icon, title, count, children }) => (
     </div>
 );
 
-const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSettings, teamLogos, onBack, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
+const BonusPlanner = ({ oddsRows, oddsLoading, matchData, modelSettings, teamLogos, onBack, bets, addToBet, removeFromBet, onOpenBetSlip }) => {
     // Remembered between visits: the same bonus tends to come back with the same rules.
     const [prefs, set] = usePersistedPrefs('olanda_bonus_planner', {
-        events: 4, minOdds: 1.5, sameDay: false, stake: 5, mode: 'safe',
+        events: 4, minOdds: 1.5, maxOdds: 10, sameDay: false, stake: 5, mode: 'safe',
         markets: PLANNER_MARKETS.map(m => m.id),
     });
-    const { events, minOdds, sameDay, stake, mode, markets } = prefs;
-
-    // GG/NG and multigol are served on request only (see useOdds.loadMarket).
-    const [loadingSlip, setLoadingSlip] = useState(true);
-    useEffect(() => {
-        Promise.all(SLIP_MARKETS.map(m => loadMarket(m))).finally(() => setLoadingSlip(false));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const { events, minOdds, maxOdds, sameDay, stake, mode, markets } = prefs;
+    // The two bounds push each other rather than cross.
+    const setMinOdds = (v) => set({ minOdds: v, maxOdds: Math.max(maxOdds, v) });
+    const setMaxOdds = (v) => set({ maxOdds: v, minOdds: Math.min(minOdds, v) });
 
     // One model per modelled statistic, built exactly as Hot Matches builds its one.
-    const models = useMemo(() => Object.fromEntries(MODELLED.map(m =>
+    const models = useMemo(() => Object.fromEntries(PLANNER_MARKETS.map(m =>
         [m.id, buildPredictionModel(matchData, m.stat, { trackResiduals: true })])), [matchData]);
 
     // Our chance for a leg, or null to fall back to the book's: no model for the
     // market, or a prediction below the confidence floor Hot Matches also uses.
+    // One prediction per fixture and market, worked out here once rather than per
+    // price row, and kept while only the rules change - nudging a number is free.
     const modelProb = useMemo(() => {
         const { nGames, useGeneralStats, forceMean } = modelSettings;
+        const fixtureKey = (r) => `${r.market}|${r.home_team}|${r.away_team}`;
         const preds = new Map();
-        return (r) => {
+        for (const r of oddsRows) {
             const model = models[r.market];
-            if (!model || r.line == null) return null;
-            const key = `${r.market}|${r.home_team}|${r.away_team}`;
-            if (!preds.has(key)) {
-                preds.set(key, predictFromModel(model, r.home_team, r.away_team, {
-                    nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
-                    asOf: new Date(r.match_date), engine: ENGINES.COUNT,
-                }));
-            }
-            const pred = preds.get(key);
+            if (!model || preds.has(fixtureKey(r))) continue;
+            preds.set(fixtureKey(r), predictFromModel(model, r.home_team, r.away_team, {
+                nGames, useGeneralStats, aggregatorOverride: forceMean ? 'mean' : null,
+                asOf: new Date(r.match_date), engine: ENGINES.COUNT,
+            }));
+        }
+        return (r) => {
+            const pred = r.line == null ? null : preds.get(fixtureKey(r));
             const over = pred?.confident ? pred.probOver?.(Number(r.line)) : null;
             if (over == null) return null;
             return r.selection === 'over' ? over : 1 - over;
         };
-    }, [models, modelSettings]);
+    }, [oddsRows, models, modelSettings]);
 
     const { slips, legs, eligible } = useMemo(
-        () => planSlips(oddsRows, { events, minOdds, sameDay, markets, mode, modelProb }),
-        [oddsRows, events, minOdds, sameDay, markets, mode, modelProb]
+        () => planSlips(oddsRows, { events, minOdds, maxOdds, sameDay, markets, mode, modelProb }),
+        [oddsRows, events, minOdds, maxOdds, sameDay, markets, mode, modelProb]
     );
     // Remounts the tickets on a rule change, so they deal in afresh.
-    const deal = `${events}|${minOdds}|${sameDay}|${mode}|${markets.join()}`;
+    const deal = `${events}|${minOdds}|${maxOdds}|${sameDay}|${mode}|${markets.join()}`;
 
-    const loading = oddsLoading || loadingSlip;
+    const loading = oddsLoading;
 
     // Wide screens: as many event rows as it takes to reach the bottom of the
     // stacked tickets, so the two columns end level. Measured, not guessed: a
@@ -332,10 +343,8 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
         markets: markets.includes(id) ? markets.filter(m => m !== id) : [...markets, id],
     });
 
-    const title = t('Bonus Planner').split(' ');
-
     return (
-        <div className="min-h-screen text-zinc-200 font-sans relative pb-12">
+        <div className="fx-bonus min-h-screen text-zinc-200 font-sans relative pb-12">
             <Header
                 title={(
                     <h1 className="text-lg font-black tracking-tight text-white leading-none hidden sm:block">
@@ -347,58 +356,30 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                 betsCount={bets?.length ?? 0}
                 onOpenBetSlip={onOpenBetSlip}
                 pageName={(
-                    <h1 className="text-lg font-black tracking-tight text-white leading-none">
-                        {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
+                    <h1 className="text-lg font-black tracking-tight leading-none">
+                        <span className="bp-gold-text">{t('Bonus Planner')}</span>
                     </h1>
                 )}
             />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-8">
+                {/* One panel, as on the other pages: title and mode, then every rule. */}
                 <section className="bp-hero animate-waterfall">
+                    <CoinCascade />
                     <div className="bp-orb bp-orb-a" aria-hidden="true" />
                     <div className="bp-orb bp-orb-b" aria-hidden="true" />
-                    <div className="relative flex items-center gap-4">
-                        <div className="bp-icon"><Ticket className="w-7 h-7 text-amber-300" /></div>
-                        <div>
-                            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
-                                {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
-                            </h2>
-                            <p className="text-sm text-zinc-400 mt-1.5">
-                                {t('Set your bonus rules and get the strongest slips on the board right now.')}
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="bp-rules animate-waterfall" style={{ animationDelay: '80ms' }}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <Stepper label={t('Events')} value={events} display={events} step={1} min={1} max={12}
-                            onChange={v => set({ events: v })} />
-                        <div className="space-y-2">
-                            <Stepper label={t('Minimum odds per event')} value={minOdds} display={minOdds.toFixed(2)} step={0.05} min={1.01} max={5}
-                                onChange={v => set({ minOdds: v })} />
-                            <input type="range" min={1.01} max={3} step={0.01} value={Math.min(minOdds, 3)}
-                                onChange={e => set({ minOdds: Number(e.target.value) })}
-                                aria-label={t('Minimum odds per event')} className="bp-range w-full" />
-                        </div>
-                        <label className="space-y-2 block">
-                            <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('Bonus amount')}</span>
-                            <div className="flex items-center gap-2 rounded-xl bg-zinc-950/60 border border-white/10 px-3 h-12 focus-within:border-amber-400/50 transition-colors">
-                                <span className="text-zinc-500 font-bold">€</span>
-                                <input type="number" min={0} step={1} value={stake}
-                                    onChange={e => set({ stake: Math.max(0, Number(e.target.value) || 0) })}
-                                    className="w-full bg-transparent text-2xl font-black text-white tabular-nums outline-none" />
+                    <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="bp-icon"><Ticket className="w-7 h-7 text-amber-300" /></div>
+                            <div className="min-w-0">
+                                <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-none">
+                                    <span className="bp-gold-text">{t('Bonus Planner')}</span>
+                                </h2>
+                                <p className="text-sm text-zinc-400 mt-1.5">
+                                    {t('Set your bonus rules and get the strongest slips on the board right now.')}
+                                </p>
                             </div>
-                        </label>
-                        <label className="bp-check group flex items-center gap-3 self-end h-12 px-3 rounded-xl bg-zinc-950/60 border border-white/10 cursor-pointer">
-                            <input type="checkbox" checked={sameDay} onChange={e => set({ sameDay: e.target.checked })} className="peer sr-only" />
-                            <span className="bp-toggle" aria-hidden="true" />
-                            <CalendarCheck className="w-4 h-4 text-zinc-500 peer-checked:text-amber-300 transition-colors" />
-                            <span className="text-sm font-semibold text-zinc-300">{t('Matches today only')}</span>
-                        </label>
-                    </div>
-
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-4 mt-6 pt-6 border-t border-white/5">
+                        </div>
                         <SlidingTabs
                             items={[
                                 { id: 'safe', label: t('Safest'), Icon: ShieldCheck },
@@ -406,30 +387,46 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                             ]}
                             value={mode}
                             onChange={v => set({ mode: v })}
-                            className="border border-white/10 self-start"
+                            className="self-start lg:self-center"
                             tabClassName="font-semibold"
                         />
-                        <div className="flex flex-wrap gap-2">
-                            {PLANNER_MARKETS.map(m => {
-                                const on = markets.includes(m.id);
-                                return (
-                                    <button key={m.id} type="button" aria-pressed={on} onClick={() => toggleMarket(m.id)}
-                                        className={`bp-chip ${on ? 'bp-chip-on' : ''}`}>
-                                        {getStatLabel(m.stat)}
-                                    </button>
-                                );
-                            })}
-                        </div>
                     </div>
-                    <p className="text-[11px] text-zinc-500 mt-4">
+
+                    <div className="relative mt-5 pt-5 border-t border-white/5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                        <NumberField label={t('Events')} value={events} step={1} min={1} max={12}
+                            onChange={v => set({ events: v })} />
+                        <NumberField label={t('Minimum price per event')} value={minOdds} step={0.05} min={1.01} max={20} decimals={2}
+                            onChange={setMinOdds} />
+                        <NumberField label={t('Maximum price per event')} value={maxOdds} step={0.05} min={1.01} max={20} decimals={2}
+                            onChange={setMaxOdds} />
+                        <NumberField label={t('Bonus amount')} value={stake} step={5} min={0} max={100000} prefix="€"
+                            onChange={v => set({ stake: v })} />
+                        <label className="bp-control bp-check col-span-2 md:col-span-1 flex items-center gap-3 h-10 px-3 rounded-lg cursor-pointer">
+                            <input type="checkbox" checked={sameDay} onChange={e => set({ sameDay: e.target.checked })} className="peer sr-only" />
+                            <span className="bp-toggle" aria-hidden="true" />
+                            <CalendarCheck className="w-4 h-4 shrink-0 text-zinc-500 peer-checked:text-amber-300 transition-colors" />
+                            <span className="text-sm font-semibold text-zinc-300 truncate">{t('Matches today only')}</span>
+                        </label>
+                    </div>
+
+                    <div className="relative mt-4 flex flex-wrap gap-2">
+                        {PLANNER_MARKETS.map(m => {
+                            const on = markets.includes(m.id);
+                            return (
+                                <button key={m.id} type="button" aria-pressed={on} onClick={() => toggleMarket(m.id)}
+                                    className={`bp-chip ${on ? 'bp-chip-on' : ''}`}>
+                                    {getStatLabel(m.stat)}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="relative text-[11px] text-zinc-500 mt-3">
                         {mode === 'safe'
                             ? t('Safest: the legs most likely to land, one per match, each at or above your minimum. Our model decides for goals, corners, fouls and cards; the bookmaker for the rest.')
                             : t('Best value: the highest chance times price - positive expected value where our model rates a leg above its price.')}
                     </p>
                 </section>
 
-                {/* Every market or none: slips drawn from half the board ranked GG/NG
-                    alone whenever it answered before the main /odds fetch. */}
                 <div className="bp-split">
                     <section ref={leftRef} className="bp-split-left w-full max-w-3xl mx-auto space-y-4 animate-waterfall" style={{ animationDelay: '160ms' }}>
                         <SectionTitle icon={<ListChecks className="w-5 h-5 text-amber-300" />} title={t('All events')} count={loading ? null : legs.length}>
@@ -460,7 +457,7 @@ const BonusPlanner = ({ oddsRows, oddsLoading, loadMarket, matchData, modelSetti
                                 <SearchX className="w-10 h-10 text-zinc-600" />
                                 <p className="text-white font-bold">{t('No slip fits these rules right now.')}</p>
                                 <p className="text-sm text-zinc-500">
-                                    {t('{n} matches qualify, {events} needed. Lower the minimum odds, allow more markets or other days.', { n: eligible, events })}
+                                    {t('{n} matches qualify, {events} needed. Widen the price range, allow more markets or other days.', { n: eligible, events })}
                                 </p>
                             </div>
                         )}

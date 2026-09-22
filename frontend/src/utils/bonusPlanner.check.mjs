@@ -40,4 +40,8 @@ const withModel = planSlips(rows, { events: 1, minOdds: 1.5, sameDay: false, mar
     modelProb: (r) => (r.market === 'total_corners' && r.selection === 'over' ? 0.8 : null) });
 assert.equal(withModel.slips[0].legs[0].home_team, 'B');
 assert.equal(withModel.slips[0].legs[0].model, 0.8);
+// A cap drops the legs priced above it: at 1.55 max, A's 1.60 and every under go; B's 1.55 stays.
+const capped = planSlips(rows, { events: 1, minOdds: 1.5, maxOdds: 1.55, sameDay: false, markets, now });
+assert.ok(capped.legs.length > 0 && capped.legs.every(l => l.price >= 1.5 && l.price <= 1.55));
+assert.ok(capped.legs.some(l => l.price === 1.55));
 console.log('bonusPlanner ok');

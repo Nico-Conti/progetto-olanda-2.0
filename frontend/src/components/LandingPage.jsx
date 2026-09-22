@@ -58,8 +58,45 @@ const TICKS = particles(8, { left: [6, 90], dur: [1.8, 2.8], sway: 10 })
     });
 // A jagged price path across the card, in a 100x40 box.
 const CHART_POINTS = '0,30 8,27 16,31 24,22 32,25 40,17 48,20 56,12 64,16 72,9 80,13 88,6 100,8';
-const GOLD_DUST = particles(14, { left: [3, 97], dur: [2.2, 3.6], sway: 16 })
-    .map(style => ({ ...style, bottom: `${6 + Math.random() * 40}%` }));
+// Coins raining down behind the bonus card and the Bonus Planner header. Small,
+// faint and slow at the back; larger, brighter and quicker at the front, for depth.
+const COINS = particles(16, { left: [2, 98], dur: [2.4, 4.2], sway: 0 })
+    .map(style => {
+        const depth = Math.random();
+        return {
+            ...style,
+            '--dur': `${4.4 - depth * 2}s`,
+            '--s': (0.55 + depth * 0.55).toFixed(2),
+            '--o': (0.18 + depth * 0.32).toFixed(2),
+            '--dx': `${(Math.random() - 0.5) * 24}px`,
+            '--spin': `${(Math.random() < 0.5 ? -1 : 1) * 720}deg`,
+        };
+    });
+
+/** Gold coins falling through a card from a glowing slot on its top edge, over a fuchsia haze. Also the Bonus Planner header. */
+export const CoinCascade = ({ className = '' }) => (
+    <div className={`absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none ${className}`} aria-hidden="true">
+        <div className="fx-coin-haze" />
+        <div className="fx-coin-slot" />
+        {COINS.map((style, i) => <span key={i} className="fx-coin" style={style}><i /></span>)}
+    </div>
+);
+
+/**
+ * Every league we cover, drifting right to left, faded, through the picker
+ * card's free space. It is the flex item between the title and the arrow, so it
+ * fills exactly the room the title leaves, in either language. Two copies of
+ * the row back to back, so sliding it by half loops without a seam. See
+ * "League marquee" in index.css.
+ */
+const LeagueMarquee = ({ logos }) => (
+    <div className="fx fx-marquee relative flex-1 self-stretch min-w-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        {/* The same speed however many leagues there are. */}
+        <div className="fx-marquee-track" style={{ '--period': `${Math.max(16, logos.length * 2.2)}s` }}>
+            {[...logos, ...logos].map((src, i) => <img key={i} src={src} alt="" loading="lazy" className="fx-marquee-logo" />)}
+        </div>
+    </div>
+);
 
 /** Embers rising off the bottom edge, over a heat glow. Also the Hot Matches header. */
 export const EmberLayer = ({ className = '' }) => (
@@ -91,9 +128,11 @@ const HoverFx = ({ kind }) => {
         </div>
     );
     if (kind === 'gold') return (
-        <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
-            <div className="fx-glint" style={{ '--glint': 'rgb(252 211 77 / 0.2)' }} />
-            {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
+        <div className="fx absolute inset-0 rounded-[inherit] pointer-events-none" aria-hidden="true">
+            <CoinCascade />
+            <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                <div className="fx-glint" style={{ '--glint': 'rgb(252 211 77 / 0.2)' }} />
+            </div>
         </div>
     );
     return null;
@@ -128,7 +167,7 @@ const FEATURES = [
         card: 'hover-gold', glow: 'bg-amber-500/20',
         iconBox: 'bg-amber-500/10 border-amber-500/20 group-hover:border-amber-500/50',
         icon: 'text-amber-400 group-hover:text-amber-300', iconFx: 'fx-ticket',
-        title: 'group-hover:text-amber-300', arrow: 'group-hover:text-amber-400',
+        title: 'fx-title-flow', arrow: 'group-hover:text-amber-400',
     },
 ];
 
@@ -280,6 +319,8 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
     }, [availableLeagues, leaguesData]);
 
     const openNation = nations.find(([country]) => country === modalCountry);
+    const leagueLogos = React.useMemo(() => [...new Set(nations.flatMap(([, { leagues }]) =>
+        leagues.map(l => l.logoUrl)).filter(Boolean))], [nations]);
 
     const isModalMounted = usePresence(isLeagueModalOpen, '--modal-close-dur');
 
@@ -399,14 +440,11 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                         >
                             {/* A champion's glory, the gold counterpart of the fire,
                                 lightning and ticker cards below: rays turn behind the
-                                trophy, gold dust rises, a light sweeps the card and a
-                                golden edge runs round it. See "League picker hover"
-                                in index.css. */}
+                                trophy, every league's logo drifts past behind it, a light
+                                sweeps it and a golden edge runs round it. See "League
+                                picker hover" in index.css. */}
                             {availableLeagues.length > 0 && (
                                 <>
-                                    <div className="fx absolute inset-x-0 -top-16 bottom-0 pointer-events-none" aria-hidden="true">
-                                        {GOLD_DUST.map((style, i) => <span key={i} className="sparkle fx-dust" style={style} />)}
-                                    </div>
                                     {/* Clipped to the card: light glowing from within it. */}
                                     <div className="fx absolute inset-0 overflow-hidden rounded-2xl pointer-events-none" aria-hidden="true">
                                         <div className="fx-rays absolute left-12 top-1/2 w-72 h-72 -translate-x-1/2 -translate-y-1/2" />
@@ -450,6 +488,7 @@ const LandingPage = ({ availableLeagues, leaguesData, loadError, onRetry, onSele
                                     </span>
                                 </div>
                             </div>
+                            {availableLeagues.length > 0 && <LeagueMarquee logos={leagueLogos} />}
                             <ArrowRight className="relative z-10 w-5 h-5 text-zinc-600 group-hover:text-amber-400 transform group-hover:translate-x-1 transition" />
                         </button>
 

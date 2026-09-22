@@ -248,29 +248,6 @@
     45%, 100% { transform: translateX(480%) skewX(-20deg); }
 }
 
-/* A four-point sparkle: a glowing core with two thin flares crossing it.
-   Ice by default; recolour it by setting --sparkle-core / --sparkle-glow.
-   Fallbacks rather than declarations here: this rule is unlayered, so it would
-   beat the Tailwind classes that set them. */
-.sparkle {
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: radial-gradient(circle, var(--sparkle-core, #ecfeff) 0 18%, var(--sparkle-glow, rgb(34 211 238 / 0.55)) 32%, transparent 60%);
-}
-
-.sparkle::before,
-.sparkle::after {
-    content: "";
-    position: absolute;
-    inset: 4.25px 0;
-    background: linear-gradient(90deg, transparent, var(--sparkle-core, #ecfeff), transparent);
-}
-
-.sparkle::after {
-    transform: rotate(90deg);
-}
-
 /* Ticker: a price line draws itself across the card behind a scanning cursor,
    odds deltas tick upward, and the icon beats like a live feed. */
 .fx-chart {
@@ -690,7 +667,7 @@ input[type=number] {
 /*
    League picker hover: a champion's glory, the gold sibling of the feature
    cards' fire, lightning and ticker. It rides the same .fx plumbing above (fade
-   in on hover, paused otherwise) and reuses the glint and the sparkle.
+   in on hover, paused otherwise) and reuses the glint.
 */
 
 /* Rays of light turning slowly behind the trophy, fading out from its centre. */
@@ -706,18 +683,112 @@ input[type=number] {
     to { transform: rotate(360deg); }
 }
 
-/* Gold dust rising off the card: the sparkle, in gold. */
-.fx-dust {
-    --sparkle-core: #fffbeb;
-    --sparkle-glow: rgb(251 191 36 / 0.7);
-    animation: fx-rise var(--dur) cubic-bezier(0.3, 0, 0.6, 1) var(--delay) infinite;
+/* League marquee (LeagueMarquee in LandingPage.jsx). The row slides left by
+   half its length, one full copy, then repeats. Each logo carries its gap as a
+   margin rather than the row using `gap`, so half the row is exactly one copy.
+   The mask fades it in by the arrow and out before the title. Each logo keeps
+   its own colours, a little faded so the row stays in the background. */
+.fx-marquee {
+    mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%, #000 70%, transparent);
 }
 
-@keyframes fx-rise {
-    0% { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
-    15% { opacity: 1; }
-    70% { opacity: 0.8; }
-    100% { transform: translate(var(--sway), -95px) scale(1) rotate(90deg); opacity: 0; }
+.fx-marquee-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    display: flex;
+    width: max-content;
+    translate: 0 -50%;
+    animation: fx-marquee var(--period) linear infinite;
+}
+
+@keyframes fx-marquee {
+    to { transform: translateX(-50%); }
+}
+
+.fx-marquee-logo {
+    width: 34px;
+    max-width: none;
+    height: 34px;
+    margin-right: 26px;
+    object-fit: contain;
+    /* A soft light halo, so crests drawn in dark colours still show on the dark card. */
+    filter: drop-shadow(0 0 5px rgb(255 255 255 / 0.22)) brightness(1.1);
+    opacity: 0.75;
+}
+
+/* Bonus Planner: gold coins rain down behind the content, over a fuchsia haze.
+   Each coin is two elements, because both move by transform: the outer one is
+   a column as tall as the card, so translateY(100%) carries its coin from just
+   above the top edge to just below the bottom whatever the card's height; the
+   inner coin sways and flips. Hidden at rest, so reduced motion shows none. */
+.fx-coin {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    opacity: 0;
+    transform: translateY(-24px);
+    animation: fx-coin-fall var(--dur) linear var(--delay) infinite;
+}
+
+.fx-coin > i {
+    display: block;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    scale: var(--s);
+    background: radial-gradient(circle at 35% 30%, #fffbeb 0 10%, #fcd34d 32%, #f59e0b 72%, #b45309);
+    box-shadow:
+        inset 0 0 0 1.5px rgb(180 83 9 / 0.85),
+        inset 0 0 0 3px rgb(254 243 199 / 0.45),
+        0 0 10px color-mix(in srgb, var(--fx-b) 45%, transparent);
+    animation: fx-coin-flip var(--dur) linear var(--delay) infinite;
+}
+
+@keyframes fx-coin-fall {
+    0% { transform: translateY(-24px); opacity: 0; }
+    12%, 85% { opacity: var(--o); }
+    100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes fx-coin-flip {
+    50% { transform: translateX(var(--dx)) rotateY(calc(var(--spin) / 2)); }
+    100% { transform: translateX(0) rotateY(var(--spin)); }
+}
+
+/* The purple under the gold: a haze the coins fall into. */
+.fx-coin-haze {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 60% 90% at 50% 115%, color-mix(in srgb, var(--fx-b) 22%, transparent), transparent 70%),
+        radial-gradient(ellipse 45% 60% at 85% -10%, color-mix(in srgb, var(--fx-b) 10%, transparent), transparent 70%);
+    animation: fx-heat 3.2s ease-in-out infinite;
+}
+
+/* The homepage card has no orbs behind it, so its haze carries the header's
+   fuchsia on its own: the header's bp-orb-b, low and left of centre. */
+.fx .fx-coin-haze {
+    background:
+        radial-gradient(ellipse 70% 120% at 35% 120%, color-mix(in srgb, var(--fx-b) 45%, transparent), transparent 70%),
+        radial-gradient(ellipse 55% 80% at 90% -20%, color-mix(in srgb, var(--fx-b) 22%, transparent), transparent 70%);
+}
+
+/* Where the coins come from: a thin gold-to-fuchsia line along the top edge,
+   breathing slowly. */
+.fx-coin-slot {
+    position: absolute;
+    inset: 0 12% auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #fcd34d 30%, var(--fx-b) 70%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--fx-b) 50%, transparent);
+    animation: fx-coin-slot 3.2s ease-in-out infinite;
+}
+
+@keyframes fx-coin-slot {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.8; }
 }
 
 /* The title turns gold, with a sheen running through it. */
@@ -750,7 +821,10 @@ input[type=number] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fx-dust {
+    .fx-marquee,
+    .fx-coin,
+    .fx-coin-haze,
+    .fx-coin-slot {
         display: none;
     }
 
@@ -953,7 +1027,9 @@ input[type=number] {
     60% { transform: rotate(8deg) scale(1.05); }
 }
 
-.bp-gold-text {
+/* Also the Bonus Planner card's name on the homepage, while hovered. */
+.bp-gold-text,
+.group:hover .fx-title-flow {
     background: linear-gradient(100deg, var(--fx-light), var(--fx-a) 35%, var(--fx-light-b) 70%, var(--fx-light));
     background-size: 200% 100%;
     -webkit-background-clip: text;
@@ -1180,36 +1256,20 @@ input[type=number] {
 .bp-step:active:not(:disabled) { transform: scale(0.9); }
 .bp-step:disabled { opacity: 0.3; cursor: not-allowed; }
 
-.bp-range {
-    appearance: none;
-    height: 4px;
-    border-radius: 9999px;
-    background: linear-gradient(90deg, var(--fx-a), var(--fx-b));
-    outline: none;
+/* The − and + inside a number field (BonusPlanner's NumberField). */
+.bp-nudge {
+    width: 2rem;
+    height: 100%;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    color: #71717a;
+    transition: color 150ms ease, transform 150ms ease;
 }
 
-.bp-range::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 9999px;
-    background: #fff;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fx-a) 30%, transparent), 0 0 16px color-mix(in srgb, var(--fx-a) 60%, transparent);
-    cursor: pointer;
-    transition: transform 150ms ease;
-}
-
-.bp-range::-webkit-slider-thumb:hover { transform: scale(1.25); }
-
-.bp-range::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border: 0;
-    border-radius: 9999px;
-    background: #fff;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--fx-a) 30%, transparent), 0 0 16px color-mix(in srgb, var(--fx-a) 60%, transparent);
-    cursor: pointer;
-}
+.bp-nudge:hover:not(:disabled) { color: var(--ctl-light); }
+.bp-nudge:active:not(:disabled) { transform: scale(0.85); }
+.bp-nudge:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* The same-day checkbox, drawn as a switch. The input stays real (sr-only). */
 .bp-toggle {
@@ -1261,6 +1321,40 @@ input[type=number] {
     background: color-mix(in srgb, var(--fx-a) 12%, transparent);
     border-color: color-mix(in srgb, var(--fx-a) 40%, transparent);
     box-shadow: 0 0 14px color-mix(in srgb, var(--fx-a) 15%, transparent);
+}
+
+/* Bonus Planner: what is picked in the header (the mode tab, the markets)
+   carries the title's flowing gradient as a tint, not a fill. */
+.fx-bonus .bp-hero .t-tabs-pill,
+.fx-bonus .bp-chip-on {
+    color: #fff;
+    background: linear-gradient(100deg,
+        color-mix(in srgb, var(--fx-a) 30%, transparent),
+        color-mix(in srgb, var(--fx-b) 30%, transparent) 50%,
+        color-mix(in srgb, var(--fx-a) 30%, transparent)) 0 0 / 200% 100%;
+    border-color: color-mix(in srgb, var(--fx-b) 35%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--fx-b) 15%, transparent);
+    animation: bp-gold-flow 8s linear infinite;
+}
+
+/* ...and its selectors (the number fields, the today switch) the same tint,
+   fainter, since they are always there rather than picked. */
+.fx-bonus .bp-hero .bp-control {
+    --tint: 10%;
+    background: linear-gradient(100deg,
+        color-mix(in srgb, var(--fx-a) var(--tint), rgb(9 9 11 / 0.55)),
+        color-mix(in srgb, var(--fx-b) var(--tint), rgb(9 9 11 / 0.55)) 50%,
+        color-mix(in srgb, var(--fx-a) var(--tint), rgb(9 9 11 / 0.55))) 0 0 / 200% 100%;
+    border-color: color-mix(in srgb, var(--fx-b) 22%, rgb(255 255 255 / 0.08));
+    animation: bp-gold-flow 8s linear infinite;
+}
+
+.fx-bonus .bp-hero .bp-control:hover { --tint: 18%; border-color: color-mix(in srgb, var(--fx-b) 40%, transparent); }
+.fx-bonus .bp-hero .bp-check:has(:checked) { --tint: 18%; border-color: color-mix(in srgb, var(--fx-b) 45%, transparent); }
+
+.fx-bonus .bp-hero .bp-control:focus-within {
+    border-color: color-mix(in srgb, var(--fx-b) 55%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--fx-b) 15%, transparent);
 }
 
 /* A suggested slip is cut like the lucide ticket icon beside the title: a
@@ -1613,7 +1707,7 @@ input[type=number] {
 @keyframes hm-grow { from { transform: scaleX(0); } }
 
 @media (prefers-reduced-motion: reduce) {
-    .bp-gold-text, .bp-orb, .bp-icon, .bp-rules::before, .bp-hero-open::before, .bp-ticket-wrap, .bp-holo,
+    .bp-gold-text, .fx-bonus .bp-hero .t-tabs-pill, .fx-bonus .bp-chip-on, .fx-bonus .bp-hero .bp-control, .bp-orb, .bp-icon, .bp-rules::before, .bp-hero-open::before, .bp-ticket-wrap, .bp-holo,
     .bp-leg, .bp-skeleton, .bp-add-icon, .hm-card, .hm-bar, .mm-live *, .mm-beat, .bp-spin-down, .bp-spin-up, .bp-arrow, .bp-arrow svg, .group:hover .fx-ticket {
         animation: none !important;
     }
