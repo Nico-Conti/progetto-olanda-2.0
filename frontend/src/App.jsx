@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calculator, Trophy, Home } from 'lucide-react';
 import Predictor from './components/Predictor';
 import HotMatches from './components/HotMatches';
@@ -28,6 +29,8 @@ import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
 import LegalFooter from './components/ui/LegalFooter';
 import { t, tk, useLanguage, setLanguage } from './i18n';
+import { parseRoute, buildPath, resolveBySlug } from './utils/routes';
+import { useDeferredLocation } from './hooks/useDeferredLocation';
 
 const TABS = [
   { id: 'predictor', label: tk('Predictor'), Icon: Calculator },
@@ -36,8 +39,19 @@ const TABS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('predictor');
-  const [selectedLeague, setSelectedLeague] = useState(null);
-  const [view, setView] = useState('landing'); // landing | dashboard | hot-matches | market-moves | highest-winning-factor | bonus-planner
+
+  /* The URL is the source of truth for WHERE we are; `shown` is what is
+     currently PAINTED, which lags behind it for the length of an entry
+     animation. `navigate()` fires on the click, so Back, Forward, a refresh
+     and a pasted link all work; the animation only delays the swap.
+
+     This replaces `isAnimating` + pendingView/pendingLeague/pendingTab: the
+     pending state IS `location`, and "are we animating" is the two disagreeing.
+     It also makes cancellation free - see `useDeferredLocation`. */
+  const navigate = useNavigate();
+  const { location, shown, cue, animating, commit } = useDeferredLocation();
+  const route = parseRoute(shown.pathname);
+
   const [selectedStatistic, setSelectedStatistic] = useState('corners');
   // Standings-only: null follows the league's current season, a label pins to
   // a past one. The Predictor always stays on the current season.
@@ -53,11 +67,6 @@ export default function App() {
   // showing as a preview is closed while its tab stays open.
   const [predictorKey, setPredictorKey] = useState(0);
 
-  // Animation State
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [pendingTab, setPendingTab] = useState(null);
-  const [pendingLeague, setPendingLeague] = useState(undefined);
-  const [pendingView, setPendingView] = useState(null);
   const [matchStatistics, setMatchStatistics] = useState({});
   const [preSelectedMatch, setPreSelectedMatch] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -70,7 +79,10 @@ export default function App() {
 
   // Account. Opens by itself when the page was reached from a password-reset link.
   const [isAccountOpen, setIsAccountOpen] = useState(false);
-  const openAccount = useCallback(() => setIsAccountOpen(true), []);
+  // The setter is listed although React guarantees its identity: without it
+  // React Compiler cannot preserve this memo and skips optimising the whole of
+  // App. Semantically a no-op; do not "tidy" it back to [].
+  const openAccount = useCallback(() => setIsAccountOpen(true), [setIsAccountOpen]);
   const user = useAuthUser(openAccount);
   const account = useMemo(() => ({ user, openAccount }), [user, openAccount]);
 
@@ -116,54 +128,47 @@ export default function App() {
   // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
   // a match) is instant.
   const handleTabChange = (tab) => {
-    if (tab === activeTab || isAnimating) return;
+    if (tab === activeTab || animating) return;
     setActiveTab(tab);
   };
 
   // Opening a match is going to a fixture, not entering a section, so it is
   // instant - the rule above, which the team page already followed and these
-  // three did not. It also keeps the league stinger where it belongs: only
-  // `handleLeagueChange` sets `pendingLeague` now, so only the landing page's
-  // league picker plays it.
+  // three did not. It also keeps the league stinger where it belongs:
+  // `transitionFor` only plays it when the journey STARTS at the landing page.
   const openMatchFrom = (match, from, label) => {
     setPreSelectedMatch(match);
     setBackView(from);
     setBackLabel(label);
-    setSelectedLeague(match.league);
     setActiveTab('predictor');
-    setView('dashboard');
+    // Commit 4 gives a match its own URL. Until then this lands on the
+    // league's path and keeps the match in `preSelectedMatch`, which is the
+    // behaviour it had before - instant, no stinger.
+    navigate(buildPath({ view: 'dashboard', league: match.league }), { state: { from: location.pathname } });
   };
 
   const handleLeagueChange = (league) => {
-    if ((league === selectedLeague && view === 'dashboard') || isAnimating) return;
-
-    setPendingLeague(league);
-    setPendingView('dashboard'); // Switch to dashboard view when league selected
-    setPendingTab('predictor'); // A league opens on the Predictor
-    setIsAnimating(true);
-    setSelectedTeam(null); // Clear selected team
+    const to = buildPath({ view: 'dashboard', league });
+    if (to === location.pathname || animating) return;
+    setSelectedTeam(null);
     setTeamTrail([]);
+    setActiveTab('predictor');  // a league opens on the Predictor (was `pendingTab`)
+    navigate(to);
   };
 
+  /* Which animation plays is no longer decided here: `transitionFor` derives
+     it from where we came from, so leaving a section stays instant and the
+     FORWARD button replays the stinger, which the old machine could not do. */
   const handleViewChange = (newView) => {
-    if (newView === view || isAnimating) return;
-
-    if (newView === 'landing') {
-      setPreSelectedMatch(null);
-    }
-
-    // Going back to the landing page is leaving a section, not entering one.
-    if (newView !== 'landing') {
-      setPendingView(newView);
-      setIsAnimating(true);
-    } else {
-      setView(newView);
-    }
+    const to = buildPath({ view: newView });
+    if (to === location.pathname || animating) return;
+    if (newView === 'landing') setPreSelectedMatch(null);
+    navigate(to);
   };
 
   // `fromMatch`: the match on screen when the badge was clicked, to return to.
   const handleTeamClick = (team, fromMatch = null) => {
-    if (isAnimating) return;
+    if (animating) return;
     setTeamTrail(trail => [...trail, {
       tab: activeTab, team: selectedTeam, match: fromMatch,
       preview: Boolean(preSelectedMatch), backView, backLabel,
@@ -210,6 +215,19 @@ export default function App() {
     if (fromMatches.size === 0) return leagues.map(l => l.name).filter(Boolean).sort();
     return Array.from(fromMatches).sort();
   }, [matchData, leagues]);
+
+  /* The league in the URL, resolved to its display name. Slugs are lossy, so
+     this compares slugified candidates rather than parsing the slug back.
+     It resolves off the 5KB shell (availableLeagues falls back to the League
+     table), so a league deep link paints its chrome in ~0.3s and only the
+     content waits on the 5.5MB. */
+  const selectedLeague = route.league ? resolveBySlug(availableLeagues, route.league) : null;
+
+  /* Commit 5 replaces both of these fallbacks with a real not-found panel and
+     a retry. Until then an unknown path or an unresolvable league renders the
+     landing page rather than crashing - wrong URL, but nothing breaks. */
+  const unresolved = route.view === 'dashboard' && !shellLoading && !selectedLeague;
+  const view = (route.view === 'not-found' || unresolved) ? 'landing' : route.view;
 
   // Seasons available for the league in view, newest first
   const availableSeasons = useMemo(
@@ -355,36 +373,37 @@ export default function App() {
   const predictorStats = useMemo(() => processData(predictorMatchData, selectedStatistic), [predictorMatchData, selectedStatistic]);
   const allStats = useMemo(() => processData(currentSeasonMatchData, selectedStatistic), [currentSeasonMatchData, selectedStatistic]);
 
-  // The landing page renders as soon as the shell is in (~0.3s). Only a
-  // league's dashboard waits on the 5.5MB of match data, and it waits behind
-  // the same loader, so the pause moves to where it belongs: after you have
-  // chosen a league, not before you can see the site at all.
-  if (shellLoading) return <PitchLoader />;
-  if (loading && view !== 'landing') return <PitchLoader />;
+  /* The landing page renders as soon as the shell is in (~0.3s). Only a
+     league's dashboard waits on the 5.5MB of match data, so the pause lands
+     after you have chosen a league, not before you can see the site at all.
+
+     A FLAG, NOT AN EARLY RETURN - and that fixes a bug that predates routing.
+     Returning here short-circuited the whole tree, overlay included: entering
+     a league before /matches had landed unmounted the stinger mid-flight, so
+     its onComplete never fired, the pending state was never cleared, and the
+     stinger played a SECOND time when the data arrived. Rendered inside the
+     tree the loader sits under the overlay, which is what the midpoint swap
+     was designed for. */
+  const busy = shellLoading || (loading && view !== 'landing');
 
 
-  const transitionCues = {
-    onMidPoint: () => {
-      if (pendingTab) setActiveTab(pendingTab);
-      if (pendingLeague !== undefined) setSelectedLeague(pendingLeague);
-      if (pendingView) setView(pendingView);
-    },
-    onComplete: () => {
-      setIsAnimating(false);
-      setPendingTab(null);
-      setPendingLeague(undefined);
-      setPendingView(null);
-    },
-  };
+  /* The swap happens under the cover, exactly as before - only what it swaps
+     is the rendered LOCATION rather than three pending variables. `onComplete`
+     is a safety net: `shown === location` is what unmounts the overlay, so
+     both cues are idempotent. */
+  const transitionCues = { onMidPoint: commit, onComplete: commit };
 
   return (
     <AccountContext.Provider value={account}>
     <div className="min-h-screen text-zinc-200 selection:bg-emerald-500/30 font-sans relative">
       <BackgroundAnimation />
       {/* Entering a league plays its stinger; the other sections, the spiral. */}
-      {pendingLeague
-        ? <LeagueStinger isActive={isAnimating} meta={leagueMeta(leagues, pendingLeague)} {...transitionCues} />
-        : <TransitionAnimation isActive={isAnimating} {...transitionCues} />}
+      {/* keyed on the destination, so a second navigation restarts the
+          overlay rather than being refused by a nav lock: last click wins. */}
+      {cue?.kind === 'stinger'
+        ? <LeagueStinger key={location.key} isActive={animating}
+            meta={leagueMeta(leagues, resolveBySlug(availableLeagues, cue.league))} {...transitionCues} />
+        : <TransitionAnimation key={location.key} isActive={animating && cue?.kind === 'spiral'} {...transitionCues} />}
 
       <BetSlipModal
         isOpen={isBetSlipOpen}
@@ -406,6 +425,9 @@ export default function App() {
       />
 
 
+      {busy && <PitchLoader />}
+
+      {!busy && (<>
       {view === 'landing' && (
         <LandingPage
           availableLeagues={availableLeagues}
@@ -628,8 +650,9 @@ export default function App() {
                     } else {
                       // Instant, like the way in: `openMatchFrom` does not
                       // animate, so animating the way out was a spiral on one
-                      // leg of the same round trip.
-                      setView(backView);
+                      // leg of the same round trip. It stays instant for free
+                      // now - `transitionFor` only animates away from '/'.
+                      navigate(buildPath({ view: backView }));
                     }
                   }}
                   // Only when it is somewhere else: from the fixture list the
@@ -666,6 +689,7 @@ export default function App() {
           <LegalFooter />
         </>
       )}
+      </>)}
     </div>
     </AccountContext.Provider>
   );
