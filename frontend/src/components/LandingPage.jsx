@@ -10,6 +10,7 @@ import Trailer from './Trailer';
 import { confettiBurst, flagWipe, flagColors, flagStripes, motionAllowed } from '../utils/leaguePickerFx';
 import { t, tk, countryName } from '../i18n';
 import { privacyHref, termsHref } from '../utils/legal';
+import { ABOUT_LEAD, ABOUT_FACTS, FOOTER_DISCLAIMER, FOOTER_PRIVACY } from '../content/about';
 
 const SUBTITLE = tk('Advanced football analytics.');
 const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La BuccoStrega, Claude';
@@ -20,16 +21,14 @@ const CREDIT_NAMES = 'NickyBoy, Ciusbe, MatteBucco, Baggianis, Giagulosky, La Bu
 // crawler, met a page with no readable content on it. This is the part that is
 // always here. Keep it free of counts that live in config.py; the picker already
 // shows the league total from live data, and a second hardcoded one would drift.
-const ABOUT_LEAD = tk('Expected corners, goals, cards and fouls for every upcoming fixture, built from years of results and set against the line the bookmaker is offering - then scored against what actually happened.');
-const ABOUT_FACTS = [tk('Match data since 2014'), tk('Corners, goals, cards, fouls'), tk('Published backtest')];
+// ABOUT_LEAD / ABOUT_FACTS / the footer lines moved to src/content/about.js:
+// the failure pages need the same prose, and a second copy would drift.
 
 // Who runs this and how to reach them. A site that asks for a password while
 // saying nothing about who operates it is the shape of a phishing page, which
 // is what a Safe Browsing reviewer is looking for; the second line also puts on
 // the record that this is editorial, not a book taking money.
 const CONTACT_EMAIL = 'info@progettoolanda.it';
-const FOOTER_DISCLAIMER = tk('Statistics and models, published for information. No bets are taken or handled on this site. Over 18s only.');
-const FOOTER_PRIVACY = tk('An account stores your email, username, favourite leagues and saved slips. Never sold, never shared for advertising.');
 
 /**
  * Randomised placement and timing for the hover particles, drawn once at load

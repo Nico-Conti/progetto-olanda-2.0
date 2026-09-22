@@ -29,8 +29,12 @@ import SlidingTabs from './components/ui/SlidingTabs';
 import LiquidNav from './components/ui/LiquidNav';
 import LegalFooter from './components/ui/LegalFooter';
 import { t, tk, useLanguage, setLanguage } from './i18n';
-import { parseRoute, buildPath, resolveBySlug, matchSlug, backTargetFor } from './utils/routes';
+import { parseRoute, buildPath, resolveBySlug, matchSlug, backTargetFor, statFromSearch, withStat } from './utils/routes';
+import { LoadFailed, NotFound } from './components/Fallback';
+import { PREDICTED_STAT_OPTIONS } from './utils/statistics';
 import { useDeferredLocation } from './hooks/useDeferredLocation';
+
+const PREDICTED_STAT_VALUES = PREDICTED_STAT_OPTIONS.map(o => o.value);
 
 const TABS = [
   { id: 'predictor', label: tk('Predictor'), Icon: Calculator },
@@ -51,7 +55,28 @@ export default function App() {
   const { location, shown, cue, animating, commit } = useDeferredLocation();
   const route = parseRoute(shown.pathname);
 
-  const [selectedStatistic, setSelectedStatistic] = useState('corners');
+  /* The statistic rides in the query string, not the path: it applies to the
+     Predictor, Hot Matches and Market Moves alike and has no place in the
+     league/team/match hierarchy. A value we do not predict falls back to
+     corners and the param is dropped - identity that does not resolve is an
+     error page, a dimension that does not resolve is a silent fallback. */
+  const statFromUrl = statFromSearch(location.search, PREDICTED_STAT_VALUES);
+  /* A `?stat=` we do not predict is dropped from the URL rather than left to
+     mislead. Only when one was asked for and rejected, so this cannot loop:
+     `withStat` omits the default, and statFromSearch returns null for both
+     "absent" and "unknown". */
+  const statAsked = new URLSearchParams(location.search).get('stat');
+  useEffect(() => {
+    if (statAsked && !statFromUrl) {
+      navigate(location.pathname, { replace: true, state: location.state });
+    }
+  }, [statAsked, statFromUrl, location.pathname, location.state, navigate]);
+  const [statePreference, setStatePreference] = useState('corners');
+  const selectedStatistic = statFromUrl ?? statePreference;
+  const setSelectedStatistic = (next) => {
+    setStatePreference(next);
+    navigate(withStat(location.pathname, next), { replace: true, state: location.state });
+  };
   // Standings-only: null follows the league's current season, a label pins to
   // a past one. The Predictor always stays on the current season.
   const [standingsSeason, setStandingsSeason] = useState(null);
@@ -137,12 +162,14 @@ export default function App() {
      content waits on the 5.5MB. */
   const selectedLeague = route.league ? resolveBySlug(availableLeagues, route.league) : null;
 
-  /* Commit 5 replaces both of these fallbacks with a real not-found panel and
-     a retry. Until then an unknown path or an unresolvable league renders the
-     landing page rather than crashing - wrong URL, but nothing breaks. */
-  const unresolved = route.view === 'dashboard' && !shellLoading && !selectedLeague;
-  const view = (route.view === 'not-found' || unresolved) ? 'landing' : route.view;
+  const view = route.view;
   const activeTab = route.tab ?? 'predictor';
+
+  /* A league that does not resolve is an ERROR, not a silent redirect to the
+     landing page: a redirect hides the broken link from whoever has to debug
+     it. It resolves off the 5KB shell, so this is known long before /matches
+     lands. */
+  const leagueUnknown = route.view === 'dashboard' && !shellLoading && !selectedLeague;
 
   // The spiral transition is for entering a section - a league, Hot Matches,
   // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
@@ -329,6 +356,18 @@ export default function App() {
     [route.match, filteredFixtures],
   );
 
+  /* Only once the data is in can any of this be judged - a team needs the
+     5.5MB, and an empty list during loading is not the same as "absent". */
+  /* NEVER on the landing page. It is built to render its full prose, the
+     operator and the contact address with no match data at all - that is the
+     fix the Safe Browsing flag was about - and it carries its own retry via
+     `loadError`. Only the inner routes, which genuinely cannot render, get
+     the failure panel. */
+  const dataFailed = Boolean(error) && matchData.length === 0 && route.view !== 'landing';
+  const settled = !loading && !dataFailed && matchData.length > 0;
+  const teamUnknown = settled && Boolean(route.team) && !selectedTeam;
+  const matchUnknown = settled && Boolean(route.match) && !routeMatch;
+
   // Winning Factor counts raw hit rates over matches already played, so unlike
   // the predictor it must see exactly one season. Two reasons, and the second is
   // the one that bites:
@@ -433,6 +472,35 @@ export default function App() {
       />
 
 
+      {/* Order matters, and it is the plan's rule: IDENTITY that does not
+          resolve is an error page; a DIMENSION that does not resolve falls
+          back silently. Each of these renders real prose with the API dead -
+          see components/Fallback. */}
+      {leagueUnknown ? (
+        <NotFound
+          heading={t('We do not cover that league')}
+          message={t('Pick one of these instead.')}
+          links={availableLeagues.slice(0, 6).map(name => ({
+            to: buildPath({ view: 'dashboard', league: name }), label: name,
+          }))}
+        />
+      ) : route.view === 'not-found' ? (
+        <NotFound message={t('That address does not exist on this site.')} />
+      ) : dataFailed ? (
+        <LoadFailed onRetry={refetch} />
+      ) : teamUnknown ? (
+        <NotFound
+          heading={t('No page for {team}', { team: route.team })}
+          message={t('That team has no matches in {league} this season.', { league: selectedLeague })}
+          links={[{ to: buildPath({ view: 'dashboard', league: selectedLeague, tab: 'standings' }), label: t('Standings') }]}
+        />
+      ) : matchUnknown ? (
+        <NotFound
+          heading={t('This fixture is no longer listed')}
+          message={t('It may have been rescheduled or already played.')}
+          links={[{ to: buildPath({ view: 'dashboard', league: selectedLeague }), label: t('Back to Fixtures') }]}
+        />
+      ) : (<>
       {busy && <PitchLoader />}
 
       {!busy && (<>
@@ -680,6 +748,7 @@ export default function App() {
           <LegalFooter />
         </>
       )}
+      </>)}
       </>)}
     </div>
     </AccountContext.Provider>
