@@ -7,11 +7,11 @@
 # unparseable robots.txt the same as a missing one, so nothing was blocked;
 # it was just untidy at a path reviewers do look at.
 #
-# The Sitemap line must be an ABSOLUTE URL, so it carries the host: change it
-# the day the site moves to progettoolanda.it, along with sitemap.xml and the
-# og: tags in index.html. See docs/frontend-notes.md.
+# The Sitemap line must be an ABSOLUTE URL, so it carries the host: if the host
+# ever changes again, change it along with sitemap.xml and the og: tags in
+# index.html. See docs/frontend-notes.md.
 
 User-agent: *
 Allow: /
 
-Sitemap: https://progetto-olanda-2punto0.netlify.app/sitemap.xml
+Sitemap: https://progettoolanda.it/sitemap.xml

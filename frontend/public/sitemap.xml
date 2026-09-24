@@ -27,13 +27,13 @@
   accurate, and a date nobody remembers to update is worse than none.
   <changefreq> and <priority> are ignored outright.
 
-  ABSOLUTE urls, so they carry the host - all five change the day the site
-  moves to progettoolanda.it, along with robots.txt and index.html's og: tags.
+  ABSOLUTE urls, so they carry the host - if the host ever changes again,
+  all five change along with robots.txt and index.html's og: tags.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://progetto-olanda-2punto0.netlify.app/</loc></url>
-  <url><loc>https://progetto-olanda-2punto0.netlify.app/privacy.html</loc></url>
-  <url><loc>https://progetto-olanda-2punto0.netlify.app/privacy.en.html</loc></url>
-  <url><loc>https://progetto-olanda-2punto0.netlify.app/terms.html</loc></url>
-  <url><loc>https://progetto-olanda-2punto0.netlify.app/terms.en.html</loc></url>
+  <url><loc>https://progettoolanda.it/</loc></url>
+  <url><loc>https://progettoolanda.it/privacy.html</loc></url>
+  <url><loc>https://progettoolanda.it/privacy.en.html</loc></url>
+  <url><loc>https://progettoolanda.it/terms.html</loc></url>
+  <url><loc>https://progettoolanda.it/terms.en.html</loc></url>
 </urlset>
