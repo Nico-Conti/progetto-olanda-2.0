@@ -3,7 +3,19 @@
   publish = "dist"
 
 # Netlify applies redirect rules IN ORDER, so anything below the /* catch-all is
-# never reached. /privacy is a real static page (public/privacy.html), served
+# never reached.
+#
+# The old host first: Netlify does NOT redirect it to the primary domain on its
+# own, it kept serving a full second copy of the site. A 301 is also what Search
+# Console's Change of Address checks for. Deploy previews live on other
+# *.netlify.app hosts and are untouched.
+[[redirects]]
+  from = "https://progetto-olanda-2punto0.netlify.app/*"
+  to = "https://progettoolanda.it/:splat"
+  status = 301
+  force = true
+
+# /privacy is a real static page (public/privacy.html), served
 # without the SPA - it has to render with JavaScript off and the API asleep.
 [[redirects]]
   from = "/privacy"
