@@ -3,9 +3,10 @@ import { X, Trash2, Trophy, ExternalLink, History } from 'lucide-react';
 import { usePresence } from '../hooks/usePresence';
 import { supabase, useAccount } from '../hooks/useAuth';
 import { betMarket, betPick } from '../utils/statistics';
+import { snapshotLegs } from '../utils/modelSnapshot';
 import { t } from '../i18n';
 
-const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, betslipUrl }) => {
+const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, betslipUrl, modelMatchData, modelSettings }) => {
     const mounted = usePresence(isOpen, '--modal-close-dur');
 
     /**
@@ -57,8 +58,18 @@ const BetSlipModal = ({ isOpen, onClose, bets, onRemove, onClear, priceFor, bets
 
     const saveSlip = async () => {
         setSaveError(null);
+        const priced = bets.map(bet => ({ ...bet, price: priceFor?.(bet) > 1 ? priceFor(bet) : null }));
+        // What the model said, for the recap once the slip settles. Best
+        // effort: a slip saved without it still settles and still recaps (on
+        // the margins alone), whereas a slip not saved at all is lost.
+        let legs = priced;
+        try {
+            if (modelMatchData?.length && modelSettings) legs = snapshotLegs(priced, modelMatchData, modelSettings);
+        } catch (e) {
+            console.warn('model snapshot skipped:', e);
+        }
         const { error } = await supabase.from('slips').insert({
-            legs: bets.map(bet => ({ ...bet, price: priceFor?.(bet) > 1 ? priceFor(bet) : null })),
+            legs,
             odds: playedOdds > 1 ? Math.round(playedOdds * 100) / 100 : null,
             stake: Number(stake) > 0 ? Number(stake) : null,
         });

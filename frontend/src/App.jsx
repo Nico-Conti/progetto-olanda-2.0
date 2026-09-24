@@ -506,6 +506,10 @@ export default function App() {
         betslipUrl={betslipUrl}
         onRemove={removeFromBet}
         onClear={clearBets}
+        // Each leg records what the model said when it is saved, for the
+        // slip's recap - built the Predictor's way, from the same pooled history.
+        modelMatchData={currentSeasonMatchData}
+        modelSettings={modelSettingsApi.modelSettings}
       />
 
       <AccountModal

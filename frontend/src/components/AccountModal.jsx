@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight, ChevronDown, Shield, Trophy, MapPin } from 'lucide-react';
+import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight, ChevronDown, Shield, Trophy, MapPin, ChartNoAxesColumn } from 'lucide-react';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import Modal from './ui/Modal';
+import SlipRecap from './SlipRecap';
 import LanguageSwitch from './ui/LanguageSwitch';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
@@ -653,6 +654,9 @@ const upcomingKickoff = (date) => {
 const HistoryTab = ({ matchData }) => {
     const [slips, setSlips] = useState(null);
     const [error, setError] = useState(null);
+    // The slip whose recap is open. Its id, not the row: the row is rebuilt
+    // on every render from matchData, and the recap should follow it.
+    const [recapId, setRecapId] = useState(null);
 
     useEffect(() => {
         // RLS returns only this user's rows; no user filter needed here.
@@ -813,6 +817,15 @@ const HistoryTab = ({ matchData }) => {
                                         .
                                     </p>
                                 )}
+                                {(status === 'won' || status === 'lost') && (
+                                    <button
+                                        onClick={() => setRecapId(slip.id)}
+                                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                    >
+                                        <ChartNoAxesColumn className="w-4 h-4" />
+                                        {t('Recap')}
+                                    </button>
+                                )}
                                 <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
                                     <span>
                                         {new Date(slip.created_at).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
@@ -832,6 +845,10 @@ const HistoryTab = ({ matchData }) => {
                     ))}
                 </>
             )}
+            {(() => {
+                const open = rows.find(r => r.slip.id === recapId);
+                return <SlipRecap slip={open?.slip ?? null} settled={open?.settled ?? null} onClose={() => setRecapId(null)} />;
+            })()}
         </div>
     );
 };
