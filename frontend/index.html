@@ -4,6 +4,12 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/logo.png" />
+  <!-- Home-screen shortcut. Without these a phone draws a letter on grey: iOS reads
+       apple-touch-icon (square, opaque - transparency turns black), Android reads
+       the manifest's 192/512 icons. Squared from logo.png on the page background,
+       the logo at 66% so Android's circular mask does not crop it. -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
   <!-- Fonts are self-hosted (see src/fonts.css). Inter's latin file is on the
        critical path for every page, so it is preloaded; `crossorigin` is required
        on a font preload even same-origin, and without it the file is fetched
