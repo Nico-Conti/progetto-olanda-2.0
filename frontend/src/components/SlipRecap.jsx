@@ -1,9 +1,11 @@
 import React from 'react';
-import { X, ChartNoAxesColumn } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import Modal from './ui/Modal';
+import { FixtureCrests } from './TeamBadge';
 import { betMarket, betPick } from '../utils/statistics';
 import { recapSlip } from '../utils/recap';
 import { teamsOf, actualFor, WON, LOST, VOID } from '../utils/settle';
+import { staggerDelay } from '../utils/stagger';
 import { t, tk, dateLocale } from '../i18n';
 
 const HEADLINE = {
@@ -13,6 +15,31 @@ const HEADLINE = {
 const TONE = { [WON]: 'text-emerald-400', [LOST]: 'text-red-400', [VOID]: 'text-zinc-400' };
 const MARK = { [WON]: '✓', [LOST]: '✗', [VOID]: '—' };
 
+/**
+ * The window wears the verdict. Same four vars every feature panel is themed
+ * by (`index.css`, "--fx-a"), so the orbs behind it, the icon tile's glow and
+ * the flow across the title all turn red on a lost slip without a second set
+ * of styles - you know how it went before reading a word.
+ */
+const THEME = {
+    [WON]: { '--fx-a': '#10b981', '--fx-b': '#22d3ee', '--fx-light': '#6ee7b7', '--fx-light-b': '#67e8f9' },
+    [LOST]: { '--fx-a': '#f43f5e', '--fx-b': '#fb923c', '--fx-light': '#fda4af', '--fx-light-b': '#fed7aa' },
+    [VOID]: { '--fx-a': '#71717a', '--fx-b': '#a1a1aa', '--fx-light': '#d4d4d8', '--fx-light-b': '#e4e4e7' },
+};
+/** The leg's own card, tinted by how it went. */
+const LEG_SKIN = {
+    [WON]: 'border-emerald-500/25 bg-emerald-500/[0.04]',
+    [LOST]: 'border-red-500/25 bg-red-500/[0.04]',
+    [VOID]: 'border-white/10 bg-zinc-900/60',
+};
+const CHIP = {
+    [WON]: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    [LOST]: 'border-red-500/40 bg-red-500/10 text-red-300',
+    [VOID]: 'border-white/15 bg-white/5 text-zinc-400',
+};
+const OUTCOME = { [WON]: tk('won'), [LOST]: tk('lost'), [VOID]: tk('void') };
+
+const EYEBROW = 'text-[10px] font-bold uppercase tracking-wider text-zinc-500';
 const fmt = (x) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
 const signed = (x) => `${x >= 0 ? '+' : '−'}${fmt(Math.abs(x))}`;
 
@@ -53,21 +80,27 @@ const Scale = ({ r }) => {
     const points = [r.line, r.actual, r.model?.expected].filter(Number.isFinite);
     const max = Math.max(4, Math.ceil(Math.max(...points) * 1.2));
     const at = (v) => `${Math.min(100, Math.max(0, (100 * v) / max))}%`;
+    const won = r.status === WON;
     return (
-        <div aria-hidden="true" className="mt-2">
+        <div aria-hidden="true" className="mt-2.5">
             <div className="relative h-5">
-                <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/10" />
-                <div className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-emerald-500/30"
+                <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-zinc-800/80" />
+                {/* Always emerald, whatever the verdict: this band is the zone
+                    the PICK wins in, not how the leg went. Tinting it red on a
+                    lost leg said "the red stretch is what beat you", when the
+                    red stretch is the half that would have paid. Only the
+                    actual marker below carries the outcome. */}
+                <div className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 opacity-40"
                     style={r.isOver ? { left: at(r.line), right: 0 } : { left: 0, width: at(r.line) }} />
-                <div className="absolute inset-y-0 border-l border-dashed border-zinc-400" style={{ left: at(r.line) }} />
+                <div className="absolute inset-y-0 border-l border-dashed border-zinc-500" style={{ left: at(r.line) }} />
                 {r.model && (
-                    <div className="absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sky-400 bg-zinc-900"
+                    <div className="absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-sky-400 bg-zinc-950"
                         style={{ left: at(r.model.expected) }} />
                 )}
-                <div className={`absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${r.status === WON ? 'bg-emerald-400' : r.status === LOST ? 'bg-red-400' : 'bg-zinc-300'}`}
+                <div className={`absolute top-1/2 w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-zinc-950 ${won ? 'bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.7)]' : r.status === LOST ? 'bg-red-400 shadow-[0_0_12px_rgba(244,63,94,0.7)]' : 'bg-zinc-300'}`}
                     style={{ left: at(r.actual) }} />
             </div>
-            <div className="flex flex-wrap gap-x-3 text-[10px] font-mono text-zinc-400">
+            <div className="mt-1 flex flex-wrap gap-x-3 text-[10px] font-mono text-zinc-500">
                 <span><span className="text-zinc-200">●</span> {t('actual')} {fmt(r.actual)}</span>
                 <span>┊ {t('line')} {fmt(r.line)}</span>
                 {r.model && <span><span className="text-sky-400">○</span> {t('model')} {fmt(r.model.expected)}</span>}
@@ -76,48 +109,53 @@ const Scale = ({ r }) => {
     );
 };
 
-const LegRecap = ({ leg, match, status, recap: r }) => {
+const LegRecap = ({ leg, match, status, recap: r, teamLogos, index }) => {
     const teams = teamsOf(leg.game);
     return (
-        <li className="py-3 text-xs">
-            <p className="font-semibold text-white flex items-baseline gap-1.5 min-w-0">
-                <span className={`shrink-0 font-mono ${TONE[status] ?? 'text-zinc-600'}`}>{MARK[status] ?? '·'}</span>
-                <span className="truncate">{leg.game}</span>
-                {!r.numeric && status != null && (
-                    <span className="ml-auto shrink-0 font-mono text-zinc-300">{actualFor(leg, match)}</span>
-                )}
-            </p>
-            <p className="text-zinc-400 truncate pl-[1.375rem]">
-                <span className="uppercase text-[10px]">{betMarket(leg)}</span>{' '}
-                <span className="text-emerald-400 font-mono font-bold">{betPick(leg)}</span>
-                {leg.price && <span className="font-mono text-zinc-500"> @{leg.price.toFixed(2)}</span>}
-            </p>
-            <div className="pl-[1.375rem]">
-                {status == null ? (
-                    <p className="mt-1 text-zinc-500">{t('Not settled.')}</p>
-                ) : (
-                    <>
-                        {r.numeric && Number.isFinite(r.actual) && Number.isFinite(r.line) && <Scale r={r} />}
-                        <p className="mt-1.5 text-zinc-200">
-                            <span className={`font-bold ${TONE[status]}`}>
-                                {status === VOID ? t('Void: it landed exactly on the line.') : `${t(HEADLINE[status][r.band])}:`}
-                            </span>
-                            {r.flip && <> {flipSentence(r, teams)}</>}
-                        </p>
-                        {r.model && (
-                            <p className="mt-1 text-zinc-400">
-                                {Number.isFinite(r.model.error)
-                                    ? t('The model expected {expected}; it ended {actual} ({diff}).',
-                                        { expected: fmt(r.model.expected), actual: fmt(r.actual), diff: signed(r.model.error) })
-                                    : t('The model expected {expected}.', { expected: fmt(r.model.expected) })}
-                                {r.model.pWin != null && <> {t('It gave your pick {p}%.', { p: Math.round(100 * r.model.pWin) })}</>}
-                                {r.model.withModel === true && <> {t('The result went the way the model leaned.')}</>}
-                                {r.model.withModel === false && <> {t("The result went against the model's lean.")}</>}
-                            </p>
-                        )}
-                    </>
-                )}
+        <li
+            style={{ animationDelay: staggerDelay(index) }}
+            className={`rounded-xl border p-3 shadow-lg backdrop-blur-md animate-waterfall ${LEG_SKIN[status] ?? 'border-white/10 bg-zinc-900/60'}`}
+        >
+            <div className="flex items-center gap-2.5">
+                <FixtureCrests game={leg.game} teamLogos={teamLogos} />
+                <p className="min-w-0 flex-1 truncate text-sm font-black text-white">{leg.game}</p>
+                <span className={`shrink-0 font-mono text-base ${TONE[status] ?? 'text-zinc-600'}`}>{MARK[status] ?? '·'}</span>
             </div>
+            {/* The pick never truncates: at this width "Corners Under 10.5"
+                outgrows the row, and clipping it drops the line - the one
+                number the bet actually is. */}
+            <p className="mt-1 text-xs leading-snug">
+                <span className={EYEBROW}>{betMarket(leg)}</span>{' '}
+                <span className="font-mono font-bold text-emerald-400">{betPick(leg)}</span>
+                {leg.price && <span className="font-mono text-zinc-500"> @{leg.price.toFixed(2)}</span>}
+                {!r.numeric && status != null && (
+                    <span className="font-mono text-zinc-300"> · {actualFor(leg, match)}</span>
+                )}
+            </p>
+            {status == null ? (
+                <p className="mt-1.5 text-xs text-zinc-500">{t('Not settled.')}</p>
+            ) : (
+                <>
+                    {r.numeric && Number.isFinite(r.actual) && Number.isFinite(r.line) && <Scale r={r} />}
+                    <p className="mt-1.5 text-xs text-zinc-200">
+                        <span className={`font-bold ${TONE[status]}`}>
+                            {status === VOID ? t('Void: it landed exactly on the line.') : `${t(HEADLINE[status][r.band])}:`}
+                        </span>
+                        {r.flip && <> {flipSentence(r, teams)}</>}
+                    </p>
+                    {r.model && (
+                        <p className="mt-1 text-xs text-zinc-400">
+                            {Number.isFinite(r.model.error)
+                                ? t('The model expected {expected}; it ended {actual} ({diff}).',
+                                    { expected: fmt(r.model.expected), actual: fmt(r.actual), diff: signed(r.model.error) })
+                                : t('The model expected {expected}.', { expected: fmt(r.model.expected) })}
+                            {r.model.pWin != null && <> {t('It gave your pick {p}%.', { p: Math.round(100 * r.model.pWin) })}</>}
+                            {r.model.withModel === true && <> {t('The result went the way the model leaned.')}</>}
+                            {r.model.withModel === false && <> {t("The result went against the model's lean.")}</>}
+                        </p>
+                    )}
+                </>
+            )}
         </li>
     );
 };
@@ -126,7 +164,7 @@ const LegRecap = ({ leg, match, status, recap: r }) => {
  * A settled slip, leg by leg: how close each came to going the other way, and
  * what the model had said where the slip recorded it. See utils/recap.js.
  */
-const SlipRecap = ({ slip, settled, onClose }) => {
+const SlipRecap = ({ slip, settled, teamLogos, onClose }) => {
     const recap = settled ? recapSlip(settled) : null;
     const summary = !recap ? null
         : recap.status === VOID ? t('Every leg void: stake returned.')
@@ -139,31 +177,48 @@ const SlipRecap = ({ slip, settled, onClose }) => {
                     : t('Won.');
 
     return (
-        <Modal open={!!slip} onClose={onClose} label={t('Slip recap')} className="w-[min(92vw,28rem)]">
+        <Modal open={!!slip} onClose={onClose} label={t('Slip recap')} className="w-[min(92vw,30rem)]">
             {slip && recap && (
-                <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left">
-                    <div className="p-4 border-b border-white/10 bg-zinc-950/50">
-                        <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2 min-w-0">
-                                <ChartNoAxesColumn className="w-5 h-5 text-emerald-400 shrink-0" />
-                                <span className="truncate">{t('Slip recap')}</span>
-                            </h3>
-                            <button onClick={onClose} aria-label={t('Close')} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <p className="text-xs font-mono text-zinc-400">
-                            {new Date(slip.created_at).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
-                            {slip.stake ? ` · €${Number(slip.stake).toFixed(2)}` : ''}
-                            {slip.odds ? ` @ ${Number(slip.odds).toFixed(2)}` : ''}
-                        </p>
-                        <p className={`mt-2 text-sm font-semibold ${TONE[recap.status]}`}>{summary}</p>
+                <div style={THEME[recap.status] ?? THEME[VOID]}
+                    className="relative glass-panel bg-zinc-950/80 rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left">
+                    <div className="bp-orbs slip-orbs" aria-hidden="true">
+                        <span className="bp-orb bp-orb-a" />
+                        <span className="bp-orb bp-orb-b" />
                     </div>
-                    <ul className="px-4 overflow-y-auto custom-scrollbar divide-y divide-white/5">
-                        {recap.legs.map((l, i) => <LegRecap key={i} {...l} />)}
+
+                    <div className="relative px-5 py-4 border-b border-white/10 shrink-0">
+                        <button onClick={onClose} aria-label={t('Close')}
+                            className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10 transition-colors">
+                            <X className="w-4 h-4" />
+                        </button>
+                        <div className="flex items-center gap-4 pr-8">
+                            <div className="bp-icon"><FileText className="w-7 h-7" style={{ color: 'var(--fx-light)' }} /></div>
+                            <div className="min-w-0">
+                                <h3 className="text-2xl font-black tracking-tight leading-none truncate">
+                                    <span className="bp-gold-text">{t('Slip recap')}</span>
+                                </h3>
+                                <p className="mt-1.5 font-mono text-[11px] font-bold text-zinc-400 tabular-nums">
+                                    {new Date(slip.created_at).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
+                                    {slip.stake ? ` · €${Number(slip.stake).toFixed(2)}` : ''}
+                                    {slip.odds ? ` @ ${Number(slip.odds).toFixed(2)}` : ''}
+                                </p>
+                            </div>
+                        </div>
+                        {/* The verdict, then the one sentence that explains it. */}
+                        <div className="mt-3 flex items-start gap-2.5">
+                            <span className={`shrink-0 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${CHIP[recap.status] ?? CHIP[VOID]}`}>
+                                {t(OUTCOME[recap.status] ?? OUTCOME[VOID])}
+                            </span>
+                            <p className={`text-sm font-bold ${TONE[recap.status]}`}>{summary}</p>
+                        </div>
+                    </div>
+
+                    <ul className="relative p-4 space-y-2 overflow-y-auto custom-scrollbar">
+                        {recap.legs.map((l, i) => <LegRecap key={i} {...l} index={i} teamLogos={teamLogos} />)}
                     </ul>
+
                     {recap.missingModel && (
-                        <p className="px-4 py-3 border-t border-white/5 text-[10px] text-zinc-400">
+                        <p className="relative px-5 py-3 border-t border-white/10 bg-zinc-950/40 text-[10px] text-zinc-500 shrink-0">
                             {t('This slip was saved before model predictions were recorded, so only the margins are shown.')}
                         </p>
                     )}

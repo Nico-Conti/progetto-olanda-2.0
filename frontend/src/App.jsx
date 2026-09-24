@@ -506,6 +506,9 @@ export default function App() {
         betslipUrl={betslipUrl}
         onRemove={removeFromBet}
         onClear={clearBets}
+        // Each leg names a fixture, so it gets the two crests every other list
+        // of matches on the site shows.
+        teamLogos={teamLogos}
         // Each leg records what the model said when it is saved, for the
         // slip's recap - built the Predictor's way, from the same pooled history.
         modelMatchData={currentSeasonMatchData}
