@@ -240,9 +240,7 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                         {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
                     </h1>
                 )}
-            >
-                <StatisticSelector value={selectedStatistic} onChange={onStatisticChange} className="w-[180px]" />
-            </Header>
+            />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-4 space-y-8">
                 <section className="bp-hero bp-hero-open animate-waterfall relative !pb-20">
@@ -263,6 +261,12 @@ const MarketMoves = ({ matchData, teamLogos, leagues, selectedStatistic, onStati
                                     {t('{stat} closing line value', { stat: statLabel })}
                                 </p>
                             </div>
+                        </div>
+                        {/* Moved out of the app header. This page has no filter
+                            row, so the hero's control row is where it goes. */}
+                        <div className="flex items-center gap-2 self-start lg:self-center">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{t('Statistic')}</span>
+                            <StatisticSelector value={selectedStatistic} onChange={onStatisticChange} className="w-[160px]" />
                         </div>
                         <SlidingTabs
                             items={[

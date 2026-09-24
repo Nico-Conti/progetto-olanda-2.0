@@ -278,13 +278,7 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                 showBetSlip={true}
                 betsCount={bets?.length ?? 0}
                 onOpenBetSlip={onOpenBetSlip}
-            >
-                <StatisticSelector
-                    value={selectedStatistic}
-                    onChange={onStatisticChange}
-                    className="w-[180px]"
-                />
-            </Header>
+            />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-4">
                 <div className="space-y-8 relative">
@@ -311,6 +305,19 @@ const HotMatches = ({ priceFor, pricedLines, stats, fixtures, matchData, teamLog
                                         <DerivedBadge statistic={selectedStatistic} />
                                     </div>
                                 </div>
+                            </div>
+                            {/* Moved out of the app header, and kept up here
+                                rather than down in the filter row: it decides
+                                what the ranking is OF, which is a bigger choice
+                                than what it is filtered BY. Same slot on Market
+                                Moves and Winning Factor. */}
+                            <div className="flex items-center gap-2 self-start lg:self-center">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{t('Statistic')}</span>
+                                <StatisticSelector
+                                    value={selectedStatistic}
+                                    onChange={onStatisticChange}
+                                    className="w-[160px]"
+                                />
                             </div>
                             <SlidingTabs
                                 items={[

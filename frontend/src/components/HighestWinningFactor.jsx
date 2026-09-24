@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Info, Zap } from 'lucide-react';
 import Header from './Header';
+import StatisticSelector from './StatisticSelector';
 import ConfigurationPanel from './highest-winning-factor/ConfigurationPanel';
 import ResultsList from './highest-winning-factor/ResultsList';
 import { processData } from '../utils/stats';
 import { STAT_CONFIG } from '../utils/statistics';
 
-import StatisticSelector from './StatisticSelector';
 import ElectricBorder from './originkit/ElectricBorder';
 import { motionAllowed } from '../utils/leaguePickerFx';
 import { t, tx } from '../i18n';
@@ -187,13 +187,7 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
                 showBetSlip={true}
                 betsCount={bets.length}
                 onOpenBetSlip={onOpenBetSlip}
-            >
-                <StatisticSelector
-                    value={selectedStatistic}
-                    onChange={(e) => setSelectedStatistic(e.target.value)}
-                    className="w-[180px]"
-                />
-            </Header>
+            />
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-4">
                 <div className="space-y-8">
@@ -211,15 +205,30 @@ const HighestWinningFactor = ({ onBack, matchData, notStartedLeagues = [], fixtu
                             <div className="bp-orb bp-orb-b" />
                             <div className="bp-orb bp-orb-c" />
                         </div>
-                        <div className="relative flex items-center gap-4">
-                            <div className="bp-icon"><Zap className="w-7 h-7 text-purple-300" /></div>
-                            <div className="min-w-0">
-                                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
-                                    {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
-                                </h2>
-                                <p className="text-sm text-zinc-400 mt-2">
-                                    {t('The teams that clear your line most often in their recent games.')}
-                                </p>
+                        <div className="relative flex flex-col lg:flex-row lg:items-center gap-4">
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className="bp-icon"><Zap className="w-7 h-7 text-purple-300" /></div>
+                                <div className="min-w-0">
+                                    <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none">
+                                        {title[0]} <span className="bp-gold-text">{title.slice(1).join(' ')}</span>
+                                    </h2>
+                                    <p className="text-sm text-zinc-400 mt-2">
+                                        {t('The teams that clear your line most often in their recent games.')}
+                                    </p>
+                                </div>
+                            </div>
+                            {/* Same slot as Hot Matches and Market Moves. It sits
+                                above the rules below, not among them: it decides
+                                what the ranking is OF, not how it is filtered.
+                                Note this one is the page's OWN statistic - see
+                                the useState below - not the app-wide one. */}
+                            <div className="flex items-center gap-2 self-start lg:self-center">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">{t('Statistic')}</span>
+                                <StatisticSelector
+                                    value={selectedStatistic}
+                                    onChange={(e) => setSelectedStatistic(e.target.value)}
+                                    className="w-[160px]"
+                                />
                             </div>
                         </div>
                         <div className="relative mt-5 pt-5 border-t border-white/5">

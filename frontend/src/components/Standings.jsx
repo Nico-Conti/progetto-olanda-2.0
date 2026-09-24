@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, BarChart3, ChevronDown, ChevronRight, ChevronUp, Crown, ListOrdered, Trophy } from 'lucide-react';
 import Select from './ui/Select';
 import SlidingTabs from './ui/SlidingTabs';
+import StatisticSelector from './StatisticSelector';
 import SeasonResults from './SeasonResults';
 import { getStatLabel, resolveStatKey } from '../utils/statistics';
 import { teamGames, sampleOf, leagueTable } from '../utils/standings';
@@ -173,6 +174,7 @@ const Chip = ({ label, value, tone = 'text-white' }) => (
  * for the team page.
  */
 const Standings = ({
+    onStatisticChange,
     matchData,
     teamLogos,
     onTeamClick,
@@ -268,6 +270,16 @@ const Standings = ({
                         )}
                     </Group>
                     <SlidingTabs items={VIEWS.map(v => ({ ...v, label: t(v.label) }))} value={view} onChange={onViewChange} className="border border-white/5" tabClassName="font-bold whitespace-nowrap" />
+
+                    {/* Moved out of the app header: it changes what THIS page
+                        shows, so it sits with Season, Rank by and the rest. */}
+                    <Group label={t('Statistic')}>
+                        <StatisticSelector
+                            value={selectedStatistic}
+                            onChange={onStatisticChange}
+                            className="w-[160px]"
+                        />
+                    </Group>
 
                     {view === 'table' && (
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:ml-auto animate-in fade-in duration-300">

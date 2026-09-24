@@ -28,7 +28,7 @@ import { t, tk, dateLocale } from '../i18n';
 // STAT_OPTIONS holds it, so take it from there rather than writing a label here.
 const MAIN_OPTION = STAT_OPTIONS.filter((o) => o.value === 'main');
 
-const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, routeMatch, onOpenMatch, onExitPreview, onExitToLeague, backButtonLabel, onTeamClick }) => {
+const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettings, setNGames, setUseGeneralStats, setForceMean, stats: globalStats, fixtures, teamLogos, leagues, selectedStatistic, matchData, modelMatchData, matchStatistics, setMatchStatistics, addToBet, removeFromBet, bets, routeMatch, onOpenMatch, onStatisticChange, onExitPreview, onExitToLeague, backButtonLabel, onTeamClick }) => {
     // Model history is pooled across leagues (see App.jsx); `matchData` stays the
     // league's own and still drives the league averages, the backtest and the
     // distribution, all of which are claims about THIS league.
@@ -514,6 +514,16 @@ const Predictor = ({ priceFor, pricedLines, outcomesFor, loadMarket, modelSettin
                 </div>
                 <div className="px-5 py-4">
                     <ModelControls statistic={selectedStatistic} {...controls}>
+                        {/* The statistic belongs with the other things that change
+                            what this page shows, not in the app header two rows
+                            up. The match detail below already did it this way. */}
+                        <Group label={t('Statistic')}>
+                            <StatisticSelector
+                                value={selectedStatistic}
+                                onChange={onStatisticChange}
+                                className="w-[160px]"
+                            />
+                        </Group>
                         {availableMatchdays.length > 0 && (
                             <Group label={t('Matchday')}>
                                 <div className="flex items-center gap-1">

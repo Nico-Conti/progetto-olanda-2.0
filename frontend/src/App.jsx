@@ -17,7 +17,6 @@ import { processData } from './utils/stats';
 import { seasonsForLeague, latestSeasonForLeague, modelSeasonsForLeague } from './utils/seasons';
 import { useOdds } from './hooks/useOdds';
 import { useModelSettings } from './hooks/useModelSettings';
-import StatisticSelector from './components/StatisticSelector';
 import BetSlipModal from './components/BetSlipModal';
 import AccountModal from './components/AccountModal';
 import { AccountContext, useAuthUser } from './hooks/useAuth';
@@ -657,26 +656,8 @@ export default function App() {
             betsCount={bets.length}
             onOpenBetSlip={() => setIsBetSlipOpen(true)}
           >
-            {/* Mobile and tablet: compact icon row. Switches at lg, not md: the
-                desktop pill measures ~943px and md is 768px, so an iPad in
-                portrait got a header wider than its own screen. */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <StatisticSelector
-                value={selectedStatistic}
-                onChange={(e) => setSelectedStatistic(e.target.value)}
-                className="w-[140px]"
-              />
-
-            </div>
-
             {/* Desktop: navigation pill + secondary actions */}
             <div className="hidden lg:flex items-center gap-3">
-              <StatisticSelector
-                value={selectedStatistic}
-                onChange={(e) => setSelectedStatistic(e.target.value)}
-                className="w-[150px]"
-              />
-
               <SlidingTabs
                 items={tabs}
                 value={activeTab}
@@ -751,6 +732,7 @@ export default function App() {
                   teamLogos={teamLogos}
                   leagues={leagues}
                   selectedStatistic={selectedStatistic}
+                  onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
                   matchData={predictorMatchData}
                   matchStatistics={matchStatistics}
                   setMatchStatistics={setMatchStatistics}
@@ -787,6 +769,7 @@ export default function App() {
                   view={standingsView}
                   onViewChange={setStandingsView}
                   selectedStatistic={selectedStatistic}
+                  onStatisticChange={(e) => setSelectedStatistic(e.target.value)}
                 />
               </div>
             )}
