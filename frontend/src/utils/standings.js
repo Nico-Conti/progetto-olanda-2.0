@@ -1,4 +1,4 @@
-import { statPair } from './statistics';
+import { statPair } from './statistics.js';
 
 /*
    League-table arithmetic, shared by the Standings tab and the team page.
@@ -40,3 +40,26 @@ export const leagueTable = (games, limit, venue) => Object.entries(games)
         return { ...r, gd: r.gf - r.ga, pts: 3 * r.w + r.d };
     })
     .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team));
+
+// Leagues whose title the plain points table does not decide: Belgium halves
+// the points and plays championship playoffs on top of its regular season, and
+// the stored season holds both. Better no trophy than the wrong one.
+const NOT_BY_TABLE = new Set(['Jupiler League']);
+
+/**
+ * Each league's champion of its last finished season: the one before the
+ * newest season seen in `matches` or `fixtures` (a season finishes when the
+ * next begins), topped on the final points table. `{ [league]: { team, season } }`.
+ */
+export const lastChampions = (matches, fixtures = []) => {
+    const seasons = {};
+    for (const m of [...matches, ...fixtures]) if (m.league && m.season) (seasons[m.league] ??= new Set()).add(m.season);
+    const out = {};
+    for (const [league, set] of Object.entries(seasons)) {
+        if (NOT_BY_TABLE.has(league) || set.size < 2) continue;
+        const season = [...set].sort().at(-2);
+        const table = leagueTable(teamGames(matches.filter(m => m.league === league && m.season === season), 'goals'), 'all', 'all');
+        if (table.length) out[league] = { team: table[0].team, season };
+    }
+    return out;
+};

@@ -28,5 +28,31 @@ export function useAuthUser(onRecovery) {
         });
         return () => data.subscription.unsubscribe();
     }, [onRecovery]);
+
+    // The account can change elsewhere: another tab hears it from Supabase's
+    // BroadcastChannel, but only in the same browser on the same address. A
+    // second browser, a private window, the deployed site beside localhost or
+    // a phone would otherwise keep showing the old favourite team (or leagues,
+    // language, picture) until a token refresh an hour later. So read the user
+    // afresh whenever this tab comes back into view. Unchanged, it keeps the
+    // same object, so nothing re-renders.
+    useEffect(() => {
+        if (!supabase) return;
+        const refresh = async () => {
+            if (document.visibilityState !== 'visible') return;
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+            const { data, error } = await supabase.auth.getUser();
+            if (error || !data.user) return;
+            setUser(prev => (prev?.id === data.user.id && prev.updated_at === data.user.updated_at
+                && JSON.stringify(prev.user_metadata) === JSON.stringify(data.user.user_metadata) ? prev : data.user));
+        };
+        document.addEventListener('visibilitychange', refresh);
+        window.addEventListener('focus', refresh);
+        return () => {
+            document.removeEventListener('visibilitychange', refresh);
+            window.removeEventListener('focus', refresh);
+        };
+    }, []);
     return user;
 }

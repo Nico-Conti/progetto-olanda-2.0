@@ -405,7 +405,7 @@ const BonusPlanner = ({ oddsRows, oddsLoading, matchData, modelSettings, teamLog
                             <input type="checkbox" checked={sameDay} onChange={e => set({ sameDay: e.target.checked })} className="peer sr-only" />
                             <span className="bp-toggle" aria-hidden="true" />
                             <CalendarCheck className="w-4 h-4 shrink-0 text-zinc-500 peer-checked:text-amber-300 transition-colors" />
-                            <span className="text-sm font-semibold text-zinc-300 truncate">{t('Matches today only')}</span>
+                            <span className="text-sm font-semibold text-zinc-300 truncate">{t('Today only')}</span>
                         </label>
                     </div>
 

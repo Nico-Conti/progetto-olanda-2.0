@@ -89,7 +89,7 @@ export default function App() {
   // a past one. The Predictor always stays on the current season.
   const [standingsSeason, setStandingsSeason] = useState(null);
   const [standingsView, setStandingsView] = useState('table');
-  const { matchData, fixturesData, teamLogos, leagues, shellLoading, loading, error, refetch } = useMatchData();
+  const { matchData, fixturesData, teamLogos, stadiumPhotos, leagues, shellLoading, loading, error, refetch } = useMatchData();
   /* `teamTrail` used to live here: a hand-rolled back stack, one frame per
      team page, so opponent-hopping unwound a step at a time. That is what the
      browser's own history does, now that every step has a URL - and
@@ -515,6 +515,13 @@ export default function App() {
         // Slip history settles itself against played matches, and every stat it
         // needs is already here - no endpoint, no stored result.
         matchData={matchData}
+        // The favourite-team picker lists this season's sides with their crests,
+        // and the profile card shows the team's next fixture.
+        fixtures={fixturesData}
+        teamLogos={teamLogos}
+        // Their nations: how the favourite team's shirt and stadium are found (hooks/useJersey).
+        leagueRows={leagues}
+        stadiumPhotos={stadiumPhotos}
       />
 
 
@@ -696,6 +703,7 @@ export default function App() {
                   key={selectedTeam}
                   team={selectedTeam}
                   teamLogos={teamLogos}
+                  stadiumPhotos={stadiumPhotos}
                   matches={filteredMatchData}
                   fixtures={filteredFixtures}
                   leagues={leagues}
