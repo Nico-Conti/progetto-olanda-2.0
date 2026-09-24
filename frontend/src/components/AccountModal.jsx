@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight, ChevronDown, Shield, Trophy, MapPin, ChartNoAxesColumn } from 'lucide-react';
+import { X, User, LogOut, History, Trash2, Star, Camera, ChevronRight, ChevronDown, Shield, Trophy, MapPin, ChartNoAxesColumn, FileText } from 'lucide-react';
 import { supabase, useAccount } from '../hooks/useAuth';
 import SlidingTabs from './ui/SlidingTabs';
 import Modal from './ui/Modal';
 import SlipRecap from './SlipRecap';
+import { FixtureCrests } from './TeamBadge';
 import LanguageSwitch from './ui/LanguageSwitch';
 import { betMarket, betPick } from '../utils/statistics';
 import { settleSlip, slipReturn, UNGRADEABLE } from '../utils/settle';
@@ -13,14 +14,25 @@ import { crestColours, KIT_COLOURS, teamTheme } from '../utils/crestColours';
 import { lastChampions } from '../utils/standings';
 import { useJersey, useStadium } from '../hooks/useJersey';
 import { leagueMeta } from '../utils/leaguePickerFx';
+import { staggerDelay } from '../utils/stagger';
 
 const INPUT = 'w-full bg-zinc-950/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 profile-input';
 const PRIMARY = 'w-full py-2.5 rounded-xl font-bold text-sm uppercase tracking-wide transition bg-emerald-500 hover:bg-emerald-400 text-white disabled:opacity-50 disabled:cursor-not-allowed profile-primary';
 const LABEL = 'block text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1';
 const LEGAL_LINK = 'underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-emerald-400 hover:decoration-emerald-400/60';
 const STATUS_LABEL = { pending: tk('pending'), won: tk('won'), lost: tk('lost'), void: tk('void') };
-const STATUS_STYLE = {
-    pending: 'text-zinc-300', won: 'text-emerald-400', lost: 'text-red-400', void: 'text-zinc-500',
+// The Recap button in the colour of the window it opens, so it does not sit
+// emerald under a red LOST chip.
+const RECAP_ACTION = {
+    won: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300 hover:border-emerald-400/60 hover:bg-emerald-500/15 hover:shadow-[0_0_24px_rgba(16,185,129,0.18)]',
+    lost: 'border-red-500/30 bg-red-500/5 text-red-300 hover:border-red-400/60 hover:bg-red-500/15 hover:shadow-[0_0_24px_rgba(244,63,94,0.18)]',
+};
+// The slip's verdict, as a chip on its history card.
+const STATUS_CHIP = {
+    pending: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+    won: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    lost: 'border-red-500/40 bg-red-500/10 text-red-300',
+    void: 'border-white/15 bg-white/5 text-zinc-400',
 };
 
 // Per-leg verdict. `null` is "cannot say" - not played, not scraped, or a market
@@ -651,7 +663,7 @@ const upcomingKickoff = (date) => {
     return `${day} ${d.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' })}`;
 };
 
-const HistoryTab = ({ matchData }) => {
+const HistoryTab = ({ matchData, teamLogos }) => {
     const [slips, setSlips] = useState(null);
     const [error, setError] = useState(null);
     // The slip whose recap is open. Its id, not the row: the row is rebuilt
@@ -695,54 +707,76 @@ const HistoryTab = ({ matchData }) => {
     const staked = done.reduce((sum, r) => sum + (Number(r.slip.stake) > 0 ? Number(r.slip.stake) : 0), 0);
     // Only slips carrying a stake can enter a ledger, so say how many did.
     const counted = returns.length;
+    const up = profit >= 0;
 
     return (
         <div className="space-y-3">
             {error && <Message msg={{ text: error }} />}
             {slips.length === 0 ? (
-                <div className="text-center py-8 text-zinc-500">
-                    <p>{t('No played slips yet.')}</p>
-                    <p className="text-xs mt-1">{t('Use "Save as played" in the bet slip.')}</p>
+                <div className="text-center py-10">
+                    <FileText className="w-10 h-10 mx-auto mb-4 text-zinc-700" />
+                    <p className="text-sm font-bold text-zinc-400">{t('No played slips yet.')}</p>
+                    <p className="text-xs mt-1 text-zinc-600">{t('Use "Save as played" in the bet slip.')}</p>
                 </div>
             ) : (
                 <>
-                    <div className="flex justify-between text-xs text-zinc-400 px-1">
-                        <span>{t('{slips} slips · {settled} settled', { slips: slips.length, settled: counted })}</span>
-                        <span className={`font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            P/L {profit >= 0 ? '+' : '−'}€{Math.abs(profit).toFixed(2)}
-                        </span>
+                    {/* The ledger as one figure, lit from behind in the colour
+                        of its sign - the same headline treatment the slip's
+                        combined odds and the Predictor's total get. */}
+                    <div className="profile-section relative rounded-xl border border-white/10 bg-zinc-900/60 backdrop-blur-md p-4 overflow-hidden shadow-lg">
+                        <div aria-hidden="true" className="absolute -right-6 -top-10 w-32 h-32 rounded-full blur-2xl pointer-events-none"
+                            style={{ background: up ? 'rgba(16,185,129,0.20)' : 'rgba(244,63,94,0.20)' }} />
+                        <div className="relative flex items-end justify-between gap-3">
+                            <div className="min-w-0">
+                                <span className={LABEL}>P/L</span>
+                                <p className="text-[10px] text-zinc-500">
+                                    {t('{slips} slips · {settled} settled', { slips: slips.length, settled: counted })}
+                                </p>
+                            </div>
+                            <div className={`shrink-0 text-3xl font-black tracking-tighter tabular-nums leading-none ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {up ? '+' : '−'}€{Math.abs(profit).toFixed(2)}
+                            </div>
+                        </div>
+                        {staked > 0 && (
+                            <p className="relative mt-2.5 pt-2.5 border-t border-white/5 text-[10px] text-zinc-500">
+                                {t('€{staked} staked · {roi}% ROI, over settled slips only.',
+                                    { staked: staked.toFixed(2), roi: (100 * profit / staked).toFixed(1) })}
+                            </p>
+                        )}
                     </div>
-                    {staked > 0 && (
-                        <p className="text-[10px] text-zinc-500 px-1 -mt-1">
-                            {t('€{staked} staked · {roi}% ROI, over settled slips only.',
-                                { staked: staked.toFixed(2), roi: (100 * profit / staked).toFixed(1) })}
-                        </p>
-                    )}
-                    {rows.map(({ slip, settled, status }) => (
+                    {rows.map(({ slip, settled, status }, idx) => (
                         // <details> rather than a useState per card: the browser
                         // already does this, with the keyboard and screen-reader
                         // behaviour we would otherwise have to write. Collapsed by
                         // default - the header carries what you scan for, and the
                         // legs are the detail you open for.
-                        <details key={slip.id} className="group bg-white/5 rounded-xl border border-white/5 overflow-hidden">
-                            <summary className="flex items-center gap-2 p-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-white/5">
+                        <details
+                            key={slip.id}
+                            style={{ animationDelay: staggerDelay(idx) }}
+                            className="group profile-section rounded-xl border border-white/10 bg-zinc-900/60 backdrop-blur-md overflow-hidden shadow-lg animate-waterfall"
+                        >
+                            <summary className="flex items-center gap-2.5 p-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-white/5 transition-colors">
                                 <ChevronRight className="w-4 h-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-90" />
-                                <span className="text-xs text-zinc-500 shrink-0">
-                                    {new Date(slip.created_at).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
-                                </span>
-                                <span className="text-xs text-zinc-500 shrink-0">
-                                    {t('{n} legs', { n: settled.total })}
-                                </span>
-                                {/* The numbers being scanned for, so the common case
-                                    needs no expanding at all. */}
-                                <span className="ml-auto text-xs font-mono text-zinc-400 shrink-0">
-                                    {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}
-                                    {' @ '}
-                                    {slip.odds ? Number(slip.odds).toFixed(2) : '—'}
-                                </span>
+                                {/* The numbers being scanned for, so the common
+                                    case needs no expanding at all. */}
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-baseline gap-2 min-w-0">
+                                        <span className="text-xs font-black text-white shrink-0">
+                                            {new Date(slip.created_at).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })}
+                                        </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 truncate">
+                                            {settled.total === 1 ? t('1 leg') : t('{n} legs', { n: settled.total })}
+                                        </span>
+                                    </div>
+                                    <span className="font-mono text-[11px] text-zinc-400 tabular-nums">
+                                        {slip.stake ? `€${Number(slip.stake).toFixed(2)}` : '—'}
+                                        {' @ '}
+                                        {slip.odds ? Number(slip.odds).toFixed(2) : '—'}
+                                    </span>
+                                </div>
                                 <span
                                     aria-label={t('Slip outcome')}
-                                    className={`px-2 py-1 text-xs font-bold uppercase shrink-0 ${STATUS_STYLE[status]}`}
+                                    className={`shrink-0 px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${STATUS_CHIP[status]}`}
                                 >
                                     {t(STATUS_LABEL[status])}
                                 </span>
@@ -751,14 +785,14 @@ const HistoryTab = ({ matchData }) => {
                                     // toggles the card open on its way up.
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); remove(slip.id); }}
                                     aria-label={t('Delete slip')}
-                                    className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg shrink-0"
+                                    className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded-lg shrink-0 transition-colors"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
                             </summary>
 
                             <div className="px-3 pb-3 space-y-2">
-                                <ul className="space-y-1">
+                                <ul className="space-y-1.5">
                                     {settled.legs.map(({ leg: bet, status: legStatus, actual }, i) => (
                                         // Stacked at EVERY width, and that is the
                                         // unusual part. A combo's market and pick
@@ -771,40 +805,46 @@ const HistoryTab = ({ matchData }) => {
                                         // read the VIEWPORT, but this modal is
                                         // `max-w-md` on every screen, so `sm:flex-row`
                                         // would put the clipping back on every desktop.
-                                        <li key={i} className="text-xs flex flex-col">
-                                            {/* The name TRUNCATES and the kickoff does not:
-                                                this card is max-w-md at every width, and a
-                                                flex sibling that cannot shrink clips instead
-                                                of overflowing - which is how the fixture name
-                                                once vanished entirely. The date is short and
-                                                fixed-width, so the name is the one that yields. */}
-                                            <span className="text-white font-semibold flex items-baseline gap-1.5 min-w-0">
-                                                <span className={`shrink-0 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
-                                                      title={t((LEG_MARK[legStatus] ?? LEG_MARK.null).title)}>
-                                                    {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
+                                        <li key={i} className="flex items-start gap-2 rounded-lg border border-white/5 bg-white/[0.03] p-2">
+                                            <FixtureCrests game={bet.game} teamLogos={teamLogos} className="w-5 h-5" />
+                                            <div className="min-w-0 flex-1">
+                                                {/* The name TRUNCATES and the kickoff does not:
+                                                    this card is max-w-md at every width, and a
+                                                    flex sibling that cannot shrink clips instead
+                                                    of overflowing - which is how the fixture name
+                                                    once vanished entirely. The date is short and
+                                                    fixed-width, so the name is the one that yields. */}
+                                                <span className="text-xs text-white font-bold flex items-baseline gap-1.5 min-w-0">
+                                                    <span className={`shrink-0 font-mono ${(LEG_MARK[legStatus] ?? LEG_MARK.null).cls}`}
+                                                          title={t((LEG_MARK[legStatus] ?? LEG_MARK.null).title)}>
+                                                        {(LEG_MARK[legStatus] ?? LEG_MARK.null).mark}
+                                                    </span>
+                                                    <span className="truncate">{bet.game}</span>
+                                                    {upcomingKickoff(bet.date) && (
+                                                        <span className="ml-auto shrink-0 font-normal font-mono text-[10px] text-zinc-500 tabular-nums">
+                                                            {upcomingKickoff(bet.date)}
+                                                        </span>
+                                                    )}
                                                 </span>
-                                                <span className="truncate">{bet.game}</span>
-                                                {upcomingKickoff(bet.date) && (
-                                                    <span className="ml-auto shrink-0 font-normal font-mono text-[10px] text-zinc-500 tabular-nums">
-                                                        {upcomingKickoff(bet.date)}
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className="shrink-0 text-zinc-400 truncate pl-[1.375rem]">
-                                                <span className="uppercase text-[10px]">{betMarket(bet)}</span>{' '}
-                                                <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
-                                                {bet.price && <span className="font-mono text-zinc-500"> @{bet.price.toFixed(2)}</span>}
-                                                {/* What actually happened, beside the
-                                                    verdict. Absent for a market we do
-                                                    not settle ourselves, so it never
-                                                    shows our count where the
-                                                    bookmaker's belongs. */}
-                                                {actual && (
-                                                    <span className="font-mono text-zinc-300" title={t('Actual result')}>
-                                                        {' · '}{actual}
-                                                    </span>
-                                                )}
-                                            </span>
+                                                {/* The pick never truncates either. Clipping
+                                                    it dropped the LINE off a combo - the one
+                                                    number the bet actually is - so it wraps. */}
+                                                <span className="block text-xs leading-snug">
+                                                    <span className="uppercase text-[10px] font-bold tracking-wider text-zinc-500">{betMarket(bet)}</span>{' '}
+                                                    <span className="text-emerald-400 font-mono font-bold">{betPick(bet)}</span>
+                                                    {bet.price && <span className="font-mono text-zinc-500"> @{bet.price.toFixed(2)}</span>}
+                                                    {/* What actually happened, beside the
+                                                        verdict. Absent for a market we do
+                                                        not settle ourselves, so it never
+                                                        shows our count where the
+                                                        bookmaker's belongs. */}
+                                                    {actual && (
+                                                        <span className="font-mono text-zinc-300" title={t('Actual result')}>
+                                                            {' · '}{actual}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
@@ -820,17 +860,17 @@ const HistoryTab = ({ matchData }) => {
                                 {(status === 'won' || status === 'lost') && (
                                     <button
                                         onClick={() => setRecapId(slip.id)}
-                                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+                                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-black uppercase tracking-wide transition duration-300 ${RECAP_ACTION[status]}`}
                                     >
                                         <ChartNoAxesColumn className="w-4 h-4" />
                                         {t('Recap')}
                                     </button>
                                 )}
-                                <div className="flex justify-between text-xs text-zinc-400 border-t border-white/5 pt-2 font-mono">
+                                <div className="flex justify-between text-[11px] text-zinc-500 border-t border-white/5 pt-2 font-mono">
                                     <span>
                                         {new Date(slip.created_at).toLocaleString(dateLocale(), { dateStyle: 'medium', timeStyle: 'short' })}
                                     </span>
-                                    <span>
+                                    <span className="text-zinc-400">
                                         {status === 'won' || status === 'lost' || status === 'void' ? t('returned') : t('returns')}{' '}
                                         {(() => {
                                             const r = slipReturn(slip, settled);
@@ -847,7 +887,8 @@ const HistoryTab = ({ matchData }) => {
             )}
             {(() => {
                 const open = rows.find(r => r.slip.id === recapId);
-                return <SlipRecap slip={open?.slip ?? null} settled={open?.settled ?? null} onClose={() => setRecapId(null)} />;
+                return <SlipRecap slip={open?.slip ?? null} settled={open?.settled ?? null}
+                    teamLogos={teamLogos} onClose={() => setRecapId(null)} />;
             })()}
         </div>
     );
@@ -912,7 +953,7 @@ const AccountModal = ({ isOpen, onClose, leagues, leagueRows = [], matchData, fi
                             <SlidingTabs items={TABS.map(tab => ({ ...tab, label: t(tab.label) }))} value={tab} onChange={setTab} className={`w-full ${theme ? 'bp-control-tabs' : ''}`} tabClassName="flex-1 font-semibold" />
                             {tab === 'profile'
                                 ? <ProfileTab key={user.id} user={user} leagues={leagues} teams={teams} fixtures={fixtures} team={team} teamSetting={teamSetting} titles={titles} country={team ? leagueMeta(leagueRows, team.league).country : null} ownPhoto={team ? stadiumPhotos[team.name] : null} />
-                                : <HistoryTab key={user.id} matchData={matchData} />}
+                                : <HistoryTab key={user.id} matchData={matchData} teamLogos={teamLogos} />}
                         </>
                     )}
                 </div>

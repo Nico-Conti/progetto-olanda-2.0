@@ -479,6 +479,7 @@ export default {
     "Lost": "Persa",
     "Void - stake returned for this leg": "Annullata - puntata restituita per questa selezione",
     "Not settled yet": "Non ancora decisa",
+    "1 leg": "1 selezione",
     "{n} legs": "{n} selezioni",
     "{graded} of {total} legs settled": "{graded} di {total} selezioni decise",
     "one of these is a market we do not settle ourselves": "una di queste è un mercato che non decidiamo noi",
