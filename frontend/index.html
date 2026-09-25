@@ -3,7 +3,9 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <!-- Square, and a multiple of 48px: Google shows a site's icon in search results
+       only if it is square, and logo.png (195x189) is not - it got the grey globe. -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <!-- Home-screen shortcut. Without these a phone draws a letter on grey: iOS reads
        apple-touch-icon (square, opaque - transparency turns black), Android reads
        the manifest's 192/512 icons. Squared from logo.png on the page background,
