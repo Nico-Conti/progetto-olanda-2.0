@@ -49,6 +49,10 @@ jobs:
     
     - name: Run Scraper for All Leagues
       env:
+        # diretta renders kickoff times in the BROWSER's timezone, and the
+        # scrapers read them as Europe/Rome. The runner is UTC, so without this
+        # every stored kickoff was 2h early in summer and 1h in winter.
+        TZ: Europe/Rome
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
