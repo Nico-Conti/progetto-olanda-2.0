@@ -176,8 +176,11 @@ export default function App() {
   /* A league that does not resolve is an ERROR, not a silent redirect to the
      landing page: a redirect hides the broken link from whoever has to debug
      it. It resolves off the 5KB shell, so this is known long before /matches
-     lands. */
-  const leagueUnknown = route.view === 'dashboard' && !shellLoading && !selectedLeague;
+     lands. Only against a list that actually ARRIVED: the shell swallows its
+     own failure (it is decoration), so with the backend asleep the list is
+     empty and every real league read as unknown - which is what Googlebot was
+     served for /league/serie-a. No list is a load failure, handled below. */
+  const leagueUnknown = route.view === 'dashboard' && !shellLoading && availableLeagues.length > 0 && !selectedLeague;
 
   // The spiral transition is for entering a section - a league, Hot Matches,
   // Market Moves, Winning Factor. Moving around inside one (these tabs, a team,
