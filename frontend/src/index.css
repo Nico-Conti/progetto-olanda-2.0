@@ -1121,6 +1121,13 @@ input[type=number] {
 .bp-orb-a { background: var(--fx-a); top: -12rem; right: -6rem; }
 .bp-orb-b { background: var(--fx-b); bottom: -14rem; right: 18rem; animation-delay: -7s; opacity: 0.25; }
 
+/* The bet slip wears the same orbs in a 30rem modal rather than across a page,
+   where orbs sized for a hero flood it - the header went solid green and the
+   title had nothing left to stand out against. Smaller, fainter, same drift. */
+.slip-orbs .bp-orb { width: 13rem; height: 13rem; opacity: 0.2; }
+.slip-orbs .bp-orb-a { top: -7rem; right: -3rem; }
+.slip-orbs .bp-orb-b { bottom: -7rem; right: 11rem; opacity: 0.16; }
+
 @keyframes bp-drift {
     to { transform: translate(-4rem, 2rem) scale(1.15); }
 }

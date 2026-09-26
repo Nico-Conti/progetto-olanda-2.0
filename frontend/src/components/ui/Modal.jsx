@@ -12,8 +12,8 @@ import { usePresence } from '../../hooks/usePresence';
  * on the page behind it, and Escape did nothing.
  *
  * `Trailer.jsx` reached the same conclusion first; this is that pattern made
- * reusable. `BetSlipModal` and the league picker in `LandingPage` still use the
- * old `.t-modal` div and still have both defects.
+ * reusable. The league picker in `LandingPage` is the last hold-out still on
+ * the old `.t-modal` div, and still has both defects.
  *
  * `onClose` fires for Escape and the backdrop as well as a close button,
  * because the element closes itself on those and the caller's state has to

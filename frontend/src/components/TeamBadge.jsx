@@ -1,5 +1,27 @@
 import React from 'react';
+import { teamsOf } from '../utils/settle';
 import { t } from '../i18n';
+
+/**
+ * Both crests of a fixture named "Home vs Away", for the places that list bets
+ * rather than matches - the slip, the slip history, a recap. Decorative: the
+ * fixture's name is always written beside it, so it is aria-hidden.
+ *
+ * Nothing at all when neither crest is known, rather than two gaps: a league
+ * whose logos have not been imported should look deliberate, not broken.
+ */
+export const FixtureCrests = ({ game, teamLogos, className = 'w-6 h-6' }) => {
+    const teams = teamsOf(game);
+    const logos = [teams?.home, teams?.away].map(name => (name ? teamLogos?.[name] : null));
+    if (!logos.some(Boolean)) return null;
+    return (
+        <div className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+            {logos.map((src, i) => (
+                <img key={i} src={src || undefined} alt="" className={`${className} object-contain drop-shadow-lg`} />
+            ))}
+        </div>
+    );
+};
 
 /**
  * A team's badge. Given `onOpen`, it is a button that opens the team's page;
