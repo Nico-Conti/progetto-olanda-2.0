@@ -192,14 +192,21 @@ def scrape_stats(driver):
         #     <div class="wcl-labelRow_...">
         #       <div><div class="wcl-value_...">0.85</div></div>        home
         #       <div class="wcl-label_...">
-        #         <span data-testid="wcl-scores-simple-text-01">Goal previsti (xG)</span>
+        #         <span data-testid="wcl-simple-text-01">Goal previsti (xG)</span>
         #       <div><div class="wcl-value_...">1.83</div></div>        away
         #
         # The page lists some statistics twice - once in a summary block and
         # once in the full one - with identical values, so a later row simply
         # overwrites the earlier with the same numbers.
+        #
+        # The label's testid is matched on its SUFFIX. diretta renamed it from
+        # `wcl-scores-simple-text-01` to `wcl-simple-text-01` in September 2026,
+        # and the exact match found no label in any row: every match scraped
+        # after that was skipped as "no statistics" - Girona-Albacete on
+        # 2026-09-25 was the first one noticed. Testids are stabler than the
+        # hashed classes, but not immutable.
         for row in soup.select('[data-testid="wcl-statistics"]'):
-            category_element = row.select_one('[data-testid="wcl-scores-simple-text-01"]')
+            category_element = row.select_one('[data-testid$="simple-text-01"]')
             if not category_element:
                 continue
 

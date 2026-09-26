@@ -86,7 +86,10 @@ def _participant(row, side):
     cell = row.select_one(f".event__{side}Participant")
     if not cell:
         return None
-    name = cell.select_one('[data-testid="wcl-scores-simple-text-01"]')
+    # Suffix match: the testid was `wcl-scores-simple-text-01` until diretta
+    # renamed it `wcl-simple-text-01` (September 2026). An exact match then found
+    # nothing and fell back to the whole cell - the badge-glued names above.
+    name = cell.select_one('[data-testid$="simple-text-01"]')
     return _text(name) or _text(cell)
 
 
